@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ECR列表生成器</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script id="worker-code" type="javascript/worker">
+        // Web Worker for ECR文件处理
+        self.importScripts('https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js');
+
+        const ECR_PATTERN = /ECR-([A-Z0-9-]+)[-_](\d{8})/;
+        const SKIP_SHEETS = ['Wire', 'T28_Masterlist', 'Masterlist', 'Connector', 'Splice'];
+
+        self.onmessage = async function(e) {
+            const { files, skipTemp } = e.data;
+            const results = [];
+            let processed = 0;
+
+            for (const fileData of files) {
+                try {
+                    const info = await parseECRFile(fileData, skipTemp);
+                    if (info) {
+                        results.push(info);
+                    }
+                } catch (err) {
+                    console.error('Error:', err.message);
+                }
+
+                processed++;
+                self.postMessage({ type: 'progress', current: processed, total: files.length });
+            }
+
+            self.postMessage({ type: 'complete', results });
+        };
+
+        async function parseECRFile(fileData, skipTemp) {
+            const { name, data } = fileData;
+            if (skipTemp && name.includes('临时')) return null;
+
+            // 解析文件名获取ecrNumber和date（这是最准确的）
+            const nameMatch = name.match(ECR_PATTERN);
+            if (!nameMatch) return null;
+
+            const ecrNumber = nameMatch[1];  // 例如：T28-0S
+            const date = nameMatch[2];       // 例如：202403011
+
+            const info = {
+                originalFile: name,
+                ecrNumber,
+                date,
+                project: '',
+                description: '',
+                status: '',
+                department: '',
+                applicant: '',
+                checker: ''
+            };
+
+            // 快速解析Excel
+            const workbook = XLSX.read(data, { type: 'array', cellStyles: false, cellFormulae: false, cellDates: false });
+
+            // 只处理Cover工作表
+            const coverSheetName = workbook.SheetNames.find(n => n === 'Cover') || workbook.SheetNames[0];
+            const coverSheet = workbook.Sheets[coverSheetName];
+
+            if (coverSheet && coverSheet['!ref']) {
+                // 直接用单元格地址读取
+                // C4 = ECR Number, G4 = Title
+                // C5 = ECR Type
+                // C6 = Project, G6 = Requestor, I6 = Checker
+                const c4 = coverSheet['C4'];
+                const g4 = coverSheet['G4'];
+                const c5 = coverSheet['C5'];
+                const c6 = coverSheet['C6'];
+                const g6 = coverSheet['G6'];
+                const i6 = coverSheet['I6'];
+
+                // 注意：ecrNumber和date使用文件名解析的值，不从单元格覆盖
+                // 只读取description、status、project、applicant、checker
+                info.description = g4 ? String(g4.v || '') : '';
+                info.status = c5 ? String(c5.v || '') : '';
+                info.project = c6 ? String(c6.v || '') : '';
+                info.applicant = g6 ? String(g6.v || '') : '';
+                info.checker = i6 ? String(i6.v || '') : '';
+            }
+
+            // 备选：从Input Analyze获取描述
+            if (!info.description) {
+                const inputSheet = workbook.Sheets['Input Analyze'];
+                if (inputSheet) {
+                    const cell = inputSheet['B2'];
+                    if (cell) info.description = String(cell.v || '').slice(0, 200);
+                }
+            }
+
+            return info;
+        }
+    </script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        html, body {
+            height: 100%;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 15px;
+            overflow-x: hidden;
+        }
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 30px);
+        }
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .card h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        .upload-area {
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f8f9ff;
+        }
+        .upload-area:hover {
+            background: #e8ebff;
+            border-color: #764ba2;
+        }
+        .upload-area.dragover {
+            background: #e8ebff;
+            border-color: #764ba2;
+        }
+        .upload-icon {
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+        .upload-text {
+            color: #666;
+            font-size: 1rem;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 25px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: all 0.3s;
+            margin: 5px;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+        }
+        .file-list {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            background: #f8f9ff;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            transition: all 0.3s;
+        }
+        .file-item:hover {
+            background: #e8ebff;
+        }
+        .file-name {
+            flex: 1;
+            font-weight: 500;
+            color: #333;
+        }
+        .file-date {
+            color: #666;
+            font-size: 0.9rem;
+            margin-right: 15px;
+        }
+        .file-status {
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+        }
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .preview-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        .preview-table th,
+        .preview-table td {
+            padding: 6px 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+            white-space: nowrap;
+        }
+        .preview-table th {
+            background: #667eea;
+            color: white;
+            font-weight: 500;
+        }
+        .preview-table tbody tr:hover {
+            background: #f8f9ff;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 15px;
+            flex-shrink: 0;
+        }
+        .stat-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        .stat-label {
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+        .log-container {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 10px;
+            border-radius: 8px;
+            font-family: 'Consolas', monospace;
+            font-size: 0.8rem;
+            max-height: 100px;
+            overflow-y: auto;
+            margin-top: 10px;
+            flex-shrink: 0;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+        }
+        .log-entry.info { color: #00bfff; }
+        .log-entry.success { color: #00ff00; }
+        .log-entry.error { color: #ff4444; }
+        .log-entry.warning { color: #ffaa00; }
+        .hidden { display: none; }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ECR列表生成器</h1>
+
+        <!-- 统计区域 -->
+        <div class="stats" id="statsArea">
+            <div class="stat-box">
+                <div class="stat-number" id="totalFiles">0</div>
+                <div class="stat-label">总文件数</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="validFiles">0</div>
+                <div class="stat-label">有效ECR文件</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="processedFiles">0</div>
+                <div class="stat-label">已处理</div>
+            </div>
+        </div>
+
+        <!-- 上传区域 -->
+        <div class="card">
+            <h2>1. 选择ECR文件</h2>
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📁</div>
+                <div class="upload-text">点击或拖拽ECR Excel文件到这里</div>
+                <div style="color: #999; font-size: 0.9rem; margin-top: 10px;">支持 .xlsx 格式</div>
+            </div>
+            <input type="file" id="fileInput" multiple accept=".xlsx" class="hidden">
+            <div class="file-list" id="fileList"></div>
+        </div>
+
+        <!-- 处理控制 -->
+        <div class="card">
+            <h2>2. 处理选项</h2>
+            <div style="margin-bottom: 15px;">
+                <label style="margin-right: 20px;">
+                    <input type="checkbox" id="includeSubFolder" checked> 包含子文件夹中的ECR文件
+                </label>
+                <label style="margin-right: 20px;">
+                    <input type="checkbox" id="skipTempFiles" checked> 跳过临时文件（如包含"临时"的文件）
+                </label>
+            </div>
+            <div>
+                <button class="btn" id="processBtn" disabled>处理文件</button>
+                <button class="btn btn-success" id="exportBtn" disabled>导出ECR列表</button>
+                <button class="btn btn-danger" id="clearBtn">清空</button>
+            </div>
+            <div class="progress-bar hidden" id="progressBar">
+                <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <!-- 预览区域 -->
+        <div class="card hidden" id="previewCard" style="flex: 1; display: flex; flex-direction: column; padding: 10px;">
+            <h2 style="margin-bottom: 8px; flex-shrink: 0;">3. 预览结果</h2>
+            <div style="overflow: auto; flex: 1; border: 1px solid #ddd; border-radius: 5px;">
+                <table class="preview-table" id="previewTable">
+                    <thead>
+                        <tr>
+                            <th>序号</th>
+                            <th>ECR编号</th>
+                            <th>变更内容概述</th>
+                            <th>项目阶段</th>
+                            <th>下发时间</th>
+                            <th>原理检查人员</th>
+                            <th>检查结果</th>
+                            <th>是否实施完成</th>
+                        </tr>
+                    </thead>
+                    <tbody id="previewBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 日志区域 -->
+        <div class="card" style="flex-shrink: 0; margin-top: auto;">
+            <h2>处理日志</h2>
+            <div class="log-container" id="logContainer">
+                <div class="log-entry info">等待操作...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let ecrFiles = [];
+        let ecrData = [];
+        const ECR_PATTERN = /ECR-([A-Z0-9-]+)[-_](\d{8})/;
+
+        // DOM元素
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileList = document.getElementById('fileList');
+        const processBtn = document.getElementById('processBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const logContainer = document.getElementById('logContainer');
+        const previewCard = document.getElementById('previewCard');
+        const previewBody = document.getElementById('previewBody');
+        const progressBar = document.getElementById('progressBar');
+        const progressFill = document.getElementById('progressFill');
+
+        // 日志缓存（减少DOM操作）
+        let logQueue = [];
+        let logTimer = null;
+
+        function log(message, type = 'info') {
+            const time = new Date().toLocaleTimeString();
+            logQueue.push({ message: `[${time}] ${message}`, type });
+
+            if (!logTimer) {
+                logTimer = setTimeout(flushLog, 100);
+            }
+        }
+
+        function flushLog() {
+            if (logQueue.length === 0) {
+                logTimer = null;
+                return;
+            }
+
+            const fragment = document.createDocumentFragment();
+            logQueue.forEach(item => {
+                const entry = document.createElement('div');
+                entry.className = `log-entry ${item.type}`;
+                entry.textContent = item.message;
+                fragment.appendChild(entry);
+            });
+
+            logContainer.appendChild(fragment);
+            logContainer.scrollTop = logContainer.scrollHeight;
+
+            logQueue = [];
+            logTimer = null;
+        }
+
+        // 更新统计
+        function updateStats() {
+            document.getElementById('totalFiles').textContent = ecrFiles.length;
+            const validCount = ecrFiles.filter(f => f.valid).length;
+            document.getElementById('validFiles').textContent = validCount;
+        }
+
+        // 显示文件列表
+        function renderFileList() {
+            fileList.innerHTML = '';
+            ecrFiles.forEach((file, index) => {
+                const item = document.createElement('div');
+                item.className = 'file-item';
+
+                let statusClass = 'status-pending';
+                let statusText = '等待处理';
+
+                if (file.processed) {
+                    statusClass = 'status-success';
+                    statusText = '已处理';
+                } else if (!file.valid) {
+                    statusClass = 'status-error';
+                    statusText = '无效格式';
+                }
+
+                item.innerHTML = `
+                    <span class="file-name">${file.name}</span>
+                    <span class="file-date">${file.date || '-'}</span>
+                    <span class="file-status ${statusClass}">${statusText}</span>
+                `;
+                fileList.appendChild(item);
+            });
+            updateStats();
+        }
+
+        // 创建Web Worker
+        let worker = null;
+        function createWorker() {
+            if (worker) return worker;
+
+            const workerCode = document.getElementById('worker-code').textContent;
+            const blob = new Blob([workerCode], { type: 'application/javascript' });
+            const workerUrl = URL.createObjectURL(blob);
+            worker = new Worker(workerUrl);
+
+            worker.onmessage = function(e) {
+                const { type, current, total, results } = e.data;
+
+                if (type === 'progress') {
+                    const progress = (current / total) * 100;
+                    progressFill.style.width = `${progress}%`;
+                    document.getElementById('processedFiles').textContent = current;
+                } else if (type === 'complete') {
+                    ecrData = results;
+
+                    // 更新文件状态
+                    const processedNames = new Set(results.map(r => r.originalFile));
+                    ecrFiles.forEach(f => {
+                        if (processedNames.has(f.name)) f.processed = true;
+                    });
+                    renderFileList();
+
+                    processBtn.disabled = false;
+                    processBtn.textContent = '处理文件';
+                    progressBar.classList.add('hidden');
+
+                    log(`处理完成，共 ${ecrData.length} 个文件`, 'success');
+
+                    if (ecrData.length > 0) {
+                        renderPreview();
+                        exportBtn.disabled = false;
+                    }
+                }
+            };
+
+            return worker;
+        }
+
+        // 读取文件为ArrayBuffer（并行）
+        async function readFilesAsArrayBuffers(files) {
+            const results = [];
+            const batchSize = 20; // 并行读取20个文件
+
+            for (let i = 0; i < files.length; i += batchSize) {
+                const batch = files.slice(i, i + batchSize);
+                const promises = batch.map(fileObj => {
+                    return new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            resolve({ name: fileObj.name, data: e.target.result });
+                        };
+                        reader.onerror = reject;
+                        reader.readAsArrayBuffer(fileObj.file);
+                    });
+                });
+
+                const batchResults = await Promise.all(promises);
+                results.push(...batchResults);
+            }
+
+            return results;
+        }
+
+        // 处理文件（使用Web Worker）
+        async function processFiles() {
+            if (ecrFiles.length === 0) {
+                log('没有文件需要处理', 'warning');
+                return;
+            }
+
+            processBtn.disabled = true;
+            processBtn.innerHTML = '<span class="loading"></span> 读取文件中...';
+            progressBar.classList.remove('hidden');
+
+            const skipTemp = document.getElementById('skipTempFiles').checked;
+            const validFiles = ecrFiles.filter(f => f.valid && !(skipTemp && f.name.includes('临时')));
+            const total = validFiles.length;
+
+            if (total === 0) {
+                log('没有有效的ECR文件', 'warning');
+                processBtn.disabled = false;
+                processBtn.textContent = '处理文件';
+                progressBar.classList.add('hidden');
+                return;
+            }
+
+            log(`正在读取 ${total} 个文件...`, 'info');
+
+            try {
+                // 并行读取所有文件
+                const fileDataList = await readFilesAsArrayBuffers(validFiles);
+
+                log(`开始处理...`, 'info');
+                processBtn.innerHTML = '<span class="loading"></span> 处理中...';
+
+                // 发送数据到Worker处理
+                const w = createWorker();
+                w.postMessage({ files: fileDataList, skipTemp });
+
+            } catch (err) {
+                log(`读取文件失败: ${err.message}`, 'error');
+                processBtn.disabled = false;
+                processBtn.textContent = '处理文件';
+            }
+        }
+
+        // 渲染预览（使用DocumentFragment优化）
+        function renderPreview() {
+            previewCard.classList.remove('hidden');
+
+            // 按日期升序排序（时间早的在前）
+            const sorted = [...ecrData].sort((a, b) => a.date.localeCompare(b.date));
+
+            // 计算项目阶段
+            const getProjectPhase = (item) => {
+                const ecrFullNum = `ECR-${item.ecrNumber}`;
+                const dateMatch = item.date;
+                if (dateMatch) {
+                    const beforeDate = ecrFullNum.split('_' + dateMatch)[0];
+                    const lastDashIndex = beforeDate.lastIndexOf('-');
+                    return lastDashIndex > 4 ? beforeDate.substring(lastDashIndex + 1) : '';
+                }
+                return '';
+            };
+
+            const fragment = document.createDocumentFragment();
+            sorted.forEach((item, index) => {
+                const ecrName = item.originalFile.replace(/\.xlsx$/i, '');
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${ecrName}</td>
+                    <td>${truncateText(item.description, 60)}</td>
+                    <td>${getProjectPhase(item)}</td>
+                    <td>${formatDate(item.date)}</td>
+                    <td>${item.checker || '-'}</td>
+                    <td>OK</td>
+                    <td>已完成</td>
+                `;
+                fragment.appendChild(row);
+            });
+
+            previewBody.innerHTML = '';
+            previewBody.appendChild(fragment);
+
+            log(`预览显示 ${ecrData.length} 条记录`, 'info');
+        }
+
+        // 格式化日期
+        function formatDate(dateStr) {
+            if (!dateStr || dateStr.length !== 8) return '-';
+            return `${dateStr.slice(0, 4)}-${dateStr.slice(4, 6)}-${dateStr.slice(6, 8)}`;
+        }
+
+        // 截断文本
+        function truncateText(text, maxLength) {
+            if (!text) return '-';
+            text = String(text);
+            return text.length > maxLength ? text.slice(0, maxLength) + '...' : text;
+        }
+
+        // 导出Excel
+        function exportToExcel() {
+            if (ecrData.length === 0) {
+                log('没有数据可导出', 'warning');
+                return;
+            }
+
+            log('正在生成ECR列表...', 'info');
+
+            // 准备数据（按日期升序排序，时间早的在前）
+            const sorted = [...ecrData].sort((a, b) => a.date.localeCompare(b.date));
+            const exportData = sorted.map((item, index) => {
+                // 提取项目阶段：从ECR编号中取 "_日期" 前面到最后一个 "-" 的内容
+                // 例如 ECR-T28-0S_202403011 -> T28-0S
+                const ecrFullNum = `ECR-${item.ecrNumber}`;
+                const dateMatch = item.date;
+                let projectPhase = '';
+                if (dateMatch) {
+                    const beforeDate = ecrFullNum.split('_' + dateMatch)[0];
+                    const lastDashIndex = beforeDate.lastIndexOf('-');
+                    projectPhase = lastDashIndex > 4 ? beforeDate.substring(lastDashIndex + 1) : '';
+                }
+
+                return {
+                    '序号': index + 1,
+                    'ECR编号': item.originalFile.replace(/\.xlsx$/i, ''),  // 去掉后缀
+                    '变更内容概述': item.description || '',
+                    '项目阶段': projectPhase,
+                    '下发时间': formatDate(item.date),
+                    '原理检查人员': item.checker || '',
+                    '检查结果': 'OK',
+                    '是否实施完成': '已完成'
+                };
+            });
+
+            // 创建工作簿
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.json_to_sheet(exportData);
+
+            // 设置列宽
+            ws['!cols'] = [
+                { wch: 5 },   // 序号
+                { wch: 30 },  // ECR编号
+                { wch: 60 },  // 变更内容概述
+                { wch: 15 },  // 项目阶段
+                { wch: 12 },  // 下发时间
+                { wch: 12 },  // 原理检查人员
+                { wch: 10 },  // 检查结果
+                { wch: 12 }   // 是否实施完成
+            ];
+
+            // 添加表头样式（粗体）
+            const range = XLSX.utils.decode_range(ws['!ref']);
+            for (let c = range.s.c; c <= range.e.c; c++) {
+                const cell = ws[XLSX.utils.encode_cell({ r: 0, c })];
+                if (cell) cell.s = { font: { bold: true } };
+            }
+
+            XLSX.utils.book_append_sheet(wb, ws, 'ECR列表');
+
+            // 生成文件名
+            const today = new Date();
+            const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
+            const fileName = `SYE_ECR_LIST_${dateStr}.xlsx`;
+
+            // 下载
+            XLSX.writeFile(wb, fileName);
+            log(`✓ 已导出: ${fileName}`, 'success');
+        }
+
+        // 清空
+        function clearAll() {
+            ecrFiles = [];
+            ecrData = [];
+            fileInput.value = '';
+            fileList.innerHTML = '';
+            previewCard.classList.add('hidden');
+            exportBtn.disabled = true;
+            processBtn.disabled = true;
+            updateStats();
+            log('已清空所有数据', 'warning');
+        }
+
+        // 事件监听
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+
+        processBtn.addEventListener('click', processFiles);
+        exportBtn.addEventListener('click', exportToExcel);
+        clearBtn.addEventListener('click', clearAll);
+
+        // 处理文件选择
+        function handleFiles(files) {
+            const skipTemp = document.getElementById('skipTempFiles').checked;
+
+            for (const file of files) {
+                if (!file.name.endsWith('.xlsx')) continue;
+                if (skipTemp && file.name.includes('临时')) continue;
+
+                const match = file.name.match(ECR_PATTERN);
+                ecrFiles.push({
+                    file: file,
+                    name: file.name,
+                    date: match ? formatDate(match[2]) : null,
+                    valid: !!match,
+                    processed: false
+                });
+            }
+
+            renderFileList();
+            processBtn.disabled = ecrFiles.filter(f => f.valid).length === 0;
+            log(`添加了 ${files.length} 个文件`, 'info');
+        }
+
+        // 初始化
+        log('ECR列表生成器已就绪', 'info');
+    </script>
+</body>
+</html>

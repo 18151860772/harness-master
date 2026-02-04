@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>相似零件号分析工具 V2</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script>
+        // 如果主CDN失败，尝试备用CDN
+        if (typeof XLSX === 'undefined') {
+            var script = document.createElement('script');
+            script.src = 'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js';
+            document.head.appendChild(script);
+        }
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            padding: 30px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+
+        .upload-section {
+            background: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 40px;
+            margin-bottom: 20px;
+        }
+
+        .upload-section h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .file-input-group {
+            margin-bottom: 20px;
+        }
+
+        .file-input-group label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .file-status {
+            margin-top: 10px;
+            padding: 10px;
+            background: #d4edda;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .file-status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .loading {
+            text-align: center;
+            display: none;
+            margin: 20px 0;
+        }
+
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results-section {
+            display: none;
+        }
+
+        .export-btn {
+            background: #28a745;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+
+        .export-btn:hover {
+            background: #218838;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            font-size: 32px;
+            margin-bottom: 5px;
+        }
+
+        .stat-card p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .part-group {
+            margin-bottom: 30px;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .part-group-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .part-group-header:hover {
+            background: linear-gradient(135deg, #5568d3 0%, #653a8b 100%);
+        }
+
+        .part-group-content {
+            display: none;
+            padding: 20px;
+        }
+
+        .part-group-content.active {
+            display: block;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            text-align: left;
+        }
+
+        .comparison-table th {
+            background: #f8f9fa;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+        }
+
+        .comparison-table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        .comparison-table tr:hover {
+            background: #e9ecef;
+        }
+
+        .diff-item {
+            background: #d4edda;
+            padding: 3px 8px;
+            margin: 2px 0;
+            border-radius: 3px;
+        }
+
+        .diff-item.remove {
+            background: #f8d7da;
+        }
+
+        .arrow-down::after {
+            content: ' ▼';
+        }
+
+        .arrow-up::after {
+            content: ' ▲';
+        }
+
+        .filter-info {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 相似零件号分析工具 V2</h1>
+
+        <div class="upload-section">
+            <div class="file-input-group">
+                <h3>📁 文件1: Master List（用于分析）</h3>
+                <p style="color: #666; margin-bottom: 10px;">上传包含所有零件配置的主列表文件</p>
+                <button class="btn" onclick="document.getElementById('fileInput1').click()">选择Master List文件</button>
+                <input type="file" id="fileInput1" accept=".xlsx,.xls" onchange="handleFile1(event)">
+                <div id="status1" class="file-status"></div>
+            </div>
+
+            <div class="file-input-group">
+                <h3>📋 文件2: 零件号列表（用于筛选）</h3>
+                <p style="color: #666; margin-bottom: 10px;">上传包含目标零件号的文件（如：T28 MY垂直切换零件号0119.xlsx）</p>
+                <p style="color: #666; font-size: 14px; margin-bottom: 10px;">将从文件的<strong>第1个Sheet的A列</strong>提取零件号</p>
+                <button class="btn" onclick="document.getElementById('fileInput2').click()">选择零件号列表文件</button>
+                <input type="file" id="fileInput2" accept=".xlsx,.xls" onchange="handleFile2(event)">
+                <div id="status2" class="file-status"></div>
+            </div>
+
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="btn" id="analyzeBtn" onclick="startAnalysis()" disabled>开始分析</button>
+            </div>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="loading-spinner"></div>
+            <p>正在分析数据，请稍候...</p>
+        </div>
+
+        <div class="results-section" id="resultsSection">
+            <div class="stats" id="stats"></div>
+            <div class="filter-info" id="filterInfo"></div>
+            <button class="export-btn" onclick="exportToExcel()">📥 导出分析结果 (Excel)</button>
+            <div id="results"></div>
+        </div>
+    </div>
+
+    <script>
+        let masterListData = null;
+        let partsListData = [];
+        let analysisResults = [];
+
+        function handleFile1(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    masterListData = XLSX.read(data, { type: 'array' });
+
+                    const status = document.getElementById('status1');
+                    status.style.display = 'block';
+                    status.className = 'file-status';
+                    status.innerHTML = `✅ 已加载: ${file.name}<br>Sheet数量: ${masterListData.SheetNames.length}`;
+
+                    checkBothFiles();
+                } catch (error) {
+                    const status = document.getElementById('status1');
+                    status.style.display = 'block';
+                    status.className = 'file-status error';
+                    status.innerHTML = `❌ 加载失败: ${error.message}`;
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function handleFile2(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+
+                    // 读取第1个sheet
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                    // 提取A列的零件号（跳过可能的表头）
+                    partsListData = [];
+
+                    // 从第1行开始提取，如果第1行看起来像表头（包含"零件"等文字），则从第2行开始
+                    let startRow = 0;
+                    if (jsonData.length > 0 && jsonData[0][0]) {
+                        const firstCell = String(jsonData[0][0]).toLowerCase();
+                        if (firstCell.includes('零件') || firstCell.includes('part') || firstCell.includes('号')) {
+                            startRow = 1; // 跳过表头
+                        }
+                    }
+
+                    for (let i = startRow; i < jsonData.length; i++) {
+                        const row = jsonData[i];
+                        if (row[0]) {
+                            const partNumber = String(row[0]).trim();
+                            if (partNumber) {
+                                partsListData.push(partNumber);
+                            }
+                        }
+                    }
+
+                    // 去重
+                    partsListData = [...new Set(partsListData)];
+
+                    const status = document.getElementById('status2');
+                    status.style.display = 'block';
+                    status.className = 'file-status';
+                    status.innerHTML = `✅ 已加载: ${file.name}<br>读取Sheet: ${sheetName}<br>提取零件号: ${partsListData.length}个<br><small>（从A列提取，已自动去重）</small>`;
+
+                    checkBothFiles();
+                } catch (error) {
+                    const status = document.getElementById('status2');
+                    status.style.display = 'block';
+                    status.className = 'file-status error';
+                    status.innerHTML = `❌ 加载失败: ${error.message}`;
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function checkBothFiles() {
+            const btn = document.getElementById('analyzeBtn');
+            if (masterListData && partsListData.length > 0) {
+                btn.disabled = false;
+                btn.textContent = '开始分析';
+            }
+        }
+
+        function startAnalysis() {
+            if (!masterListData || partsListData.length === 0) {
+                alert('请先上传两个文件！');
+                return;
+            }
+
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('resultsSection').style.display = 'none';
+
+            setTimeout(() => {
+                try {
+                    analyzeData();
+                    displayResults();
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('resultsSection').style.display = 'block';
+                } catch (error) {
+                    console.error('分析出错:', error);
+                    alert('分析失败: ' + error.message);
+                    document.getElementById('loading').style.display = 'none';
+                }
+            }, 100);
+        }
+
+        function analyzeData() {
+            // 获取Master List的最后一个sheet
+            const lastSheetName = masterListData.SheetNames[masterListData.SheetNames.length - 1];
+            const worksheet = masterListData.Sheets[lastSheetName];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+            // 解析数据结构（与V1相同）
+            const configDescriptions = jsonData[2] || [];
+            const allRow = jsonData[3] || [];
+
+            // 找到ALL列的位置
+            let allColIndex = -1;
+            for (let i = 0; i < allRow.length; i++) {
+                if (allRow[i] === 'ALL') {
+                    allColIndex = i;
+                    break;
+                }
+            }
+
+            if (allColIndex === -1) {
+                throw new Error('未在第4行找到ALL列！');
+            }
+
+            // 提取配置项
+            const configItems = [];
+            for (let i = allColIndex + 1; i < configDescriptions.length; i++) {
+                if (configDescriptions[i]) {
+                    configItems.push({
+                        index: i,
+                        description: configDescriptions[i]
+                    });
+                }
+            }
+
+            // 解析零件数据
+            const parts = [];
+            for (let i = 4; i < jsonData.length; i++) {
+                const row = jsonData[i];
+                if (!row || row.length === 0) continue;
+
+                const partNumber = String(row[0] || '').trim();
+                const partName = row[1];
+                const partFunction = row[4] || '';
+
+                if (!partNumber) continue;
+
+                const configs = {};
+                configItems.forEach(item => {
+                    configs[item.description] = row[item.index] === '●';
+                });
+
+                parts.push({
+                    partNumber,
+                    partName,
+                    partFunction,
+                    configs
+                });
+            }
+
+            // 按零件名称分组
+            const partsByName = {};
+            parts.forEach(part => {
+                if (!partsByName[part.partName]) {
+                    partsByName[part.partName] = [];
+                }
+                partsByName[part.partName].push(part);
+            });
+
+            // 筛选：只处理在零件号列表中的零件
+            const targetPartNumbers = new Set(partsListData);
+
+            // 为每个目标零件找最相似的4个零件
+            analysisResults = [];
+
+            Object.keys(partsByName).forEach(partName => {
+                const groupParts = partsByName[partName];
+
+                groupParts.forEach(targetPart => {
+                    // 只处理在零件号列表中的目标零件
+                    if (!targetPartNumbers.has(targetPart.partNumber)) {
+                        return;
+                    }
+
+                    // 计算与其他零件的相似度
+                    const allSimilarities = groupParts
+                        .filter(p => p.partNumber !== targetPart.partNumber)
+                        .map(otherPart => {
+                            const diff = calculateConfigDiff(targetPart.configs, otherPart.configs);
+                            return {
+                                part: otherPart,
+                                diffCount: diff.differences.length,
+                                diffDetails: diff
+                            };
+                        })
+                        .sort((a, b) => a.diffCount - b.diffCount)
+                        .slice(0, 4);
+
+                    analysisResults.push({
+                        targetPart,
+                        similarParts: allSimilarities,
+                        partName
+                    });
+                });
+            });
+
+            // 统计信息
+            window.statsInfo = {
+                totalTargetParts: analysisResults.length,
+                totalPartsInList: partsListData.length,
+                totalConfigs: configItems.length
+            };
+        }
+
+        function calculateConfigDiff(configs1, configs2) {
+            const allKeys = new Set([...Object.keys(configs1), ...Object.keys(configs2)]);
+            const differences = [];
+
+            allKeys.forEach(key => {
+                const val1 = configs1[key];
+                const val2 = configs2[key];
+
+                if (val1 !== val2) {
+                    differences.push({
+                        config: key,
+                        target: val1,
+                        other: val2
+                    });
+                }
+            });
+
+            return {
+                differences: differences,
+                diffCount: differences.length
+            };
+        }
+
+        function displayResults() {
+            // 显示统计信息
+            const statsHtml = `
+                <div class="stat-card">
+                    <h3>${window.statsInfo.totalPartsInList}</h3>
+                    <p>零件号列表总数</p>
+                </div>
+                <div class="stat-card">
+                    <h3>${window.statsInfo.totalTargetParts}</h3>
+                    <p>找到的匹配零件数</p>
+                </div>
+                <div class="stat-card">
+                    <h3>${analysisResults.length}</h3>
+                    <p>生成分析结果数</p>
+                </div>
+            `;
+            document.getElementById('stats').innerHTML = statsHtml;
+
+            // 显示筛选信息
+            const filterHtml = `
+                <strong>📋 筛选说明：</strong><br>
+                只显示零件号列表文件（第1个Sheet的A列）中包含的零件号的分析结果。
+                共从 ${window.statsInfo.totalPartsInList} 个目标零件号中找到 ${window.statsInfo.totalTargetParts} 个匹配项。
+            `;
+            document.getElementById('filterInfo').innerHTML = filterHtml;
+
+            // 显示详细结果
+            let resultsHtml = '';
+
+            analysisResults.forEach((result, index) => {
+                resultsHtml += `
+                    <div class="part-group">
+                        <div class="part-group-header arrow-down" onclick="toggleGroup(${index})">
+                            <span>零件号: ${result.targetPart.partNumber} - ${result.partName}</span>
+                            <span>找到 ${result.similarParts.length} 个相似零件</span>
+                        </div>
+                        <div class="part-group-content active" id="group-${index}">
+                `;
+
+                if (result.similarParts.length === 0) {
+                    resultsHtml += '<p style="color: #999;">未找到相似零件</p>';
+                } else {
+                    resultsHtml += '<table class="comparison-table">';
+                    resultsHtml += '<thead><tr>';
+                    resultsHtml += '<th>排名</th>';
+                    resultsHtml += '<th>相似零件号</th>';
+                    resultsHtml += '<th>差异配置数</th>';
+                    resultsHtml += '<th>相似零件功能</th>';
+                    resultsHtml += '<th>新增功能</th>';
+                    resultsHtml += '<th>删除功能</th>';
+                    resultsHtml += '</tr></thead><tbody>';
+
+                    result.similarParts.forEach((similar, simIndex) => {
+                        const diffDetails = similar.diffDetails.differences;
+                        const partFunction = similar.part.partFunction || '无功能描述';
+
+                        // 分离新增和删除的功能
+                        const addedFeatures = [];
+                        const removedFeatures = [];
+
+                        diffDetails.forEach(diff => {
+                            if (diff.target === false && diff.other === true) {
+                                addedFeatures.push(diff.config);
+                            } else if (diff.target === true && diff.other === false) {
+                                removedFeatures.push(diff.config);
+                            }
+                        });
+
+                        resultsHtml += '<tr>';
+                        resultsHtml += `<td>${simIndex + 1}</td>`;
+                        resultsHtml += `<td><strong>${similar.part.partNumber}</strong></td>`;
+                        resultsHtml += `<td>${diffDetails.length}</td>`;
+
+                        resultsHtml += '<td>';
+                        resultsHtml += `<div style="max-height: 150px; overflow-y: auto; font-size: 12px; word-wrap: break-word;">`;
+                        resultsHtml += partFunction;
+                        resultsHtml += '</div>';
+                        resultsHtml += '</td>';
+
+                        resultsHtml += '<td>';
+                        if (addedFeatures.length === 0) {
+                            resultsHtml += '<span style="color: #999;">无新增功能</span>';
+                        } else {
+                            resultsHtml += '<div style="font-size: 12px;">';
+                            addedFeatures.forEach(feature => {
+                                resultsHtml += `<div class="diff-item"><span style="color: #155724;">+ ${feature}</span></div>`;
+                            });
+                            resultsHtml += '</div>';
+                        }
+                        resultsHtml += '</td>';
+
+                        resultsHtml += '<td>';
+                        if (removedFeatures.length === 0) {
+                            resultsHtml += '<span style="color: #999;">无删除功能</span>';
+                        } else {
+                            resultsHtml += '<div style="font-size: 12px;">';
+                            removedFeatures.forEach(feature => {
+                                resultsHtml += `<div class="diff-item remove"><span style="color: #721c24;">- ${feature}</span></div>`;
+                            });
+                            resultsHtml += '</div>';
+                        }
+                        resultsHtml += '</td>';
+
+                        resultsHtml += '</tr>';
+                    });
+
+                    resultsHtml += '</tbody></table>';
+                }
+
+                resultsHtml += '</div></div>';
+            });
+
+            document.getElementById('results').innerHTML = resultsHtml;
+        }
+
+        function toggleGroup(index) {
+            const content = document.getElementById(`group-${index}`);
+            const header = content.previousElementSibling;
+
+            if (content.classList.contains('active')) {
+                content.classList.remove('active');
+                header.classList.remove('arrow-down');
+                header.classList.add('arrow-up');
+            } else {
+                content.classList.add('active');
+                header.classList.remove('arrow-up');
+                header.classList.add('arrow-down');
+            }
+        }
+
+        function exportToExcel() {
+            if (analysisResults.length === 0) {
+                alert('没有可导出的数据！');
+                return;
+            }
+
+            const wb = XLSX.utils.book_new();
+            const exportData = [];
+
+            analysisResults.forEach(result => {
+                result.similarParts.forEach((similar, simIndex) => {
+                    const addedFeatures = [];
+                    const removedFeatures = [];
+
+                    similar.diffDetails.differences.forEach(diff => {
+                        if (diff.target === false && diff.other === true) {
+                            addedFeatures.push(diff.config);
+                        } else if (diff.target === true && diff.other === false) {
+                            removedFeatures.push(diff.config);
+                        }
+                    });
+
+                    const row = {
+                        '目标零件号': result.targetPart.partNumber,
+                        '零件名称': result.partName,
+                        '相似度排名': simIndex + 1,
+                        '相似零件号': similar.part.partNumber,
+                        '差异配置数': similar.diffDetails.differences.length,
+                        '相似零件功能': similar.part.partFunction || '',
+                        '新增功能': addedFeatures.length > 0 ? addedFeatures.join('、') : '无新增功能',
+                        '删除功能': removedFeatures.length > 0 ? removedFeatures.join('、') : '无删除功能'
+                    };
+
+                    exportData.push(row);
+                });
+            });
+
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            ws['!cols'] = [
+                { wch: 20 },
+                { wch: 30 },
+                { wch: 12 },
+                { wch: 20 },
+                { wch: 12 },
+                { wch: 50 },
+                { wch: 50 },
+                { wch: 50 }
+            ];
+
+            XLSX.utils.book_append_sheet(wb, ws, '筛选后的相似零件分析');
+
+            const now = new Date();
+            const timestamp = now.toISOString().slice(0, 10).replace(/-/g, '');
+            XLSX.writeFile(wb, `相似零件分析结果_V2_${timestamp}.xlsx`);
+        }
+    </script>
+</body>
+</html>

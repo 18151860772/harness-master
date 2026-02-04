@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>导线选型矩阵表</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Microsoft YaHei", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .upload-section {
+            padding: 30px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .upload-info {
+            margin-bottom: 15px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .upload-btn {
+            display: inline-block;
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: transform 0.2s;
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .tabs {
+            display: flex;
+            background: #f0f0f0;
+            border-bottom: 2px solid #ddd;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            background: #f0f0f0;
+            border: none;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .tab:hover {
+            background: #e0e0e0;
+        }
+
+        .tab.active {
+            background: white;
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .filter-section {
+            padding: 20px 30px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e0e0e0;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .filter-group label {
+            font-weight: bold;
+            color: #333;
+            min-width: 80px;
+        }
+
+        .filter-group select {
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            min-width: 200px;
+            transition: border-color 0.3s;
+        }
+
+        .filter-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .reset-btn {
+            padding: 8px 20px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .reset-btn:hover {
+            background: #5a6268;
+        }
+
+        .table-container {
+            padding: 30px;
+            overflow-x: auto;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 8px;
+            text-align: center;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 10px 8px;
+            border: 1px solid #e0e0e0;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        tr:hover {
+            background: #e8f4f8;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+            font-size: 18px;
+        }
+
+        .sheet-content {
+            display: none;
+        }
+
+        .sheet-content.active {
+            display: block;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+            font-size: 18px;
+        }
+
+        @media (max-width: 768px) {
+            .filter-section {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filter-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filter-group select {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>导线选型矩阵表</h1>
+        </div>
+
+        <div class="upload-section">
+            <div class="upload-info">
+                当前数据来源: <span id="dataSource" style="font-weight: bold; color: #667eea;">本地默认文件</span>
+            </div>
+            <label class="upload-btn">
+                上传新的Excel文件
+                <input type="file" id="fileInput" accept=".xlsx,.xls">
+            </label>
+            <span id="fileName" style="margin-left: 15px; color: #666;"></span>
+        </div>
+
+        <div class="tabs" id="tabs" style="display: none;">
+        </div>
+
+        <div id="sheetsContainer"></div>
+    </div>
+
+    <script>
+        let workbookData = {};
+        let currentDataSource = 'default';
+
+        // 页面加载时自动获取默认Excel数据
+        window.addEventListener('DOMContentLoaded', function() {
+            loadDefaultData();
+        });
+
+        async function loadDefaultData() {
+            try {
+                const response = await fetch('/api/excel-data');
+                const result = await response.json();
+
+                if (result.success) {
+                    workbookData = result.data;
+                    renderUI();
+                } else {
+                    showError('加载默认数据失败: ' + result.error);
+                }
+            } catch (error) {
+                showError('加载默认数据时出错: ' + error.message);
+            }
+        }
+
+        async function handleUpload(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                document.getElementById('dataSource').textContent = '上传文件: ' + file.name;
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    workbookData = result.data;
+                    currentDataSource = 'uploaded';
+                    renderUI();
+                } else {
+                    showError('上传文件处理失败: ' + result.error);
+                }
+            } catch (error) {
+                showError('上传文件时出错: ' + error.message);
+            }
+        }
+
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            document.getElementById('fileName').textContent = file.name;
+            handleUpload(file);
+        });
+
+        function renderUI() {
+            const sheetNames = Object.keys(workbookData);
+
+            if (sheetNames.length === 0) {
+                showError('没有找到任何数据');
+                return;
+            }
+
+            const tabsContainer = document.getElementById('tabs');
+            const sheetsContainer = document.getElementById('sheetsContainer');
+
+            tabsContainer.innerHTML = '';
+            sheetsContainer.innerHTML = '';
+
+            sheetNames.forEach((sheetName, index) => {
+                // 创建tab
+                const tab = document.createElement('button');
+                tab.className = 'tab' + (index === 0 ? ' active' : '');
+                tab.textContent = sheetName;
+                tab.onclick = () => switchTab(sheetName);
+                tabsContainer.appendChild(tab);
+
+                // 创建sheet内容容器
+                const sheetDiv = document.createElement('div');
+                sheetDiv.className = 'sheet-content' + (index === 0 ? ' active' : '');
+                sheetDiv.id = 'sheet-' + index;
+
+                // 创建筛选区域
+                const filterSection = document.createElement('div');
+                filterSection.className = 'filter-section';
+
+                if (index === 0) {
+                    // 第一个sheet：根据首行电源类型和B列线径筛选
+                    filterSection.innerHTML = `
+                        <div class="filter-group">
+                            <label>电源类型:</label>
+                            <select id="filter1-powerType" onchange="applyFilter1()">
+                                <option value="">全部</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>线径:</label>
+                            <select id="filter1-wireDiameter" onchange="applyFilter1()">
+                                <option value="">全部</option>
+                            </select>
+                        </div>
+                        <button class="reset-btn" onclick="resetFilters(0)">重置筛选</button>
+                    `;
+                } else {
+                    // 第二个sheet：根据首列功能筛选
+                    filterSection.innerHTML = `
+                        <div class="filter-group">
+                            <label>功能:</label>
+                            <select id="filter2-function" onchange="applyFilter2()">
+                                <option value="">全部</option>
+                            </select>
+                        </div>
+                        <button class="reset-btn" onclick="resetFilters(1)">重置筛选</button>
+                    `;
+                }
+
+                sheetDiv.appendChild(filterSection);
+
+                // 创建表格容器
+                const tableContainer = document.createElement('div');
+                tableContainer.className = 'table-container';
+                tableContainer.id = 'table-' + index;
+                sheetDiv.appendChild(tableContainer);
+
+                sheetsContainer.appendChild(sheetDiv);
+            });
+
+            tabsContainer.style.display = 'flex';
+
+            // 初始化所有表格
+            sheetNames.forEach((sheetName, index) => {
+                renderTable(index, sheetName);
+                populateFilters(index, sheetName);
+            });
+        }
+
+        function switchTab(sheetName) {
+            const tabs = document.querySelectorAll('.tab');
+            const contents = document.querySelectorAll('.sheet-content');
+
+            tabs.forEach((tab, index) => {
+                if (tab.textContent === sheetName) {
+                    tab.classList.add('active');
+                    contents[index].classList.add('active');
+                } else {
+                    tab.classList.remove('active');
+                    contents[index].classList.remove('active');
+                }
+            });
+        }
+
+        function renderTable(sheetIndex, sheetName) {
+            const data = workbookData[sheetName];
+            const tableContainer = document.getElementById('table-' + sheetIndex);
+
+            if (!data || data.length === 0) {
+                tableContainer.innerHTML = '<div class="no-data">暂无数据</div>';
+                return;
+            }
+
+            let html = '<table>';
+
+            // 表头
+            if (data.length > 0) {
+                html += '<thead><tr>';
+                const header = data[0];
+                header.forEach(cell => {
+                    html += `<th>${cell || ''}</th>`;
+                });
+                html += '</tr></thead>';
+            }
+
+            // 表体
+            html += '<tbody>';
+            for (let i = 1; i < data.length; i++) {
+                html += '<tr>';
+                data[i].forEach(cell => {
+                    html += `<td>${cell !== undefined && cell !== null ? cell : ''}</td>`;
+                });
+                html += '</tr>';
+            }
+            html += '</tbody></table>';
+
+            tableContainer.innerHTML = html;
+        }
+
+        function populateFilters(sheetIndex, sheetName) {
+            const data = workbookData[sheetName];
+
+            if (!data || data.length === 0) return;
+
+            if (sheetIndex === 0) {
+                // 第一个sheet
+                const powerTypeSelect = document.getElementById('filter1-powerType');
+                const wireDiameterSelect = document.getElementById('filter1-wireDiameter');
+
+                const powerTypes = new Set();
+                const wireDiameters = new Set();
+
+                // 从表头获取电源类型
+                if (data.length > 0) {
+                    data[0].forEach(cell => {
+                        if (cell && typeof cell === 'string' && (cell.includes('电源') || cell.includes('Power'))) {
+                            powerTypes.add(cell);
+                        }
+                    });
+                }
+
+                // 从B列获取线径
+                for (let i = 1; i < data.length; i++) {
+                    const cell = data[i][1];
+                    if (cell !== undefined && cell !== null && cell !== '') {
+                        wireDiameters.add(cell);
+                    }
+                }
+
+                // 填充下拉框
+                Array.from(powerTypes).sort().forEach(value => {
+                    const option = document.createElement('option');
+                    option.value = value;
+                    option.textContent = value;
+                    powerTypeSelect.appendChild(option);
+                });
+
+                Array.from(wireDiameters).sort().forEach(value => {
+                    const option = document.createElement('option');
+                    option.value = value;
+                    option.textContent = value;
+                    wireDiameterSelect.appendChild(option);
+                });
+            } else {
+                // 第二个sheet
+                const functionSelect = document.getElementById('filter2-function');
+                const functions = new Set();
+
+                for (let i = 1; i < data.length; i++) {
+                    const cell = data[i][0];
+                    if (cell !== undefined && cell !== null && cell !== '') {
+                        functions.add(cell);
+                    }
+                }
+
+                Array.from(functions).sort().forEach(value => {
+                    const option = document.createElement('option');
+                    option.value = value;
+                    option.textContent = value;
+                    functionSelect.appendChild(option);
+                });
+            }
+        }
+
+        function applyFilter1() {
+            const powerType = document.getElementById('filter1-powerType').value;
+            const wireDiameter = document.getElementById('filter1-wireDiameter').value;
+            const sheetName = Object.keys(workbookData)[0];
+            const data = workbookData[sheetName];
+            const tableContainer = document.getElementById('table-0');
+
+            if (!data || data.length === 0) return;
+
+            let html = '<table>';
+
+            // 表头
+            html += '<thead><tr>';
+            data[0].forEach(cell => {
+                html += `<th>${cell || ''}</th>`;
+            });
+            html += '</tr></thead>';
+
+            // 过滤数据
+            html += '<tbody>';
+            for (let i = 1; i < data.length; i++) {
+                const row = data[i];
+                const rowWireDiameter = row[1];
+                const matchWireDiameter = !wireDiameter || String(rowWireDiameter) === String(wireDiameter);
+
+                if (matchWireDiameter) {
+                    html += '<tr>';
+                    row.forEach((cell, colIndex) => {
+                        if (powerType) {
+                            const header = data[0][colIndex];
+                            const headerStr = String(header || '');
+                            if (headerStr.includes(powerType)) {
+                                html += `<td style="background: #fff3cd; font-weight: bold;">${cell !== undefined && cell !== null ? cell : ''}</td>`;
+                            } else {
+                                html += `<td style="opacity: 0.3;">${cell !== undefined && cell !== null ? cell : ''}</td>`;
+                            }
+                        } else {
+                            html += `<td>${cell !== undefined && cell !== null ? cell : ''}</td>`;
+                        }
+                    });
+                    html += '</tr>';
+                }
+            }
+            html += '</tbody></table>';
+
+            tableContainer.innerHTML = html;
+        }
+
+        function applyFilter2() {
+            const funcValue = document.getElementById('filter2-function').value;
+            const sheetName = Object.keys(workbookData)[1];
+            const data = workbookData[sheetName];
+            const tableContainer = document.getElementById('table-1');
+
+            if (!data || data.length === 0) return;
+
+            let html = '<table>';
+
+            // 表头
+            html += '<thead><tr>';
+            data[0].forEach(cell => {
+                html += `<th>${cell || ''}</th>`;
+            });
+            html += '</tr></thead>';
+
+            // 过滤数据
+            html += '<tbody>';
+            for (let i = 1; i < data.length; i++) {
+                const row = data[i];
+                const rowFunc = row[0];
+
+                if (!funcValue || String(rowFunc) === String(funcValue)) {
+                    html += '<tr>';
+                    row.forEach(cell => {
+                        html += `<td>${cell !== undefined && cell !== null ? cell : ''}</td>`;
+                    });
+                    html += '</tr>';
+                }
+            }
+            html += '</tbody></table>';
+
+            tableContainer.innerHTML = html;
+        }
+
+        function resetFilters(sheetIndex) {
+            if (sheetIndex === 0) {
+                document.getElementById('filter1-powerType').value = '';
+                document.getElementById('filter1-wireDiameter').value = '';
+                renderTable(0, Object.keys(workbookData)[0]);
+            } else {
+                document.getElementById('filter2-function').value = '';
+                renderTable(1, Object.keys(workbookData)[1]);
+            }
+        }
+
+        function showError(message) {
+            const sheetsContainer = document.getElementById('sheetsContainer');
+            sheetsContainer.innerHTML = `<div class="no-data" style="color: #dc3545;">${message}</div>`;
+        }
+    </script>
+</body>
+</html>

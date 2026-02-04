@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>回路表检查工具</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1><i class="fas fa-check-circle"></i> 回路表检查工具 V8.0</h1>
+            <p class="subtitle">Wire List Inspection Tool - Multicore ID重复检查 | 焊点Family一致性检查 | 界面优化 + 导出增强（问题原因列）| Option表达式规范化（支持&/-/()运算符）| 排除焊点 | Family检查 + Inline检查 + 智能重孔检查 + 焊点颜色检查</p>
+        </header>
+
+        <section class="upload-section">
+            <div class="upload-container">
+                <h2><i class="fas fa-upload"></i> 上传文件</h2>
+
+                <div class="file-inputs">
+                    <div class="file-input-group required">
+                        <label for="wire_list">
+                            <i class="fas fa-file-excel"></i>
+                            Wire List（回路表）*
+                        </label>
+                        <input type="file" id="wire_list" accept=".xlsx,.xls">
+                        <div class="custom-file-input">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <span>点击或拖拽文件到此处</span>
+                        </div>
+                        <span class="file-name">未选择文件</span>
+                    </div>
+
+                    <div class="file-input-group required">
+                        <label for="conn_list">
+                            <i class="fas fa-file-excel"></i>
+                            Connlist（连接器列表）*
+                        </label>
+                        <input type="file" id="conn_list" accept=".xlsx,.xls">
+                        <div class="custom-file-input">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <span>点击或拖拽文件到此处</span>
+                        </div>
+                        <span class="file-name">未选择文件</span>
+                    </div>
+
+                    <div class="file-input-group required">
+                        <label for="config_table">
+                            <i class="fas fa-file-excel"></i>
+                            配置表*
+                        </label>
+                        <input type="file" id="config_table" accept=".xlsx,.xls">
+                        <div class="custom-file-input">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <span>点击或拖拽文件到此处</span>
+                        </div>
+                        <span class="file-name">未选择文件</span>
+                    </div>
+
+                    <div class="file-input-group required">
+                        <label for="inline_list">
+                            <i class="fas fa-file-excel"></i>
+                            Inlinelist（inline连接器表）*
+                        </label>
+                        <input type="file" id="inline_list" accept=".xlsx,.xls">
+                        <div class="custom-file-input">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <span>点击或拖拽文件到此处</span>
+                        </div>
+                        <span class="file-name">未选择文件</span>
+                    </div>
+                </div>
+
+                <button id="checkBtn" class="btn btn-primary" disabled>
+                    <i class="fas fa-search"></i> 开始检查
+                </button>
+            </div>
+        </section>
+
+        <div id="loadingOverlay" class="loading-overlay hidden">
+            <div class="loading-spinner">
+                <div class="spinner"></div>
+                <p>正在检查中，请稍候...</p>
+                <p id="progressText" class="progress-text"></p>
+            </div>
+        </div>
+
+        <section id="resultSection" class="result-section hidden">
+            <div class="result-header">
+                <h2><i class="fas fa-clipboard-list"></i> 检查结果</h2>
+                <div class="result-actions">
+                    <button id="exportBtn" class="btn btn-success">
+                        <i class="fas fa-file-excel"></i> 导出检查结果
+                    </button>
+                    <button id="resetBtn" class="btn btn-secondary">
+                        <i class="fas fa-redo"></i> 重新检查
+                    </button>
+                </div>
+            </div>
+
+            <div class="stats-container">
+                <div class="stat-card stat-error">
+                    <div class="stat-icon"><i class="fas fa-times-circle"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-number" id="familyErrors">0</div>
+                        <div class="stat-label">Family不一致/为空</div>
+                    </div>
+                </div>
+
+                <div class="stat-card stat-purple">
+                    <div class="stat-icon"><i class="fas fa-bolt"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-number" id="spliceColorErrors">0</div>
+                        <div class="stat-label">焊点颜色不一致</div>
+                    </div>
+                </div>
+
+                <div class="stat-card stat-purple">
+                    <div class="stat-icon"><i class="fas fa-code-branch"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-number" id="spliceFamilyErrors">0</div>
+                        <div class="stat-label">焊点Family不一致</div>
+                    </div>
+                </div>
+
+                <div class="stat-card stat-warning">
+                    <div class="stat-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-number" id="colorWarnings">0</div>
+                        <div class="stat-label">Inline两侧Color/Size不一致</div>
+                    </div>
+                </div>
+
+                <div class="stat-card stat-info">
+                    <div class="stat-icon"><i class="fas fa-info-circle"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-number" id="duplicatePins">0</div>
+                        <div class="stat-label">重孔问题</div>
+                    </div>
+                </div>
+
+                <div class="stat-card stat-warning">
+                    <div class="stat-icon"><i class="fas fa-layer-group"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-number" id="multicoreErrors">0</div>
+                        <div class="stat-label">Multicore ID重复</div>
+                    </div>
+                </div>
+
+                <div class="stat-card stat-total">
+                    <div class="stat-icon"><i class="fas fa-list"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-number" id="totalIssues">0</div>
+                        <div class="stat-label">总问题数</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <span class="legend-color legend-red"></span>
+                    <span>Family不一致/为空（红色）</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color legend-purple"></span>
+                    <span>相同焊点的颜色不一致（紫色）</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color legend-purple"></span>
+                    <span>相同焊点的Family不一致（紫色）</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color legend-yellow"></span>
+                    <span>Inline两侧PIN导线Color/Size不一致（黄色）</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color legend-orange"></span>
+                    <span>重孔问题（橙色）</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color legend-orange"></span>
+                    <span>Multicore ID重复（橙色）</span>
+                </div>
+            </div>
+
+            <div class="issues-container">
+                <h3>问题列表</h3>
+                <div id="issuesList" class="issues-list"></div>
+            </div>
+
+            <!-- Wire List 表格展示 -->
+            <div class="wirelist-container">
+                <h3>Wire List 核查结果</h3>
+                <div class="table-controls">
+                    <button id="expandAllBtn" class="btn btn-outline">
+                        <i class="fas fa-expand"></i> 展开全部
+                    </button>
+                    <button id="collapseAllBtn" class="btn btn-outline">
+                        <i class="fas fa-compress"></i> 收起全部
+                    </button>
+                    <div class="filter-controls">
+                        <label>
+                            <input type="checkbox" id="showFamily" checked>
+                            <span class="legend-color legend-red"></span> Family不一致/为空
+                        </label>
+                        <label>
+                            <input type="checkbox" id="showSpliceColor" checked>
+                            <span class="legend-color legend-purple"></span> 焊点颜色不一致
+                        </label>
+                        <label>
+                            <input type="checkbox" id="showSpliceFamily" checked>
+                            <span class="legend-color legend-purple"></span> 焊点Family不一致
+                        </label>
+                        <label>
+                            <input type="checkbox" id="showInline" checked>
+                            <span class="legend-color legend-yellow"></span> Inline两侧Color/Size不一致
+                        </label>
+                        <label>
+                            <input type="checkbox" id="showDuplicate" checked>
+                            <span class="legend-color legend-orange"></span> 重孔问题
+                        </label>
+                        <label>
+                            <input type="checkbox" id="showMulticore" checked>
+                            <span class="legend-color legend-orange"></span> Multicore ID重复
+                        </label>
+                        <label>
+                            <input type="checkbox" id="showOk" checked>
+                            显示正常行
+                        </label>
+                    </div>
+                </div>
+                <div id="wirelistTableContainer" class="table-container">
+                    <table id="wirelistTable" class="wirelist-table">
+                        <thead id="tableHead"></thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+                </div>
+                <div class="table-info">
+                    显示 <span id="displayedCount">0</span> / <span id="totalCount">0</span> 行
+                </div>
+            </div>
+
+            <!-- 问题汇总表 -->
+            <div class="summary-container">
+                <h3><i class="fas fa-table"></i> 问题汇总表</h3>
+                <div id="summaryTableContainer" class="table-container">
+                    <table id="summaryTable" class="wirelist-table">
+                        <thead id="summaryTableHead"></thead>
+                        <tbody id="summaryTableBody"></tbody>
+                    </table>
+                </div>
+                <div class="table-info">
+                    共 <span id="summaryCount">0</span> 个问题汇总
+                </div>
+            </div>
+        </section>
+
+        <footer class="footer">
+            <p>&copy; 2025 回路表检查工具 V8.0 | Multicore ID重复检查 | 焊点Family一致性检查 | 界面优化（紧凑布局 + 全屏显示）| 导出增强（Wire List增加"问题原因"列）| Option表达式规范化 + 排除焊点 | 支持&/-/()运算符 | Family检查 + Inline检查 + 智能重孔检查 + 焊点颜色检查 | 无需服务器</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

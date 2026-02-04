@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c:*)",
+      "Bash(pip install:*)",
+      "Bash(powershell:*)",
+      "Bash(cscript:*)",
+      "Bash(where:*)",
+      "Bash(where py)",
+      "Bash(py:*)",
+      "Bash(chcp:*)",
+      "Bash(del:*)",
+      "Bash(node:*)"
+    ]
+  }
+}

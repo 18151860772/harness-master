@@ -1,0 +1,1973 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>接地清单生成器 V6 - 增强Excel导出版</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <script src="template_data.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .header .version-badge {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .main-content {
+            padding: 40px;
+        }
+
+        .upload-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .upload-box {
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s;
+            background: #f8f9fa;
+        }
+
+        .upload-box:hover {
+            border-color: #667eea;
+            background: #f0f2ff;
+        }
+
+        .upload-box.has-file {
+            border-color: #28a745;
+            background: #f0fff4;
+        }
+
+        .upload-box h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .upload-box p {
+            color: #666;
+            font-size: 13px;
+            margin-bottom: 15px;
+        }
+
+        .upload-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .upload-btn:hover {
+            background: #5568d3;
+        }
+
+        .file-name {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #28a745;
+            font-weight: 500;
+        }
+
+        .action-buttons {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .generate-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 50px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .generate-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .generate-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .results-section {
+            display: none;
+            margin-top: 40px;
+        }
+
+        .results-section.show {
+            display: block;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .results-header h2 {
+            color: #333;
+            font-size: 22px;
+        }
+
+        .download-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .download-btn:hover {
+            background: #218838;
+        }
+
+        .data-display {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+            vertical-align: top;
+        }
+
+        .data-table th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+
+        .data-table tr:hover {
+            background: #f0f2ff;
+        }
+
+        .data-table td.multi-line {
+            white-space: pre-line;
+            line-height: 1.6;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .message {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .message.show {
+            display: block;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #e0e0e0;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+            font-weight: 500;
+            color: #666;
+        }
+
+        .tab:hover {
+            color: #667eea;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-card h4 {
+            color: #666;
+            font-size: 12px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .stat-card .value {
+            color: #333;
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .filter-section {
+            background: #fff;
+            padding: 15px;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .filter-section label {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        /* 模板下载区域样式 */
+        .template-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 40px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .template-section h2 {
+            font-size: 20px;
+            margin-bottom: 15px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .template-info {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .template-info strong {
+            color: #1976D2;
+        }
+
+        .template-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .template-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 25px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .template-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.1);
+            transform: translateY(-3px);
+        }
+
+        .template-card .template-icon {
+            font-size: 40px;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .template-card .template-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .template-card .template-desc {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+
+        .template-card .download-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .template-card .download-btn:hover {
+            background: linear-gradient(135deg, #5568d3 0%, #667eea 100%);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        }
+
+        .download-all-btn {
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .download-all-btn:hover {
+            background: linear-gradient(135deg, #667eea 0%, #5568d3 100%);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+            transform: translateY(-2px);
+        }
+
+        /* V6 新增特性样式 */
+        .feature-highlight {
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-left: 4px solid #ff6b6b;
+        }
+
+        .feature-highlight h3 {
+            color: #d63031;
+            font-size: 16px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .feature-highlight p {
+            color: #2d3436;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .style-preview {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .style-badge {
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 11px;
+            font-weight: 600;
+            color: white;
+        }
+
+        .export-options {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .export-option-btn {
+            background: #17a2b8;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .export-option-btn:hover {
+            background: #138496;
+        }
+
+        .copy-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .copy-btn:hover {
+            background: #5a6268;
+        }
+
+        .copy-btn.success {
+            background: #28a745;
+        }
+
+        .copy-btn.copied {
+            animation: copySuccess 0.5s ease;
+        }
+
+        @keyframes copySuccess {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 接地清单生成器 V6 - 增强Excel导出版</h1>
+            <p>根据回路表、插件清单和inline表自动生成接地清单（同一接地合并显示）- 支持带颜色格式的Excel导出</p>
+            <div class="version-badge">✨ V6 新特性：Excel导出支持颜色、边框、字体样式！</div>
+        </div>
+
+        <div class="main-content">
+            <!-- 消息提示 -->
+            <div id="message" class="message"></div>
+
+            <!-- V6 新特性说明 -->
+            <div class="feature-highlight">
+                <h3>🎨 V6 版本新特性</h3>
+                <p>导出的Excel文件现在包含完整的格式样式：表头渐变色背景、交替行颜色、自动列宽、边框、字体加粗等，让您的数据更加清晰易读！</p>
+                <div class="style-preview">
+                    <span class="style-badge" style="background: #667eea;">表头渐变</span>
+                    <span class="style-badge" style="background: #f8f9fa; color: #333; border: 1px solid #dee2e6;">交替行色</span>
+                    <span class="style-badge" style="background: #28a745;">绿色强调</span>
+                    <span class="style-badge" style="background: #ffc107; color: #333;">黄色标注</span>
+                    <span class="style-badge" style="background: #dc3545;">红色标记</span>
+                </div>
+            </div>
+
+            <!-- 模板下载区域 -->
+            <div class="template-section">
+                <h2>📥 下载标准模板</h2>
+                <div class="template-info">
+                    <strong>💡 提示：</strong>本版本已内置本地Excel模板文件的完整内容，点击下方按钮即可下载。这些模板文件与您本地的文件完全一致。
+                </div>
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <button class="download-all-btn" onclick="downloadAllTemplates()">
+                        <span>📦</span>
+                        下载全部模板
+                    </button>
+                </div>
+                <div class="template-grid">
+                    <div class="template-card" onclick="downloadWirelistTemplate()">
+                        <span class="template-icon">📋</span>
+                        <div class="template-title">WIRELIST.xlsx</div>
+                        <div class="template-desc">回路表模板<br>本地文件的完整内容</div>
+                        <button class="download-btn">
+                            <span>⬇️</span>
+                            下载
+                        </button>
+                    </div>
+                    <div class="template-card" onclick="downloadConnlistTemplate()">
+                        <span class="template-icon">🔌</span>
+                        <div class="template-title">T28-Connlist_20260113.xlsx</div>
+                        <div class="template-desc">连接器列表模板<br>本地文件的完整内容</div>
+                        <button class="download-btn">
+                            <span>⬇️</span>
+                            下载
+                        </button>
+                    </div>
+                    <div class="template-card" onclick="downloadInlineTemplate()">
+                        <span class="template-icon">📎</span>
+                        <div class="template-title">inline.xlsx</div>
+                        <div class="template-desc">Inline表模板<br>本地文件的完整内容</div>
+                        <button class="download-btn">
+                            <span>⬇️</span>
+                            下载
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 文件上传区域 -->
+            <div class="upload-section">
+                <div class="upload-box" id="wirelistBox">
+                    <h3>📋 回路表</h3>
+                    <p>上传 WIRELIST.xlsx<br>包含线束连接信息</p>
+                    <input type="file" id="wirelistInput" accept=".xlsx,.xls" style="display: none;">
+                    <button class="upload-btn" onclick="document.getElementById('wirelistInput').click()">
+                        选择文件
+                    </button>
+                    <div class="file-name" id="wirelistName"></div>
+                </div>
+
+                <div class="upload-box" id="connlistBox">
+                    <h3>🔌 连接器列表</h3>
+                    <p>上传 Connlist.xlsx<br>包含所有连接器信息</p>
+                    <input type="file" id="connlistInput" accept=".xlsx,.xls" style="display: none;">
+                    <button class="upload-btn" onclick="document.getElementById('connlistInput').click()">
+                        选择文件
+                    </button>
+                    <div class="file-name" id="connlistName"></div>
+                </div>
+
+                <div class="upload-box" id="inlineBox">
+                    <h3>🔗 Inline表</h3>
+                    <p>上传 inline.xlsx<br>包含Inline连接器关系</p>
+                    <input type="file" id="inlineInput" accept=".xlsx,.xls" style="display: none;">
+                    <button class="upload-btn" onclick="document.getElementById('inlineInput').click()">
+                        选择文件
+                    </button>
+                    <div class="file-name" id="inlineName"></div>
+                </div>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="action-buttons">
+                <button id="generateBtn" class="generate-btn" disabled onclick="generateGroundingList()">
+                    🚀 生成接地清单
+                </button>
+            </div>
+
+            <!-- 加载动画 -->
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>正在处理文件，请稍候...</p>
+            </div>
+
+            <!-- 结果展示区域 -->
+            <div id="resultsSection" class="results-section">
+                <div class="results-header">
+                    <h2>📊 解析结果</h2>
+                    <div class="export-options">
+                        <button id="downloadBtn" class="download-btn" onclick="downloadStyledExcel()">
+                            📥 下载带格式Excel
+                        </button>
+                        <button id="downloadSimpleBtn" class="export-option-btn" onclick="downloadSimpleExcel()">
+                            📄 下载简单Excel
+                        </button>
+                        <button id="copyHtmlBtn" class="copy-btn" onclick="copyHtmlToClipboard()">
+                            📋 复制HTML表格
+                        </button>
+                    </div>
+                </div>
+
+                <div class="tabs">
+                    <div class="tab active" onclick="switchTab('overview')">概览</div>
+                    <div class="tab" onclick="switchTab('generated')">接地清单</div>
+                </div>
+
+                <div class="filter-section" id="filterSection" style="display: none; margin-bottom: 20px;">
+                    <label style="margin-right: 10px; font-weight: 500;">筛选接地短号：</label>
+                    <input type="text" id="filterInput" placeholder="输入开头字母（如：E1）"
+                           style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; width: 250px;"
+                           oninput="filterGroundingList()">
+                    <button onclick="clearFilter()" style="padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 10px;">
+                        清除筛选
+                    </button>
+                </div>
+
+                <div class="data-display">
+                    <div id="overviewTab" class="tab-content active">
+                        <div class="stats-grid" id="statsGrid"></div>
+                    </div>
+
+                    <div id="generatedTab" class="tab-content">
+                        <table class="data-table" id="generatedTable"></table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 模板下载功能
+        // ==========================================
+
+        // 从Base64数据下载文件
+        function downloadFromBase64(base64Data, filename) {
+            const binaryString = atob(base64Data);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+
+            const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // 下载WIRELIST模板
+        function downloadWirelistTemplate() {
+            if (typeof TEMPLATE_FILES === 'undefined' || !TEMPLATE_FILES.WIRELIST) {
+                showMessage('模板数据未加载', 'error');
+                return;
+            }
+            const template = TEMPLATE_FILES.WIRELIST;
+            downloadFromBase64(template.data, template.filename);
+            showMessage('已下载: ' + template.filename, 'success');
+        }
+
+        // 下载Connlist模板
+        function downloadConnlistTemplate() {
+            if (typeof TEMPLATE_FILES === 'undefined' || !TEMPLATE_FILES.CONNLIST) {
+                showMessage('模板数据未加载', 'error');
+                return;
+            }
+            const template = TEMPLATE_FILES.CONNLIST;
+            downloadFromBase64(template.data, template.filename);
+            showMessage('已下载: ' + template.filename, 'success');
+        }
+
+        // 下载inline模板
+        function downloadInlineTemplate() {
+            if (typeof TEMPLATE_FILES === 'undefined' || !TEMPLATE_FILES.INLINE) {
+                showMessage('模板数据未加载', 'error');
+                return;
+            }
+            const template = TEMPLATE_FILES.INLINE;
+            downloadFromBase64(template.data, template.filename);
+            showMessage('已下载: ' + template.filename, 'success');
+        }
+
+        // 下载全部模板
+        function downloadAllTemplates() {
+            downloadWirelistTemplate();
+            setTimeout(() => downloadConnlistTemplate(), 300);
+            setTimeout(() => downloadInlineTemplate(), 600);
+            setTimeout(() => showMessage('✅ 已下载全部模板文件！', 'success'), 700);
+        }
+
+        // ==========================================
+        // 全局变量存储数据
+        // ==========================================
+
+        let wirelistData = null;
+        let connlistData = null;
+        let inlineData = null;
+        let connlistArrayData = null;
+        let groundingList = null;
+
+        // ==========================================
+        // 文件选择处理
+        // ==========================================
+
+        document.getElementById('wirelistInput').addEventListener('change', function(e) {
+            handleFileSelect(e, 'wirelist');
+        });
+
+        document.getElementById('connlistInput').addEventListener('change', function(e) {
+            handleFileSelect(e, 'connlist');
+        });
+
+        document.getElementById('inlineInput').addEventListener('change', function(e) {
+            handleFileSelect(e, 'inline');
+        });
+
+        function handleFileSelect(event, type) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const sheetName = workbook.SheetNames[0];
+                    const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+                    if (type === 'wirelist') {
+                        wirelistData = jsonData;
+                    } else if (type === 'connlist') {
+                        connlistData = jsonData;
+                        connlistArrayData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {header: 1});
+                    } else if (type === 'inline') {
+                        inlineData = jsonData;
+                    }
+
+                    const box = document.getElementById(type + 'Box');
+                    const name = document.getElementById(type + 'Name');
+                    box.classList.add('has-file');
+                    name.textContent = '✓ ' + file.name;
+                    checkAllFiles();
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        }
+
+        function checkAllFiles() {
+            const btn = document.getElementById('generateBtn');
+            btn.disabled = !(wirelistData && connlistData && inlineData);
+        }
+
+        // ==========================================
+        // 主处理函数
+        // ==========================================
+
+        async function generateGroundingList() {
+            showLoading(true);
+            showMessage('', '');
+
+            try {
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                const groundShortCodes = identifyGroundCodes();
+                const inlineList = getInlineList();
+                const connlistCodes = getAllConnlistCodes();
+                const weldPoints = identifyWeldPoints(connlistCodes);
+                const connectors = identifyConnectors(groundShortCodes, inlineList, connlistCodes);
+                const connectionGraph = buildConnectionGraph(weldPoints, inlineList);
+
+                groundingList = generateGroundingListData(groundShortCodes, inlineList, connectors, connectionGraph);
+
+                // 合并同一接地短号的数据
+                const mergedList = mergeByGroundCode(groundingList);
+
+                displayResults(groundShortCodes, mergedList);
+                showMessage('✅ 接地清单生成成功！现在可以导出带格式的Excel文件了！', 'success');
+
+            } catch (error) {
+                console.error(error);
+                showMessage('❌ 生成失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // 合并同一接地短号的数据
+        function mergeByGroundCode(data) {
+            const merged = {};
+
+            for (const item of data) {
+                const groundCode = item['接地短号'];
+                if (!merged[groundCode]) {
+                    merged[groundCode] = {
+                        'Family': item['Family'] || '',
+                        '接地短号': groundCode,
+                        '插件短号': [],
+                        '中文描述': [],
+                        '插件PIN': [],
+                        'Wire ID': [],
+                        '线径': [],
+                        '线色': [],
+                        'Option': [],
+                        '搭铁类型分析': item['搭铁类型分析'] || ''
+                    };
+                }
+
+                merged[groundCode]['插件短号'].push(item['插件短号']);
+                merged[groundCode]['中文描述'].push(item['中文描述']);
+                merged[groundCode]['插件PIN'].push(item['插件PIN']);
+                merged[groundCode]['Wire ID'].push(item['Wire ID']);
+                merged[groundCode]['线径'].push(item['线径']);
+                merged[groundCode]['线色'].push(item['线色']);
+                merged[groundCode]['Option'].push(item['Option']);
+            }
+
+            // 转换为数组，并用换行符连接
+            return Object.values(merged).map(item => ({
+                'Family': item['Family'],
+                '接地短号': item['接地短号'],
+                '插件短号': item['插件短号'].join('\n'),
+                '中文描述': item['中文描述'].join('\n'),
+                '插件PIN': item['插件PIN'].join('\n'),
+                'Wire ID': item['Wire ID'].join('\n'),
+                '线径': item['线径'].join('\n'),
+                '线色': item['线色'].join('\n'),
+                'Option': item['Option'].join('\n'),
+                '搭铁类型分析': item['搭铁类型分析']
+            }));
+        }
+
+        function identifyGroundCodes() {
+            const groundCodes = [];
+
+            for (const row of connlistData) {
+                let shortCode = null;
+                let isGround = false;
+
+                for (const key in row) {
+                    const keyLower = key.toLowerCase();
+                    if (keyLower.includes('短号') || keyLower.includes('short code') || keyLower.includes('code')) {
+                        shortCode = String(row[key] || '').trim();
+                        break;
+                    }
+                }
+
+                if (!shortCode) continue;
+
+                for (const key in row) {
+                    const keyLower = key.toLowerCase();
+                    const desc = String(row[key] || '').toLowerCase();
+
+                    if (keyLower.includes('中文') || keyLower.includes('描述') || keyLower.includes('description') || keyLower.includes('desc')) {
+                        if (desc.includes('接地') || desc.includes('ground') || desc.includes('gnd')) {
+                            isGround = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (isGround) {
+                    groundCodes.push(shortCode);
+                }
+            }
+
+            return [...new Set(groundCodes)];
+        }
+
+        function getInlineList() {
+            const inlineCodes = [];
+
+            for (const row of inlineData) {
+                for (const key in row) {
+                    const keyLower = key.toLowerCase();
+                    if (keyLower.includes('inline') || keyLower.includes('短号') || keyLower.includes('code')) {
+                        const code = String(row[key] || '').trim();
+                        if (code) {
+                            inlineCodes.push(code);
+                        }
+                    }
+                }
+            }
+
+            return [...new Set(inlineCodes)];
+        }
+
+        function getAllConnlistCodes() {
+            const codes = new Set();
+
+            for (const row of connlistData) {
+                for (const key in row) {
+                    const keyLower = key.toLowerCase();
+                    if (keyLower.includes('短号') || keyLower.includes('code') || keyLower.includes('short code')) {
+                        const code = String(row[key] || '').trim();
+                        if (code) {
+                            codes.add(code);
+                        }
+                    }
+                }
+            }
+
+            return codes;
+        }
+
+        function identifyWeldPoints(connlistCodes) {
+            const weldPoints = [];
+
+            for (const row of wirelistData) {
+                let fromPin = '', toPin = '', fromCode = '', toCode = '';
+
+                for (const key in row) {
+                    const keyLower = key.toLowerCase();
+                    const value = String(row[key] || '').trim();
+
+                    if (keyLower.includes('from pin') || keyLower.includes('frompin')) {
+                        fromPin = value;
+                    } else if (keyLower.includes('to pin') || keyLower.includes('topin')) {
+                        toPin = value;
+                    } else if (keyLower.includes('from code') || keyLower.includes('fromcode')) {
+                        fromCode = value;
+                    } else if (keyLower.includes('to code') || keyLower.includes('tocode')) {
+                        toCode = value;
+                    }
+                }
+
+                if (fromPin === 'X' && fromCode && !connlistCodes.has(fromCode)) {
+                    weldPoints.push(fromCode);
+                }
+                if (toPin === 'X' && toCode && !connlistCodes.has(toCode)) {
+                    weldPoints.push(toCode);
+                }
+            }
+
+            return [...new Set(weldPoints)];
+        }
+
+        function identifyConnectors(groundCodes, inlineList, connlistCodes) {
+            const groundSet = new Set(groundCodes);
+            const inlineSet = new Set(inlineList);
+
+            return [...connlistCodes].filter(code =>
+                code && !groundSet.has(code) && !inlineSet.has(code)
+            );
+        }
+
+        function buildConnectionGraph(weldPoints, inlineList) {
+            const graph = new Map();
+            const weldSet = new Set(weldPoints);
+            const inlineSet = new Set(inlineList);
+
+            function addConnection(node1, node2) {
+                if (!graph.has(node1)) {
+                    graph.set(node1, new Set());
+                }
+                if (!graph.has(node2)) {
+                    graph.set(node2, new Set());
+                }
+                graph.get(node1).add(node2);
+                graph.get(node2).add(node1);
+            }
+
+            function addNode(node) {
+                if (!graph.has(node)) {
+                    graph.set(node, new Set());
+                }
+            }
+
+            for (const row of wirelistData) {
+                let fromCode = '', toCode = '', fromPin = '', toPin = '';
+
+                for (const key in row) {
+                    const keyLower = key.toLowerCase();
+                    const value = String(row[key] || '').trim();
+
+                    if (keyLower.includes('from code') || keyLower.includes('fromcode')) {
+                        fromCode = value;
+                    } else if (keyLower.includes('to code') || keyLower.includes('tocode')) {
+                        toCode = value;
+                    } else if (keyLower.includes('from pin') || keyLower.includes('frompin')) {
+                        fromPin = value;
+                    } else if (keyLower.includes('to pin') || keyLower.includes('topin')) {
+                        toPin = value;
+                    }
+                }
+
+                if (!fromCode || !toCode) continue;
+
+                const node1 = `${fromCode}:${fromPin}`;
+                const node2 = `${toCode}:${toPin}`;
+
+                addConnection(node1, node2);
+                addNode(fromCode);
+                addNode(toCode);
+
+                if (weldSet.has(fromCode)) {
+                    addConnection(fromCode, node1);
+                }
+                if (weldSet.has(toCode)) {
+                    addConnection(toCode, node2);
+                }
+
+                if (inlineSet.has(fromCode) && inlineSet.has(toCode)) {
+                    addConnection(fromCode, toCode);
+                }
+            }
+
+            return graph;
+        }
+
+        function findConnectedComponents(graph, startNode) {
+            if (!graph.has(startNode)) {
+                return [];
+            }
+
+            const visited = new Set();
+            const queue = [startNode];
+            visited.add(startNode);
+
+            while (queue.length > 0) {
+                const node = queue.shift();
+                const neighbors = graph.get(node) || new Set();
+
+                for (const neighbor of neighbors) {
+                    if (!visited.has(neighbor)) {
+                        visited.add(neighbor);
+                        queue.push(neighbor);
+                    }
+                }
+            }
+
+            return [...visited];
+        }
+
+        function getWireInfo(code, pin) {
+            for (const row of wirelistData) {
+                let fromCode = '', toCode = '', fromPin = '', toPin = '';
+                let wireId = '', wireSize = '', wireColor = '', option = '';
+
+                for (const key in row) {
+                    const keyLower = key.toLowerCase();
+                    const value = String(row[key] || '').trim();
+
+                    if (keyLower.includes('from code') || keyLower.includes('fromcode')) {
+                        fromCode = value;
+                    } else if (keyLower.includes('to code') || keyLower.includes('tocode')) {
+                        toCode = value;
+                    } else if (keyLower.includes('from pin') || keyLower.includes('frompin')) {
+                        fromPin = value;
+                    } else if (keyLower.includes('to pin') || keyLower.includes('topin')) {
+                        toPin = value;
+                    } else if (keyLower.includes('wire') && keyLower.includes('id')) {
+                        wireId = value;
+                    } else if (keyLower.includes('size') || keyLower.includes('gauge') ||
+                               (keyLower.includes('size') && keyLower.includes('/'))) {
+                        wireSize = value;
+                    } else if (keyLower.includes('color')) {
+                        wireColor = value;
+                    } else if (keyLower.includes('option')) {
+                        option = value;
+                    }
+                }
+
+                if ((fromCode === code && fromPin === pin) || (toCode === code && toPin === pin)) {
+                    if (!wireId) {
+                        for (const key in row) {
+                            const keyLower = key.toLowerCase();
+                            const value = String(row[key] || '').trim();
+                            if (keyLower.includes('wire') || keyLower.includes('id')) {
+                                if (!keyLower.includes('size')) {
+                                    wireId = value;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if (!wireSize) {
+                        for (const key in row) {
+                            const keyLower = key.toLowerCase();
+                            const value = String(row[key] || '').trim();
+                            if (keyLower.includes('size') || keyLower.includes('gauge') ||
+                                keyLower.includes('规格') || keyLower.includes('线径') ||
+                                (keyLower.includes('size') && keyLower.includes('/'))) {
+                                if (!keyLower.includes('wire') || keyLower.includes('gauge')) {
+                                    wireSize = value;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if (!wireColor) {
+                        for (const key in row) {
+                            const keyLower = key.toLowerCase();
+                            const value = String(row[key] || '').trim();
+                            if (keyLower.includes('color') || keyLower.includes('颜色')) {
+                                wireColor = value;
+                                break;
+                            }
+                        }
+                    }
+                    if (!option) {
+                        for (const key in row) {
+                            const keyLower = key.toLowerCase();
+                            const value = String(row[key] || '').trim();
+                            if (keyLower.includes('opt')) {
+                                option = value;
+                                break;
+                            }
+                        }
+                    }
+                    return { wireId, wireSize, wireColor, option };
+                }
+            }
+
+            return { wireId: '', wireSize: '', wireColor: '', option: '' };
+        }
+
+        function getChineseDescription(code) {
+            if (connlistArrayData && connlistArrayData.length > 0) {
+                const headerRow = connlistArrayData[0];
+
+                let codeColIndex = -1;
+                for (let i = 0; i < headerRow.length; i++) {
+                    const header = String(headerRow[i] || '').toLowerCase();
+                    if (header.includes('短号') || header.includes('code') || header.includes('short code')) {
+                        codeColIndex = i;
+                        break;
+                    }
+                }
+
+                const descColIndex = 2;
+
+                for (let i = 1; i < connlistArrayData.length; i++) {
+                    const row = connlistArrayData[i];
+                    if (codeColIndex >= 0 && row[codeColIndex]) {
+                        const rowCode = String(row[codeColIndex] || '').trim();
+                        if (rowCode === code && descColIndex < row.length) {
+                            const desc = String(row[descColIndex] || '').trim();
+                            if (desc && !desc.includes('接地')) {
+                                return desc;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return '';
+        }
+
+        function getFamily(code) {
+            if (connlistArrayData && connlistArrayData.length > 0) {
+                const headerRow = connlistArrayData[0];
+
+                let codeColIndex = -1;
+                let familyColIndex = -1;
+
+                for (let i = 0; i < headerRow.length; i++) {
+                    const header = String(headerRow[i] || '').toLowerCase();
+
+                    if (codeColIndex === -1 && (header.includes('短号') || header.includes('code') || header.includes('short code'))) {
+                        codeColIndex = i;
+                    }
+
+                    if (familyColIndex === -1 && header.includes('family')) {
+                        familyColIndex = i;
+                    }
+                }
+
+                if (codeColIndex >= 0 && familyColIndex >= 0) {
+                    for (let i = 1; i < connlistArrayData.length; i++) {
+                        const row = connlistArrayData[i];
+                        if (row[codeColIndex]) {
+                            const rowCode = String(row[codeColIndex] || '').trim();
+                            if (rowCode === code && familyColIndex < row.length) {
+                                const family = String(row[familyColIndex] || '').trim();
+                                if (family) {
+                                    return family;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return '';
+        }
+
+        function generateGroundingListData(groundCodes, inlineList, connectors, graph) {
+            const groundingData = [];
+            const inlineSet = new Set(inlineList);
+            const connectorSet = new Set(connectors);
+
+            const connlistCodes = getAllConnlistCodes();
+            const weldPoints = identifyWeldPoints(connlistCodes);
+            const weldSet = new Set(weldPoints);
+
+            for (const groundCode of groundCodes) {
+                let connectedNodes = [];
+                for (const node of graph.keys()) {
+                    if (node.startsWith(groundCode + ':')) {
+                        connectedNodes = findConnectedComponents(graph, node);
+                        break;
+                    }
+                }
+
+                const connectorInfo = {};
+                const allWireIds = [];
+                const allOptions = [];
+
+                for (const node of connectedNodes) {
+                    if (node.startsWith(groundCode) ||
+                        [...inlineSet].some(inline => node.includes(inline))) {
+                        continue;
+                    }
+
+                    if (node.includes(':')) {
+                        const [code, pin] = node.split(':');
+
+                        if (code && pin && connectorSet.has(code)) {
+                            if (!connectorInfo[code]) {
+                                connectorInfo[code] = new Set();
+                            }
+                            connectorInfo[code].add(pin);
+
+                            const wireInfo = getWireInfo(code, pin);
+                            if (wireInfo.wireId) {
+                                allWireIds.push(wireInfo.wireId);
+                            }
+                            if (wireInfo.option) {
+                                allOptions.push(wireInfo.option);
+                            }
+                        }
+                    }
+                }
+
+                const groundingType = analyzeGroundingType(groundCode, connectedNodes, allWireIds, allOptions, weldSet, inlineSet);
+
+                for (const code in connectorInfo) {
+                    const chineseDesc = getChineseDescription(code);
+                    const pins = [...connectorInfo[code]];
+
+                for (const pin of pins) {
+                    const { wireId, wireSize, wireColor, option } = getWireInfo(code, pin);
+                    const family = getFamily(groundCode);
+
+                    groundingData.push({
+                        'Family': family,
+                        '接地短号': groundCode,
+                        '插件短号': code,
+                        '中文描述': chineseDesc,
+                        '插件PIN': pin,
+                        'Wire ID': wireId,
+                        '线径': wireSize,
+                        '线色': wireColor,
+                        'Option': option,
+                        '搭铁类型分析': groundingType
+                    });
+                }
+                }
+            }
+
+            return groundingData;
+        }
+
+        // 分析搭铁类型
+        function analyzeGroundingType(groundCode, connectedNodes, wireIds, options, weldSet, inlineSet) {
+            const hasDCWireId = wireIds.some(wireId => wireId && wireId.toUpperCase().startsWith('DC'));
+            if (hasDCWireId) {
+                return '并压接地';
+            }
+
+            let connectedViaWeld = false;
+            for (const node of connectedNodes) {
+                if (!node.includes(':')) {
+                    if (weldSet.has(node)) {
+                        connectedViaWeld = true;
+                        break;
+                    }
+                }
+            }
+
+            if (connectedViaWeld) {
+                return '焊点接地';
+            }
+
+            let connectorCount = 0;
+            const uniqueOptions = new Set();
+
+            for (const node of connectedNodes) {
+                if (node.includes(':')) {
+                    const [code, pin] = node.split(':');
+                    if (code !== groundCode && !inlineSet.has(code) && !weldSet.has(code)) {
+                        connectorCount++;
+                    }
+                }
+            }
+
+            for (const option of options) {
+                if (option) {
+                    uniqueOptions.add(option);
+                }
+            }
+
+            if (connectorCount === 1 ||
+                (connectorCount >= 2 && connectorCount <= 3 && uniqueOptions.size > 1)) {
+                return '单独接地';
+            }
+
+            return '';
+        }
+
+        // ==========================================
+        // 显示结果
+        // ==========================================
+
+        function displayResults(groundCodes, data) {
+            document.getElementById('resultsSection').classList.add('show');
+
+            window.originalGroundingList = data;
+
+            const statsGrid = document.getElementById('statsGrid');
+            statsGrid.innerHTML = `
+                <div class="stat-card">
+                    <h4>识别的接地端子</h4>
+                    <div class="value">${groundCodes.length}</div>
+                </div>
+                <div class="stat-card">
+                    <h4>合并后的接地行数</h4>
+                    <div class="value">${data.length}</div>
+                </div>
+                <div class="stat-card">
+                    <h4>连接的插件总数</h4>
+                    <div class="value">${data.reduce((sum, item) => sum + (item['插件短号'] || '').split('\n').length, 0)}</div>
+                </div>
+                <div class="stat-card">
+                    <h4>总连接关系</h4>
+                    <div class="value">${data.reduce((sum, item) => sum + (item['插件短号'] || '').split('\n').length, 0)}</div>
+                </div>
+            `;
+
+            displayGroundingList(data);
+        }
+
+        function displayGroundingList(data) {
+            const table = document.getElementById('generatedTable');
+
+            if (!data || data.length === 0) {
+                table.innerHTML = '<tr><td>暂无数据</td></tr>';
+                return;
+            }
+
+            let html = '<thead><tr>';
+            html += '<th>Family</th><th>接地短号</th><th>插件短号</th><th>中文描述</th><th>插件PIN</th><th>Wire ID</th><th>线径</th><th>线色</th><th>Option</th><th>搭铁类型分析</th>';
+            html += '</tr></thead><tbody>';
+
+            data.forEach(item => {
+                html += `<tr>
+                    <td><strong>${item['Family'] || ''}</strong></td>
+                    <td><strong>${item['接地短号'] || ''}</strong></td>
+                    <td class="multi-line">${item['插件短号'] || ''}</td>
+                    <td class="multi-line">${item['中文描述'] || ''}</td>
+                    <td class="multi-line">${item['插件PIN'] || ''}</td>
+                    <td class="multi-line">${item['Wire ID'] || ''}</td>
+                    <td class="multi-line">${item['线径'] || ''}</td>
+                    <td class="multi-line">${item['线色'] || ''}</td>
+                    <td class="multi-line">${item['Option'] || ''}</td>
+                    <td><strong>${item['搭铁类型分析'] || ''}</strong></td>
+                </tr>`;
+            });
+
+            html += '</tbody>';
+            table.innerHTML = html;
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+
+            document.getElementById(tabName + 'Tab').classList.add('active');
+            event.target.classList.add('active');
+
+            const filterSection = document.getElementById('filterSection');
+            if (tabName === 'generated') {
+                filterSection.style.display = 'block';
+            } else {
+                filterSection.style.display = 'none';
+            }
+        }
+
+        // 筛选接地清单
+        function filterGroundingList() {
+            const filterText = document.getElementById('filterInput').value.trim().toUpperCase();
+            if (!filterText) {
+                displayGroundingList(groundingList);
+                return;
+            }
+
+            const filtered = groundingList.filter(item => {
+                const groundCode = (item['接地短号'] || '').toUpperCase();
+                return groundCode.startsWith(filterText);
+            });
+
+            displayGroundingList(filtered);
+        }
+
+        // 清除筛选
+        function clearFilter() {
+            document.getElementById('filterInput').value = '';
+            displayGroundingList(groundingList);
+        }
+
+        function showMessage(text, type) {
+            const msg = document.getElementById('message');
+            msg.textContent = text;
+            msg.className = 'message ' + type + ' show';
+            if (text) {
+                setTimeout(() => msg.classList.remove('show'), 5000);
+            }
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading').classList.toggle('show', show);
+            document.getElementById('generateBtn').disabled = show;
+        }
+
+        // ==========================================
+        // V6 新增：带样式的Excel导出功能
+        // ==========================================
+
+        // 创建单元格样式
+        function createCellStyle(options) {
+            const style = {};
+
+            if (options.font) {
+                style.font = options.font;
+            }
+
+            if (options.fill) {
+                style.fill = options.fill;
+            }
+
+            if (options.alignment) {
+                style.alignment = options.alignment;
+            }
+
+            if (options.border) {
+                style.border = options.border;
+            }
+
+            return style;
+        }
+
+        // 计算列宽
+        function calculateColumnWidth(data) {
+            const colWidths = {};
+            const keys = ['Family', '接地短号', '插件短号', '中文描述', '插件PIN', 'Wire ID', '线径', '线色', 'Option', '搭铁类型分析'];
+
+            keys.forEach(key => {
+                colWidths[key] = {
+                    wch: Math.max(
+                        key.length,
+                        ...data.map(row => String(row[key] || '').length)
+                    ) + 2
+                };
+
+                // 限制最大和最小宽度
+                if (colWidths[key].wch < 10) colWidths[key].wch = 10;
+                if (colWidths[key].wch > 50) colWidths[key].wch = 50;
+            });
+
+            return colWidths;
+        }
+
+        // 获取搭铁类型的背景色
+        function getTypeColor(type) {
+            switch(type) {
+                case '并压接地':
+                    return { fgColor: { rgb: "FFC6EFCE" } }; // 绿色背景
+                case '焊点接地':
+                    return { fgColor: { rgb: "FFFFEB9C" } }; // 黄色背景
+                case '单独接地':
+                    return { fgColor: { rgb: "FFE2EFDA" } }; // 浅绿背景
+                default:
+                    return null;
+            }
+        }
+
+        // 导出带样式的Excel（V6主要功能）
+        function downloadStyledExcel() {
+            let dataToDownload = window.originalGroundingList || groundingList;
+
+            if (!dataToDownload || dataToDownload.length === 0) {
+                showMessage('❌ 没有可下载的数据', 'error');
+                return;
+            }
+
+            // 检查是否在筛选状态
+            const filterText = document.getElementById('filterInput')?.value?.trim();
+            if (filterText) {
+                const filterUpper = filterText.toUpperCase();
+                dataToDownload = dataToDownload.filter(item => {
+                    const groundCode = (item['接地短号'] || '').toUpperCase();
+                    return groundCode.startsWith(filterUpper);
+                });
+            }
+
+            try {
+                // 创建工作簿
+                const wb = XLSX.utils.book_new();
+
+                // 准备数据，添加表头
+                const headers = ['Family', '接地短号', '插件短号', '中文描述', '插件PIN', 'Wire ID', '线径', '线色', 'Option', '搭铁类型分析'];
+                const rows = [headers, ...dataToDownload.map(item => [
+                    item['Family'] || '',
+                    item['接地短号'] || '',
+                    item['插件短号'] || '',
+                    item['中文描述'] || '',
+                    item['插件PIN'] || '',
+                    item['Wire ID'] || '',
+                    item['线径'] || '',
+                    item['线色'] || '',
+                    item['Option'] || '',
+                    item['搭铁类型分析'] || ''
+                ])];
+
+                // 创建工作表
+                const ws = XLSX.utils.aoa_to_sheet(rows);
+
+                // 定义样式
+                const headerStyle = {
+                    font: { bold: true, sz: 12, color: { rgb: "FFFFFFFF" } },
+                    fill: { fgColor: { rgb: "FF667EEA" } },
+                    alignment: { horizontal: "center", vertical: "center", wrapText: true },
+                    border: {
+                        top: { style: "thin", color: { rgb: "FF000000" } },
+                        bottom: { style: "thin", color: { rgb: "FF000000" } },
+                        left: { style: "thin", color: { rgb: "FF000000" } },
+                        right: { style: "thin", color: { rgb: "FF000000" } }
+                    }
+                };
+
+                const dataStyle = {
+                    font: { sz: 11 },
+                    alignment: { horizontal: "left", vertical: "top", wrapText: true },
+                    border: {
+                        top: { style: "thin", color: { rgb: "FFD3D3D3" } },
+                        bottom: { style: "thin", color: { rgb: "FFD3D3D3" } },
+                        left: { style: "thin", color: { rgb: "FFD3D3D3" } },
+                        right: { style: "thin", color: { rgb: "FFD3D3D3" } }
+                    }
+                };
+
+                const evenRowStyle = {
+                    font: { sz: 11 },
+                    fill: { fgColor: { rgb: "FFF8F9FA" } },
+                    alignment: { horizontal: "left", vertical: "top", wrapText: true },
+                    border: {
+                        top: { style: "thin", color: { rgb: "FFD3D3D3" } },
+                        bottom: { style: "thin", color: { rgb: "FFD3D3D3" } },
+                        left: { style: "thin", color: { rgb: "FFD3D3D3" } },
+                        right: { style: "thin", color: { rgb: "FFD3D3D3" } }
+                    }
+                };
+
+                // 应用样式到表头
+                headers.forEach((_, colIndex) => {
+                    const cellAddress = XLSX.utils.encode_cell({ r: 0, c: colIndex });
+                    if (!ws[cellAddress]) ws[cellAddress] = {};
+                    ws[cellAddress].s = headerStyle;
+                });
+
+                // 应用样式到数据行
+                for (let rowIndex = 1; rowIndex < rows.length; rowIndex++) {
+                    const rowData = rows[rowIndex];
+                    const groundingType = rowData[9]; // 搭铁类型分析列
+
+                    for (let colIndex = 0; colIndex < headers.length; colIndex++) {
+                        const cellAddress = XLSX.utils.encode_cell({ r: rowIndex, c: colIndex });
+                        if (!ws[cellAddress]) ws[cellAddress] = {};
+
+                        // 使用交替行样式
+                        if (rowIndex % 2 === 0) {
+                            ws[cellAddress].s = evenRowStyle;
+                        } else {
+                            ws[cellAddress].s = dataStyle;
+                        }
+
+                        // 为特定列添加特殊样式
+                        if (colIndex === 9 && groundingType) {
+                            // 搭铁类型分析列：添加背景色
+                            const typeColor = getTypeColor(groundingType);
+                            if (typeColor) {
+                                ws[cellAddress].s = {
+                                    font: { bold: true, sz: 11 },
+                                    fill: typeColor,
+                                    alignment: { horizontal: "center", vertical: "center" },
+                                    border: {
+                                        top: { style: "thin", color: { rgb: "FFD3D3D3" } },
+                                        bottom: { style: "thin", color: { rgb: "FFD3D3D3" } },
+                                        left: { style: "thin", color: { rgb: "FFD3D3D3" } },
+                                        right: { style: "thin", color: { rgb: "FFD3D3D3" } }
+                                    }
+                                };
+                            }
+                        }
+
+                        // Family和接地短号列：加粗
+                        if (colIndex === 0 || colIndex === 1) {
+                            if (ws[cellAddress].s) {
+                                ws[cellAddress].s.font = { bold: true, sz: 11, color: { rgb: "FF333333" } };
+                            }
+                        }
+                    }
+                }
+
+                // 设置列宽
+                ws['!cols'] = [
+                    { wch: 12 },  // Family
+                    { wch: 15 },  // 接地短号
+                    { wch: 40 },  // 插件短号
+                    { wch: 35 },  // 中文描述
+                    { wch: 30 },  // 插件PIN
+                    { wch: 25 },  // Wire ID
+                    { wch: 12 },  // 线径
+                    { wch: 12 },  // 线色
+                    { wch: 15 },  // Option
+                    { wch: 15 }   // 搭铁类型分析
+                ];
+
+                // 设置行高
+                ws['!rows'] = rows.map((_, rowIndex) => {
+                    if (rowIndex === 0) {
+                        return { hpx: 30 }; // 表头行高
+                    } else {
+                        return { hpx: 60 }; // 数据行高（支持多行显示）
+                    }
+                });
+
+                // 添加工作表到工作簿
+                XLSX.utils.book_append_sheet(wb, ws, '接地清单');
+
+                // 生成文件名（带时间戳）
+                const now = new Date();
+                const timestamp = now.toISOString().slice(0, 10).replace(/-/g, '');
+                const filename = `接地清单_${timestamp}.xlsx`;
+
+                // 下载文件
+                XLSX.writeFile(wb, filename);
+                showMessage(`✅ 已成功导出带格式Excel文件：${filename}`, 'success');
+
+            } catch (error) {
+                console.error('导出Excel失败:', error);
+                showMessage('❌ 导出Excel失败: ' + error.message, 'error');
+            }
+        }
+
+        // 导出简单Excel（无样式，向后兼容）
+        function downloadSimpleExcel() {
+            let dataToDownload = window.originalGroundingList || groundingList;
+
+            if (!dataToDownload || dataToDownload.length === 0) {
+                showMessage('❌ 没有可下载的数据', 'error');
+                return;
+            }
+
+            const filterText = document.getElementById('filterInput')?.value?.trim();
+            if (filterText) {
+                const filterUpper = filterText.toUpperCase();
+                dataToDownload = dataToDownload.filter(item => {
+                    const groundCode = (item['接地短号'] || '').toUpperCase();
+                    return groundCode.startsWith(filterUpper);
+                });
+            }
+
+            const ws = XLSX.utils.json_to_sheet(dataToDownload);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, '接地清单');
+
+            XLSX.writeFile(wb, '接地清单_简单版.xlsx');
+            showMessage('✅ 已导出简单版Excel文件（无格式）', 'success');
+        }
+
+        // ==========================================
+        // 复制HTML表格到剪贴板
+        // ==========================================
+
+        function copyHtmlToClipboard() {
+            const table = document.getElementById('generatedTable');
+
+            if (!table || table.innerHTML.trim() === '' || table.innerHTML.includes('暂无数据')) {
+                showMessage('❌ 没有可复制的数据，请先生成接地清单', 'error');
+                return;
+            }
+
+            try {
+                // 获取当前筛选状态的数据
+                let dataToCopy = window.originalGroundingList || groundingList;
+
+                const filterText = document.getElementById('filterInput')?.value?.trim();
+                if (filterText) {
+                    const filterUpper = filterText.toUpperCase();
+                    dataToCopy = dataToCopy.filter(item => {
+                        const groundCode = (item['接地短号'] || '').toUpperCase();
+                        return groundCode.startsWith(filterUpper);
+                    });
+                }
+
+                // 创建带样式的HTML表格
+                let html = '<table border="1" style="border-collapse: collapse; table-layout: auto; font-size: 12px; font-family: Arial, sans-serif;">';
+
+                // 添加表头
+                html += '<thead><tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: black; font-weight: bold; text-align: center; white-space: nowrap;">';
+                html += '<th style="padding: 10px; border: 1px solid #333; mso-number-format:\'@\'; white-space: nowrap;">Family</th>';
+                html += '<th style="padding: 10px; border: 1px solid #333; mso-number-format:\'@\'; white-space: nowrap;">接地短号</th>';
+                html += '<th style="padding: 10px; border: 1px solid #333; mso-number-format:\'@\'; white-space: nowrap;">插件短号</th>';
+                html += '<th style="padding: 10px; border: 1px solid #333; mso-number-format:\'@\'; white-space: nowrap;">中文描述</th>';
+                html += '<th style="padding: 10px; border: 1px solid #333; mso-number-format:\'@\'; white-space: nowrap;">插件PIN</th>';
+                html += '<th style="padding: 10px; border: 1px solid #333; mso-number-format:\'@\'; white-space: nowrap;">Wire ID</th>';
+                html += '<th style="padding: 10px; border: 1px solid #333; mso-number-format:\'@\'; white-space: nowrap;">线径</th>';
+                html += '<th style="padding: 10px; border: 1px solid #333; mso-number-format:\'@\'; white-space: nowrap;">线色</th>';
+                html += '<th style="padding: 10px; border: 1px solid #333; mso-number-format:\'@\'; white-space: nowrap;">Option</th>';
+                html += '<th style="padding: 10px; border: 1px solid #333; mso-number-format:\'@\'; white-space: nowrap;">搭铁类型分析</th>';
+                html += '</tr></thead><tbody>';
+
+                // 添加数据行（拆分换行符为多行）
+                let totalRowCount = 0;
+                dataToCopy.forEach((item, index) => {
+                    // 将包含换行符的字段拆分成数组
+                    const splitField = (value) => {
+                        if (!value) return [''];
+                        return String(value).split('\n').map(v => v.trim()).filter(v => v);
+                    };
+
+                    const familyArr = [item['Family'] || ''];
+                    const groundCodeArr = [item['接地短号'] || ''];
+                    const connectorArr = splitField(item['插件短号']);
+                    const descArr = splitField(item['中文描述']);
+                    const pinArr = splitField(item['插件PIN']);
+                    const wireIdArr = splitField(item['Wire ID']);
+                    const wireSizeArr = splitField(item['线径']);
+                    const wireColorArr = splitField(item['线色']);
+                    const optionArr = splitField(item['Option']);
+                    const typeArr = [item['搭铁类型分析'] || ''];
+
+                    // 找出最长的数组长度（需要拆分的行数）
+                    const maxRows = Math.max(
+                        connectorArr.length,
+                        descArr.length,
+                        pinArr.length,
+                        wireIdArr.length,
+                        wireSizeArr.length,
+                        wireColorArr.length,
+                        optionArr.length,
+                        1
+                    );
+
+                    // 填充数组，使所有数组长度一致
+                    while (connectorArr.length < maxRows) connectorArr.push('');
+                    while (descArr.length < maxRows) descArr.push('');
+                    while (pinArr.length < maxRows) pinArr.push('');
+                    while (wireIdArr.length < maxRows) wireIdArr.push('');
+                    while (wireSizeArr.length < maxRows) wireSizeArr.push('');
+                    while (wireColorArr.length < maxRows) wireColorArr.push('');
+                    while (optionArr.length < maxRows) optionArr.push('');
+
+                    // 生成多行HTML
+                    for (let i = 0; i < maxRows; i++) {
+                        const isEvenRow = totalRowCount % 2 === 0;
+                        const rowStyle = isEvenRow
+                            ? 'background: #ffffff;'
+                            : 'background: #f8f9fa;';
+
+                        html += `<tr style="${rowStyle}">`;
+
+                        // 第一行：需要合并的列使用 rowspan
+                        if (i === 0) {
+                            // Family 列 - 合并
+                            html += `<td rowspan="${maxRows}" style="padding: 8px; border: 1px solid #ddd; font-weight: bold; vertical-align: middle; mso-number-format:\'@\'; white-space: nowrap;">${familyArr[0]}</td>`;
+                            // 接地短号列 - 合并
+                            html += `<td rowspan="${maxRows}" style="padding: 8px; border: 1px solid #ddd; font-weight: bold; vertical-align: middle; mso-number-format:\'@\'; white-space: nowrap;">${groundCodeArr[0]}</td>`;
+                        }
+
+                        // 不需要合并的列
+                        html += `<td style="padding: 8px; border: 1px solid #ddd; mso-number-format:\'@\'; white-space: nowrap;">${connectorArr[i] || ''}</td>`;
+                        html += `<td style="padding: 8px; border: 1px solid #ddd; mso-number-format:\'@\'; white-space: nowrap;">${descArr[i] || ''}</td>`;
+                        html += `<td style="padding: 8px; border: 1px solid #ddd; mso-number-format:\'@\'; white-space: nowrap;">${pinArr[i] || ''}</td>`;
+                        html += `<td style="padding: 8px; border: 1px solid #ddd; mso-number-format:\'@\'; white-space: nowrap;">${wireIdArr[i] || ''}</td>`;
+                        html += `<td style="padding: 8px; border: 1px solid #ddd; mso-number-format:\'@\'; white-space: nowrap;">${wireSizeArr[i] || ''}</td>`;
+                        html += `<td style="padding: 8px; border: 1px solid #ddd; mso-number-format:\'@\'; white-space: nowrap;">${wireColorArr[i] || ''}</td>`;
+                        html += `<td style="padding: 8px; border: 1px solid #ddd; mso-number-format:\'@\'; white-space: nowrap;">${optionArr[i] || ''}</td>`;
+
+                        // 搭铁类型分析列 - 合并
+                        if (i === 0) {
+                            const type = typeArr[0];
+                            let typeStyle = 'padding: 8px; border: 1px solid #ddd; font-weight: bold; text-align: center; vertical-align: middle; mso-number-format:\'@\'; white-space: nowrap;';
+                            if (type === '并压接地') {
+                                typeStyle += 'background: #c6efce; color: #006100;';
+                            } else if (type === '焊点接地') {
+                                typeStyle += 'background: #ffeb9c; color: #9c6500;';
+                            } else if (type === '单独接地') {
+                                typeStyle += 'background: #e2efda; color: #006100;';
+                            }
+                            html += `<td rowspan="${maxRows}" style="${typeStyle}">${type}</td>`;
+                        }
+
+                        html += '</tr>';
+                        totalRowCount++;
+                    }
+                });
+
+                html += '</tbody></table>';
+
+                // 创建Blob对象
+                const blob = new Blob([html], { type: 'text/html' });
+
+                // 使用Clipboard API写入
+                const clipboardItem = new ClipboardItem({
+                    'text/html': blob,
+                    'text/plain': new Blob([table.innerText], { type: 'text/plain' })
+                });
+
+                navigator.clipboard.write([clipboardItem]).then(() => {
+                    // 更新按钮状态
+                    const btn = document.getElementById('copyHtmlBtn');
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = '✅ 已复制!';
+                    btn.classList.add('success', 'copied');
+
+                    showMessage(`✅ 已成功复制 ${totalRowCount} 行数据到剪贴板！（已拆分换行符，合并相同单元格）可以直接粘贴到Excel`, 'success');
+
+                    // 2秒后恢复按钮
+                    setTimeout(() => {
+                        btn.innerHTML = originalText;
+                        btn.classList.remove('success', 'copied');
+                    }, 2000);
+
+                }).catch(err => {
+                    console.error('复制失败:', err);
+
+                    // 降级方案：使用传统的document.execCommand
+                    try {
+                        const container = document.createElement('div');
+                        container.innerHTML = html;
+                        container.style.position = 'fixed';
+                        container.style.left = '-9999px';
+                        document.body.appendChild(container);
+
+                        const range = document.createRange();
+                        range.selectNode(container);
+                        const selection = window.getSelection();
+                        selection.removeAllRanges();
+                        selection.addRange(range);
+
+                        const successful = document.execCommand('copy');
+                        document.body.removeChild(container);
+
+                        if (successful) {
+                            const btn = document.getElementById('copyHtmlBtn');
+                            const originalText = btn.innerHTML;
+                            btn.innerHTML = '✅ 已复制!';
+                            btn.classList.add('success', 'copied');
+
+                            showMessage(`✅ 已成功复制 ${totalRowCount} 行数据到剪贴板！（已拆分换行符，合并相同单元格）`, 'success');
+
+                            setTimeout(() => {
+                                btn.innerHTML = originalText;
+                                btn.classList.remove('success', 'copied');
+                            }, 2000);
+                        } else {
+                            throw new Error('execCommand failed');
+                        }
+                    } catch (fallbackErr) {
+                        showMessage('❌ 复制失败，请手动选择表格内容后复制 (Ctrl+C)', 'error');
+                    }
+                });
+
+            } catch (error) {
+                console.error('复制HTML失败:', error);
+                showMessage('❌ 复制失败: ' + error.message, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

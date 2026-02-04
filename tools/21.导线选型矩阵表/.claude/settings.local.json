@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(python:*)",
+      "Bash(pip install:*)",
+      "Bash(python3 -m pip install:*)",
+      "Bash(start index.html)",
+      "Bash(pip3 install:*)",
+      "Bash(start web.html)",
+      "Bash(cmd.exe:*)",
+      "Bash(py:*)",
+      "Bash(cmd /c \"cd /d C:\\\\Users\\\\HP\\\\Desktop\\\\tools\\\\21.导线选型矩阵表 && python converter.py\")",
+      "Bash(cmd /c \"转换数据.bat\")",
+      "Bash(findstr:*)",
+      "Bash(more:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(where:*)",
+      "Bash(\"C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Microsoft\\\\WindowsApps\\\\python.exe\":*)"
+    ]
+  }
+}

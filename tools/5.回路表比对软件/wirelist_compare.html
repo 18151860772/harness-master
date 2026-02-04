@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WireList表格比对工具</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 40px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 40px;
+            font-size: 2.5em;
+        }
+
+        .upload-section {
+            display: flex;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .upload-box {
+            flex: 1;
+            border: 3px dashed #667eea;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: #f8f9ff;
+        }
+
+        .upload-box:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .upload-box.dragover {
+            border-color: #764ba2;
+            background: #e8ecff;
+        }
+
+        .upload-box h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .upload-box p {
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .upload-box input[type="file"] {
+            display: none;
+        }
+
+        .file-info {
+            margin-top: 15px;
+            padding: 10px;
+            background: #fff;
+            border-radius: 5px;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .file-info.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .button-container {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .compare-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 50px;
+            font-size: 18px;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .compare-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .compare-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .result-section {
+            display: none;
+            margin-top: 30px;
+        }
+
+        .result-section.show {
+            display: block;
+        }
+
+        .result-info {
+            background: #f8f9ff;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .filter-section {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .filter-label {
+            font-weight: 600;
+            color: #667eea;
+            margin-right: 10px;
+        }
+
+        .filter-btn {
+            padding: 8px 20px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .filter-btn:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(102, 126, 234, 0.3);
+        }
+
+        .filter-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .copy-btn {
+            padding: 8px 20px;
+            border: 2px solid #28a745;
+            background: white;
+            color: #28a745;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            margin-left: 10px;
+        }
+
+        .copy-btn:hover {
+            background: #28a745;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(40, 167, 69, 0.3);
+        }
+
+        .copy-btn:active {
+            transform: translateY(0);
+        }
+
+        .result-info h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .result-info p {
+            color: #333;
+            margin: 5px 0;
+        }
+
+        .download-btn {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+            display: inline-block;
+            text-decoration: none;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(40, 167, 69, 0.6);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .table-container {
+            margin-top: 20px;
+            max-height: 600px;
+            overflow: auto;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        #resultTable {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        #resultTable th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 8px;
+            text-align: left;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        #resultTable td {
+            padding: 8px;
+            border: 1px solid #e0e0e0;
+            white-space: nowrap;
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #resultTable tbody tr:hover {
+            background-color: #f5f5f5;
+        }
+
+        .diff-cell {
+            background-color: #FF4444 !important;
+            color: #000000 !important;
+            font-weight: bold;
+            animation: pulse 2s infinite;
+        }
+
+        .added-row td {
+            background-color: #90EE90 !important;
+            color: #000000 !important;
+        }
+
+        .deleted-row td {
+            background-color: #FF6B6B !important;
+            color: #000000 !important;
+        }
+
+        .changed-row td:first-child {
+            background-color: #FFD700 !important;
+            color: #000000 !important;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.8;
+            }
+        }
+
+        .legend {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9ff;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .legend-item {
+            display: inline-flex;
+            align-items: center;
+            margin-right: 20px;
+            font-size: 14px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WireList表格比对工具</h1>
+        
+        <div class="upload-section">
+            <div class="upload-box" id="uploadBox1" onclick="document.getElementById('file1').click()">
+                <h3>📁 上传第一份表格</h3>
+                <p>点击或拖拽文件到此处</p>
+                <input type="file" id="file1" accept=".xlsx,.xls" onchange="handleFileSelect(this, 1)">
+                <div class="file-info" id="fileInfo1">未选择文件</div>
+            </div>
+            
+            <div class="upload-box" id="uploadBox2" onclick="document.getElementById('file2').click()">
+                <h3>📁 上传第二份表格</h3>
+                <p>点击或拖拽文件到此处</p>
+                <input type="file" id="file2" accept=".xlsx,.xls" onchange="handleFileSelect(this, 2)">
+                <div class="file-info" id="fileInfo2">未选择文件</div>
+            </div>
+        </div>
+        
+        <div class="button-container">
+            <button class="compare-btn" id="compareBtn" onclick="compareExcel()" disabled>开始比对</button>
+        </div>
+        
+        <div class="loading" id="loading">
+            <div class="loading-spinner"></div>
+            <p>正在处理中，请稍候...</p>
+        </div>
+        
+        <div class="error-message" id="errorMessage"></div>
+        
+        <div class="result-section" id="resultSection">
+            <div class="result-info">
+                <h3>比对结果</h3>
+                <p id="resultText"></p>
+            </div>
+            
+            <div class="filter-section" id="filterSection" style="display: none;">
+                <span class="filter-label">🔍 筛选：</span>
+                <button class="filter-btn active" onclick="filterTable('all')">全部</button>
+                <button class="filter-btn" onclick="filterTable('added')">📝 新增</button>
+                <button class="filter-btn" onclick="filterTable('deleted')">❌ 删除</button>
+                <button class="filter-btn" onclick="filterTable('changed')">🔄 变更</button>
+                <button class="filter-btn" onclick="filterTable('same')">✓ 无差异</button>
+                <button class="copy-btn" onclick="copyToClipboard()">📋 复制结果</button>
+            </div>
+            
+            <div class="table-container">
+                <table id="resultTable">
+                    <thead id="tableHead"></thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+            
+            <div style="text-align: center; margin-top: 20px;">
+                <a class="download-btn" id="downloadBtn" href="#" download="wirelist比对结果.xlsx">📥 下载比对结果</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let file1Data = null;
+        let file2Data = null;
+        let file1Name = '';
+        let file2Name = '';
+
+        // 设置拖拽上传
+        function setupDragDrop(boxId, fileInputId, fileInfoId, fileNum) {
+            const box = document.getElementById(boxId);
+            
+            box.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                box.classList.add('dragover');
+            });
+            
+            box.addEventListener('dragleave', () => {
+                box.classList.remove('dragover');
+            });
+            
+            box.addEventListener('drop', (e) => {
+                e.preventDefault();
+                box.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    const fileInput = document.getElementById(fileInputId);
+                    const dt = new DataTransfer();
+                    dt.items.add(files[0]);
+                    fileInput.files = dt.files;
+                    handleFileSelect(fileInput, fileNum);
+                }
+            });
+        }
+
+        setupDragDrop('uploadBox1', 'file1', 'fileInfo1', 1);
+        setupDragDrop('uploadBox2', 'file2', 'fileInfo2', 2);
+
+        function handleFileSelect(input, fileNum) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            const fileInfo = document.getElementById(`fileInfo${fileNum}`);
+            fileInfo.textContent = `已选择: ${file.name}`;
+            fileInfo.classList.add('success');
+            
+            if (fileNum === 1) {
+                file1Name = file.name;
+            } else {
+                file2Name = file.name;
+            }
+            
+            // 读取文件
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+                
+                if (fileNum === 1) {
+                    file1Data = jsonData;
+                } else {
+                    file2Data = jsonData;
+                }
+                
+                checkFilesReady();
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function checkFilesReady() {
+            const compareBtn = document.getElementById('compareBtn');
+            if (file1Data && file2Data) {
+                compareBtn.disabled = false;
+            }
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.classList.add('show');
+            setTimeout(() => {
+                errorDiv.classList.remove('show');
+            }, 5000);
+        }
+
+        function compareExcel() {
+            if (!file1Data || !file2Data) {
+                showError('请先上传两份Excel表格');
+                return;
+            }
+            
+            document.getElementById('loading').classList.add('show');
+            document.getElementById('resultSection').classList.remove('show');
+            
+            setTimeout(() => {
+                try {
+                    // 创建结果数据和差异标记
+                    const resultData = [];
+                    const diffCells = new Set(); // 存储有差异的单元格位置 "行号,列号"
+                    
+                    // 假设数据从第3行开始（索引2），前两行（索引0和1）是表头
+                    const headerRowCount = 2;
+                    const dataStartRow = 2; // 从第3行开始（索引2）
+                    
+                    // 计算源文件的最大列数（包括表头和数据行）
+                    let maxCols = 0;
+                    // 包含表头行
+                    for (let h = 0; h < headerRowCount; h++) {
+                        if (file1Data.length > h) {
+                            maxCols = Math.max(maxCols, file1Data[h].length);
+                        }
+                        if (file2Data.length > h) {
+                            maxCols = Math.max(maxCols, file2Data[h].length);
+                        }
+                    }
+                    // 包含数据行
+                    for (let j = dataStartRow; j < file1Data.length; j++) {
+                        maxCols = Math.max(maxCols, file1Data[j].length);
+                    }
+                    for (let j = dataStartRow; j < file2Data.length; j++) {
+                        maxCols = Math.max(maxCols, file2Data[j].length);
+                    }
+                    
+                    // 添加两行表头
+                    for (let h = 0; h < headerRowCount; h++) {
+                        let header = [];
+                        for (let col = 0; col < maxCols; col++) {
+                            let headerText = '';
+                            // 优先使用第二份文件的表头，如果没有则使用第一份的
+                            if (file2Data.length > h && col < file2Data[h].length && file2Data[h][col]) {
+                                headerText = file2Data[h][col];
+                            } else if (file1Data.length > h && col < file1Data[h].length && file1Data[h][col]) {
+                                headerText = file1Data[h][col];
+                            }
+                            header.push(headerText);
+                        }
+                        // 第一行表头添加"差异说明"
+                        if (h === 0) {
+                            header.unshift('差异说明');
+                        } else {
+                            header.unshift('');
+                        }
+                        resultData.push(header);
+                    }
+                    
+                    // 根据A列创建索引（A列是索引0）
+                    const map1 = new Map();
+                    const map2 = new Map();
+                    
+                    // 第一份文件的索引（从第3行开始）
+                    for (let i = dataStartRow; i < file1Data.length; i++) {
+                        const row = file1Data[i];
+                        if (row[0]) {
+                            map1.set(String(row[0]).trim(), { index: i, data: row });
+                        }
+                    }
+                    
+                    // 第二份文件的索引（从第3行开始）
+                    for (let i = dataStartRow; i < file2Data.length; i++) {
+                        const row = file2Data[i];
+                        if (row[0]) {
+                            map2.set(String(row[0]).trim(), { index: i, data: row });
+                        }
+                    }
+                    
+                    // 收集所有的A列值
+                    const allKeys = new Set([...map1.keys(), ...map2.keys()]);
+                    const sortedKeys = Array.from(allKeys).sort();
+                    
+                    let diffCount = 0;
+                    let sameCount = 0;
+                    let currentRowIndex = headerRowCount; // 从第3行开始（前两行是表头）
+                    
+                    // 获取当前日期
+                    const now = new Date();
+                    const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                    
+                    // 存储每行的类型信息
+                    const rowTypes = []; // 0: same, 1: added, 2: deleted, 3: changed
+                    
+                    // 遍历所有A列值
+                    for (const key of sortedKeys) {
+                        const item1 = map1.get(key);
+                        const item2 = map2.get(key);
+                        
+                        let resultRow;
+                        let diffDescription = '';
+                        const diffIndices = []; // 记录差异列索引
+                        let rowType = 0; // 默认为same
+                        
+                        if (item1 && item2) {
+                            // 两份文件都有，比较差异
+                            const diffs = compareRows(item1.data, item2.data, diffIndices);
+                            if (diffs.length > 0) {
+                                diffDescription = diffs.join('; ');
+                                diffCount++;
+                                rowType = 3; // changed
+                                // 合并两份文件的数据：必须按索引遍历，确保空值保留位置
+                                resultRow = [];
+                                for (let col = 0; col < maxCols; col++) {
+                                    if (col < item2.data.length && item2.data[col] !== undefined) {
+                                        resultRow.push(item2.data[col]);
+                                    } else if (col < item1.data.length && item1.data[col] !== undefined) {
+                                        resultRow.push(item1.data[col]);
+                                    } else {
+                                        resultRow.push('');
+                                    }
+                                }
+                                // 标记有差异的单元格
+                                for (const colIdx of diffIndices) {
+                                    diffCells.add(`${currentRowIndex},${colIdx + 1}`); // +1因为前面插入了差异说明列
+                                }
+                            } else {
+                                diffDescription = '无差异';
+                                sameCount++;
+                                rowType = 0; // same
+                                // 合并两份文件的数据：必须按索引遍历，确保空值保留位置
+                                resultRow = [];
+                                for (let col = 0; col < maxCols; col++) {
+                                    if (col < item2.data.length && item2.data[col] !== undefined) {
+                                        resultRow.push(item2.data[col]);
+                                    } else if (col < item1.data.length && item1.data[col] !== undefined) {
+                                        resultRow.push(item1.data[col]);
+                                    } else {
+                                        resultRow.push('');
+                                    }
+                                }
+                            }
+                        } else if (item1 && !item2) {
+                            // 只在第一份文件中 = 删除
+                            diffDescription = `${dateStr}删除`;
+                            diffCount++;
+                            rowType = 2; // deleted
+                            // 必须按索引遍历，确保空值也能保留位置
+                            resultRow = [];
+                            for (let col = 0; col < maxCols; col++) {
+                                if (col < item1.data.length && item1.data[col] !== undefined) {
+                                    resultRow.push(item1.data[col]);
+                                } else {
+                                    resultRow.push('');
+                                }
+                            }
+                        } else {
+                            // 只在第二份文件中 = 新增
+                            diffDescription = `${dateStr}新增`;
+                            diffCount++;
+                            rowType = 1; // added
+                            // 必须按索引遍历，确保空值也能保留位置
+                            resultRow = [];
+                            for (let col = 0; col < maxCols; col++) {
+                                if (col < item2.data.length && item2.data[col] !== undefined) {
+                                    resultRow.push(item2.data[col]);
+                                } else {
+                                    resultRow.push('');
+                                }
+                            }
+                        }
+                        
+                        resultRow.unshift(diffDescription);
+                        resultData.push(resultRow);
+                        rowTypes.push(rowType);
+                        currentRowIndex++;
+                    }
+                    
+                    // 创建工作簿
+                    const ws = XLSX.utils.aoa_to_sheet(resultData);
+                    
+                    // 设置A列宽度
+                    const colWidths = [{ wch: 50 }];
+                    for (let i = 1; i < 20; i++) {
+                        colWidths.push({ wch: 15 });
+                    }
+                    ws['!cols'] = colWidths;
+                    
+                    // 为每行添加背景色
+                    for (let i = headerRowCount; i < resultData.length; i++) {
+                        const rowType = rowTypes[i - headerRowCount];
+                        const row = resultData[i];
+                        
+                        for (let col = 0; col < row.length; col++) {
+                            const cellAddress = XLSX.utils.encode_cell({ r: i, c: col });
+                            if (!ws[cellAddress]) continue;
+                            
+                            if (!ws[cellAddress].s) {
+                                ws[cellAddress].s = {};
+                            }
+                            
+                            if (rowType === 1) {
+                                // 新增：绿色背景，黑色字体
+                                ws[cellAddress].s.fill = { patternType: 'solid', fgColor: { rgb: 'FF90EE90' } };
+                                ws[cellAddress].s.font = { color: { rgb: 'FF000000' } };
+                            } else if (rowType === 2) {
+                                // 删除：红色背景，黑色字体
+                                ws[cellAddress].s.fill = { patternType: 'solid', fgColor: { rgb: 'FFFF6B6B' } };
+                                ws[cellAddress].s.font = { color: { rgb: 'FF000000' } };
+                            } else if (rowType === 3) {
+                                // 变更：只在差异说明列添加黄色背景
+                                if (col === 0) {
+                                    ws[cellAddress].s.fill = { patternType: 'solid', fgColor: { rgb: 'FFFFD700' } };
+                                    ws[cellAddress].s.font = { color: { rgb: 'FF000000' } };
+                                }
+                            }
+                        }
+                    }
+                    
+                    // 为有差异的单元格添加红色背景
+                    for (const cellRef of diffCells) {
+                        const [rowIdx, colIdx] = cellRef.split(',').map(Number);
+                        const cellAddress = XLSX.utils.encode_cell({ r: rowIdx, c: colIdx });
+                        if (ws[cellAddress]) {
+                            if (!ws[cellAddress].s) {
+                                ws[cellAddress].s = {};
+                            }
+                            // 变更行的差异单元格：更深的红色背景，黑色字体
+                            ws[cellAddress].s.fill = { patternType: 'solid', fgColor: { rgb: 'FFFF4444' } };
+                            ws[cellAddress].s.font = { color: { rgb: 'FF000000' } };
+                        }
+                    }
+                    
+                    const wb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(wb, ws, '比对结果');
+                    
+                    // 生成下载链接
+                    XLSX.writeFile(wb, 'wirelist比对结果.xlsx');
+                    
+                    // 显示结果统计
+                    document.getElementById('resultText').innerHTML = `
+                        总共比较了 ${sortedKeys.length} 行<br>
+                        发现差异: ${diffCount} 行<br>
+                        完全相同: ${sameCount} 行
+                    `;
+                    
+                    // 在网页中展示表格（带行类型信息）
+                    displayTable(resultData, diffCells, headerRowCount);
+                    
+                    // 显示筛选按钮
+                    document.getElementById('filterSection').style.display = 'flex';
+                    
+                    document.getElementById('resultSection').classList.add('show');
+                    
+                } catch (error) {
+                    console.error(error);
+                    showError('比对过程中出错: ' + error.message);
+                }
+                
+                document.getElementById('loading').classList.remove('show');
+            }, 500);
+        }
+
+        function compareRows(row1, row2, diffIndices) {
+            const diffs = [];
+            const maxLength = Math.max(row1.length, row2.length);
+            
+            // 获取当前日期
+            const now = new Date();
+            const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            
+            for (let i = 0; i < maxLength; i++) {
+                const val1 = row1[i] !== undefined ? String(row1[i]).trim() : '';
+                const val2 = row2[i] !== undefined ? String(row2[i]).trim() : '';
+                
+                if (val1 !== val2) {
+                    const colName = String.fromCharCode(65 + i);
+                    diffs.push(`${dateStr}变更, ${colName}列: "${val1}" 更改为 "${val2}"`);
+                    diffIndices.push(i); // 记录差异列索引
+                }
+            }
+            
+            return diffs;
+        }
+
+        let currentFilter = 'all';
+        let tableRows = []; // 存储所有行数据
+        let headerRowCount = 2; // 前两行是表头
+
+        function displayTable(data, diffCells, headerRows) {
+            const tableHead = document.getElementById('tableHead');
+            const tableBody = document.getElementById('tableBody');
+            
+            // 清空表格
+            tableHead.innerHTML = '';
+            tableBody.innerHTML = '';
+            tableRows = [];
+            
+            if (data.length === 0) return;
+            
+            // 创建表头（两行）
+            for (let h = 0; h < headerRows; h++) {
+                const headerRow = document.createElement('tr');
+                const headers = data[h];
+                headers.forEach((header, index) => {
+                    const th = document.createElement('th');
+                    th.textContent = header || '';
+                    headerRow.appendChild(th);
+                });
+                tableHead.appendChild(headerRow);
+            }
+            
+            // 创建表格内容并存储（从第3行开始）
+            for (let i = headerRows; i < data.length; i++) {
+                const row = data[i];
+                const tr = document.createElement('tr');
+                const diffDesc = row[0] || '';
+                
+                // 判断行类型：基于新的差异说明格式
+                let rowType = 'same';
+                if (diffDesc.endsWith('删除') && !diffDesc.includes('变更')) {
+                    // 日期+删除 = 删除
+                    rowType = 'deleted';
+                } else if (diffDesc.endsWith('新增')) {
+                    // 日期+新增 = 新增
+                    rowType = 'added';
+                } else if (diffDesc.includes('变更')) {
+                    // 包含"变更" = 变更
+                    rowType = 'changed';
+                }
+                
+                tr.dataset.type = rowType;
+                
+                // 添加行样式类
+                if (rowType === 'added') {
+                    tr.classList.add('added-row');
+                } else if (rowType === 'deleted') {
+                    tr.classList.add('deleted-row');
+                } else if (rowType === 'changed') {
+                    tr.classList.add('changed-row');
+                }
+                
+                row.forEach((cell, colIndex) => {
+                    const td = document.createElement('td');
+                    td.textContent = cell !== undefined ? cell : '';
+                    
+                    // 检查是否是差异单元格
+                    if (diffCells.has(`${i},${colIndex}`)) {
+                        td.classList.add('diff-cell');
+                        td.title = '该单元格在两份文件中不同';
+                    }
+                    
+                    tr.appendChild(td);
+                });
+                
+                tableRows.push(tr);
+                tableBody.appendChild(tr);
+            }
+        }
+
+        function filterTable(type) {
+            currentFilter = type;
+            
+            // 更新按钮状态
+            const buttons = document.querySelectorAll('.filter-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // 筛选行
+            tableRows.forEach(row => {
+                if (type === 'all') {
+                    row.style.display = '';
+                } else if (type === row.dataset.type) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        function copyToClipboard() {
+            // 获取表头
+            const tableHead = document.getElementById('tableHead');
+            const tableBody = document.getElementById('tableBody');
+            
+            if (!tableHead || !tableBody) {
+                showError('没有可复制的数据');
+                return;
+            }
+            
+            // 获取所有可见的行
+            const visibleRows = tableBody.querySelectorAll('tr[style=""], tr:not([style])');
+            
+            if (visibleRows.length === 0) {
+                showError('当前筛选结果为空，无法复制');
+                return;
+            }
+            
+            // 构建HTML表格（保留样式）
+            const table = document.createElement('table');
+            table.style.borderCollapse = 'collapse';
+            table.style.width = '100%';
+            table.style.fontSize = '13px';
+            
+            // 复制表头（两行）
+            const htmlHead = document.createElement('thead');
+            const headerRows = tableHead.querySelectorAll('tr');
+            headerRows.forEach(headerRow => {
+                const clonedRow = headerRow.cloneNode(true);
+                // 为表头添加样式（使用纯色，因为Excel不支持gradient）
+                clonedRow.style.backgroundColor = '#667eea';
+                clonedRow.style.color = 'white';
+                
+                // 为每个表头单元格添加样式
+                const thCells = clonedRow.querySelectorAll('th');
+                thCells.forEach(th => {
+                    th.style.backgroundColor = '#667eea';
+                    th.style.color = 'white';
+                    th.style.padding = '12px 8px';
+                    th.style.textAlign = 'left';
+                    th.style.fontWeight = '600';
+                });
+                
+                htmlHead.appendChild(clonedRow);
+            });
+            table.appendChild(htmlHead);
+            
+            // 复制可见行，并应用内联样式
+            const htmlBody = document.createElement('tbody');
+            visibleRows.forEach(row => {
+                const clonedRow = row.cloneNode(true);
+                const rowType = clonedRow.dataset.type;
+                
+                // 为整行添加背景色
+                if (rowType === 'added') {
+                    clonedRow.style.backgroundColor = '#90EE90';
+                } else if (rowType === 'deleted') {
+                    clonedRow.style.backgroundColor = '#FF6B6B';
+                }
+                
+                // 为每个单元格添加样式
+                const cells = clonedRow.querySelectorAll('td');
+                cells.forEach((cell, index) => {
+                    if (rowType === 'added') {
+                        cell.style.backgroundColor = '#90EE90';
+                        cell.style.color = '#000000';
+                    } else if (rowType === 'deleted') {
+                        cell.style.backgroundColor = '#FF6B6B';
+                        cell.style.color = '#000000';
+                    } else if (rowType === 'changed') {
+                        if (index === 0) {
+                            // 差异说明列
+                            cell.style.backgroundColor = '#FFD700';
+                            cell.style.color = '#000000';
+                        } else if (cell.classList.contains('diff-cell')) {
+                            // 差异单元格
+                            cell.style.backgroundColor = '#FF4444';
+                            cell.style.color = '#000000';
+                            cell.style.fontWeight = 'bold';
+                        } else {
+                            // 其他列
+                            cell.style.backgroundColor = 'transparent';
+                        }
+                    }
+                });
+                
+                htmlBody.appendChild(clonedRow);
+            });
+            table.appendChild(htmlBody);
+            
+            // 构建制表符分隔的文本（适合Excel粘贴）
+            const colCount = tableHead.querySelectorAll('tr:last-child th').length;
+            let clipboardText = '';
+            
+            // 添加表头（两行）
+            headerRows.forEach(headerRow => {
+                const headers = headerRow.querySelectorAll('th');
+                const headerValues = Array.from(headers).map(th => th.textContent || '');
+                clipboardText += headerValues.join('\t') + '\n';
+            });
+            
+            // 添加可见行
+            visibleRows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                const rowValues = [];
+                
+                for (let i = 0; i < colCount; i++) {
+                    if (i < cells.length) {
+                        rowValues.push(cells[i].textContent || '');
+                    } else {
+                        rowValues.push('');
+                    }
+                }
+                
+                clipboardText += rowValues.join('\t') + '\n';
+            });
+            
+            // 尝试使用Clipboard API同时复制HTML和文本
+            const clipboardItem = new ClipboardItem({
+                'text/html': new Blob([table.outerHTML], { type: 'text/html' }),
+                'text/plain': new Blob([clipboardText], { type: 'text/plain' })
+            });
+            
+            navigator.clipboard.write([clipboardItem]).then(() => {
+                // 显示成功提示
+                const copyBtn = document.querySelector('.copy-btn');
+                const originalText = copyBtn.textContent;
+                copyBtn.textContent = '✓ 已复制（含颜色）';
+                copyBtn.style.background = '#28a745';
+                copyBtn.style.color = 'white';
+                
+                setTimeout(() => {
+                    copyBtn.textContent = originalText;
+                    copyBtn.style.background = '';
+                    copyBtn.style.color = '';
+                }, 2000);
+            }).catch(err => {
+                console.log('HTML复制失败，降级到纯文本复制', err);
+                
+                // 降级方案：只复制纯文本
+                const textArea = document.createElement('textarea');
+                textArea.value = clipboardText;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-999999px';
+                document.body.appendChild(textArea);
+                textArea.select();
+                
+                try {
+                    document.execCommand('copy');
+                    const copyBtn = document.querySelector('.copy-btn');
+                    const originalText = copyBtn.textContent;
+                    copyBtn.textContent = '✓ 已复制（纯文本）';
+                    copyBtn.style.background = '#28a745';
+                    copyBtn.style.color = 'white';
+                    
+                    setTimeout(() => {
+                        copyBtn.textContent = originalText;
+                        copyBtn.style.background = '';
+                        copyBtn.style.color = '';
+                    }, 2000);
+                } catch (err) {
+                    showError('复制失败，请手动选择复制');
+                }
+                
+                document.body.removeChild(textArea);
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,1344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<!--
+    Master List 比对工具
+    版本: v2.5 - 2025-01-10
+    更新: 去除ALL特殊识别逻辑，ALL作为配置列使用(零件号+ALL)作为key对比数据
+    版本历史:
+    - v2.4 - 深度修复ALL列识别逻辑，通过索引匹配而非key匹配，确保ALL列总是正确显示
+    - v2.3 - 修复ALL列不显示的问题，确保ALL列总是被包含在配置列中
+    - v2.2 - 删除的列保持原始位置，而不是放在最后
+    - v2.1 - 为前4行表头添加固定height:38px，防止滚动时行高变化
+    - v2.0 - 修正前4行冻结的top值和z-index层级，确保滚动时正确显示
+    - v1.9 - 前4行字体改为黑色，优化冻结设置确保正确生效
+    - v1.8 - 修复第1行冻结问题，确保前4行全部正确冻结
+    - v1.7 - 恢复前4行表头全部冻结，滚动时保持不动
+    - v1.6 - 新增行和新增列的字体颜色改为黑色
+    - v1.5 - 新增列用绿色标记，与删除列（红色）形成对比
+    - v1.4 - 旧版删除的列和删除的行在新版中显示，用红色标记
+    - v1.3 - 变更单元格只显示新值，不再显示"旧值 → 新值"格式
+    - v1.2 - 所有字体设置为黑色，有变化点的行的零件号标记为黄色
+    - v1.1 - 页面宽度增加一倍，只冻结第4行作为表头，预览界面充满屏幕
+    - v1.0 - 初始版本，前4行冻结
+-->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master List 比对工具 v2.5</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 2800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+
+        .upload-section {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+            justify-content: center;
+        }
+
+        .upload-box {
+            flex: 1;
+            max-width: 400px;
+            border: 3px dashed #667eea;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s;
+            background: #f8f9ff;
+        }
+
+        .upload-box:hover {
+            border-color: #764ba2;
+            background: #f0f1ff;
+        }
+
+        .upload-box.dragover {
+            border-color: #4CAF50;
+            background: #e8f5e9;
+        }
+
+        .upload-box input[type="file"] {
+            display: none;
+        }
+
+        .upload-box label {
+            display: block;
+            cursor: pointer;
+            color: #667eea;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .upload-box .file-name {
+            margin-top: 10px;
+            color: #666;
+            font-size: 14px;
+            word-break: break-all;
+        }
+
+        .upload-box .status {
+            margin-top: 10px;
+            font-size: 12px;
+        }
+
+        .upload-box .status.success {
+            color: #4CAF50;
+        }
+
+        .upload-box .status.error {
+            color: #f44336;
+        }
+
+        .button-section {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        button {
+            padding: 12px 30px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+
+        .btn-compare {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-compare:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-compare:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-export {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+        }
+
+        .btn-export:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+        }
+
+        .btn-export:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            text-align: center;
+            color: #667eea;
+            font-size: 18px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .result-section {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .result-section.show {
+            display: block;
+        }
+
+        .summary {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .summary h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .summary-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .summary-item .number {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .summary-item.modified .number {
+            color: #FFC107;
+        }
+
+        .summary-item.added .number {
+            color: #4CAF50;
+        }
+
+        .summary-item.deleted .number {
+            color: #f44336;
+        }
+
+        .summary-item .label {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .preview-section {
+            margin-top: 20px;
+        }
+
+        .preview-section h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .table-container {
+            overflow: auto;
+            max-height: calc(100vh - 200px);
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            position: relative;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        table {
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 13px;
+        }
+
+        th, td {
+            border: 1px solid #e8e8e8;
+            padding: 8px 12px;
+            text-align: left;
+            line-height: 1.5;
+            vertical-align: top;
+            color: black;
+        }
+
+        /* 表头 - 前4行固定 */
+        thead th {
+            font-weight: 600;
+            font-size: 13px;
+            background: #667eea;
+            color: black;
+            position: sticky;
+            height: 38px;
+            box-sizing: border-box;
+            vertical-align: middle;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        /* 前4行表头全部冻结 - 固定行高38px */
+        thead tr:nth-child(1) th {
+            position: sticky !important;
+            top: 0;
+            z-index: 20;
+        }
+        thead tr:nth-child(2) th {
+            position: sticky !important;
+            top: 38px;
+            z-index: 21;
+        }
+        thead tr:nth-child(3) th {
+            position: sticky !important;
+            top: 76px;
+            z-index: 22;
+        }
+        thead tr:nth-child(4) th {
+            position: sticky !important;
+            top: 114px;
+            z-index: 23;
+        }
+
+        /* 首列固定 - 确保有背景色避免遮挡 */
+        td:first-child {
+            position: sticky;
+            left: 0;
+            z-index: 15;
+            background: #fff;
+            font-weight: 600;
+        }
+
+        /* 斑马纹行的首列保持背景色 */
+        tbody tr:nth-child(even) td:first-child {
+            background: #fafafa;
+        }
+
+        /* 悬停状态的首列 */
+        tbody tr:hover td:first-child {
+            background: #f0f7ff;
+        }
+
+        /* 新增/删除行的首列 */
+        .row-added td:first-child {
+            background: #4CAF50 !important;
+            color: black;
+        }
+
+        .row-deleted td:first-child {
+            background: #f44336 !important;
+            color: white;
+        }
+
+        /* 有变化点的行的零件号标记为黄色 */
+        .has-changes td:first-child {
+            background-color: #FFC107 !important;
+            font-weight: bold;
+        }
+
+        thead th:first-child {
+            z-index: 50;
+            background: #5568d3;
+        }
+
+        .cell-modified {
+            background-color: #FFC107 !important;
+        }
+
+        .cell-added {
+            background-color: #4CAF50 !important;
+            color: black;
+        }
+
+        .cell-deleted {
+            background-color: #f44336 !important;
+            color: white;
+        }
+
+        .row-added {
+            background-color: #4CAF50 !important;
+            color: black;
+        }
+
+        .row-deleted {
+            background-color: #f44336 !important;
+            color: white;
+            text-decoration: line-through;
+        }
+
+        .col-header-added {
+            background-color: #4CAF50 !important;
+        }
+
+        .col-header-deleted {
+            background-color: #f44336 !important;
+        }
+
+        /* 斑马纹行 */
+        tbody tr:nth-child(even) {
+            background-color: #fafafa;
+        }
+
+        tbody tr:hover {
+            background-color: #f0f7ff;
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .legend-color {
+            width: 30px;
+            height: 20px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+
+        .legend-color.modified {
+            background-color: #FFC107;
+        }
+
+        .legend-color.added {
+            background-color: #4CAF50;
+        }
+
+        .legend-color.deleted {
+            background-color: #f44336;
+        }
+
+        .filter-section {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .filter-section span {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .filter-btn {
+            padding: 8px 20px;
+            font-size: 14px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            background: white;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .filter-btn:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .filter-btn.active {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+
+        .filter-btn.count {
+            min-width: 80px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Master List 比对工具 v2.5</h1>
+
+        <div class="upload-section">
+            <div class="upload-box" id="uploadBox1">
+                <input type="file" id="file1" accept=".xlsx,.xls">
+                <label for="file1">
+                    <div>📁 点击上传旧版本文件</div>
+                    <div class="file-name" id="fileName1">未选择文件</div>
+                </label>
+                <div class="status" id="status1"></div>
+            </div>
+
+            <div class="upload-box" id="uploadBox2">
+                <input type="file" id="file2" accept=".xlsx,.xls">
+                <label for="file2">
+                    <div>📁 点击上传新版本文件</div>
+                    <div class="file-name" id="fileName2">未选择文件</div>
+                </label>
+                <div class="status" id="status2"></div>
+            </div>
+        </div>
+
+        <div class="button-section">
+            <button class="btn-compare" id="compareBtn" disabled>开始比对</button>
+            <button class="btn-export" id="exportBtn" disabled>导出结果</button>
+        </div>
+
+        <div class="loading" id="loading">正在处理数据，请稍候...</div>
+
+        <div class="result-section" id="resultSection">
+            <div class="summary">
+                <h3>比对结果摘要</h3>
+                <div class="summary-grid">
+                    <div class="summary-item modified">
+                        <div class="number" id="modifiedCount">0</div>
+                        <div class="label">单元格变更</div>
+                    </div>
+                    <div class="summary-item added">
+                        <div class="number" id="addedRowsCount">0</div>
+                        <div class="label">新增行</div>
+                    </div>
+                    <div class="summary-item deleted">
+                        <div class="number" id="deletedRowsCount">0</div>
+                        <div class="label">删除行</div>
+                    </div>
+                    <div class="summary-item added">
+                        <div class="number" id="addedColsCount">0</div>
+                        <div class="label">新增列</div>
+                    </div>
+                    <div class="summary-item deleted">
+                        <div class="number" id="deletedColsCount">0</div>
+                        <div class="label">删除列</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color modified"></div>
+                    <span>单元格变更（黄色）</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color added"></div>
+                    <span>新增（绿色）</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color deleted"></div>
+                    <span>删除（红色）</span>
+                </div>
+            </div>
+
+            <div class="preview-section">
+                <h3>预览（全部）</h3>
+                <div class="filter-section">
+                    <span>筛选：</span>
+                    <button class="filter-btn count active" data-filter="all">全部 (0)</button>
+                    <button class="filter-btn count" data-filter="added">新增 (0)</button>
+                    <button class="filter-btn count" data-filter="deleted">删除 (0)</button>
+                    <button class="filter-btn count" data-filter="modified">变更 (0)</button>
+                </div>
+                <div class="table-container" id="tableContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let workbook1 = null;
+        let workbook2 = null;
+        let comparisonResult = null;
+        let currentFilter = 'all';
+
+        // 文件上传处理
+        function setupFileUpload(fileInputId, fileNameId, statusId, uploadBoxId) {
+            const fileInput = document.getElementById(fileInputId);
+            const fileNameEl = document.getElementById(fileNameId);
+            const statusEl = document.getElementById(statusId);
+            const uploadBox = document.getElementById(uploadBoxId);
+
+            fileInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                fileNameEl.textContent = file.name;
+                statusEl.textContent = '正在加载...';
+                statusEl.className = 'status';
+
+                try {
+                    const data = await file.arrayBuffer();
+                    const workbook = XLSX.read(data, { type: 'array', cellStyles: true });
+
+                    if (fileInputId === 'file1') {
+                        workbook1 = workbook;
+                    } else {
+                        workbook2 = workbook;
+                    }
+
+                    statusEl.textContent = '✓ 加载成功';
+                    statusEl.className = 'status success';
+                    checkBothFilesLoaded();
+                } catch (error) {
+                    statusEl.textContent = '✗ 加载失败: ' + error.message;
+                    statusEl.className = 'status error';
+                }
+            });
+
+            // 拖拽上传
+            uploadBox.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadBox.classList.add('dragover');
+            });
+
+            uploadBox.addEventListener('dragleave', () => {
+                uploadBox.classList.remove('dragover');
+            });
+
+            uploadBox.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadBox.classList.remove('dragover');
+
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    fileInput.files = files;
+                    fileInput.dispatchEvent(new Event('change'));
+                }
+            });
+        }
+
+        setupFileUpload('file1', 'fileName1', 'status1', 'uploadBox1');
+        setupFileUpload('file2', 'fileName2', 'status2', 'uploadBox2');
+
+        function checkBothFilesLoaded() {
+            const compareBtn = document.getElementById('compareBtn');
+            if (workbook1 && workbook2) {
+                compareBtn.disabled = false;
+            }
+        }
+
+        // 读取第8个sheet（索引7）及列宽信息
+        function readSheetData(workbook) {
+            const sheetName = workbook.SheetNames[7];
+            const worksheet = workbook.Sheets[sheetName];
+            const data = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+
+            // 获取列宽信息
+            const colWidths = [];
+            if (worksheet['!cols']) {
+                worksheet['!cols'].forEach(col => {
+                    // Excel列宽单位转换：1单位 ≈ 7像素
+                    const width = col.wch ? Math.round(col.wch * 7) : 100;
+                    colWidths.push(width);
+                });
+            }
+
+            return { data, colWidths };
+        }
+
+        // 获取单元格值
+        function getCellValue(row, col) {
+            if (!row || col >= row.length) return '';
+            return row[col] || '';
+        }
+
+        // 解析列结构
+        function parseColumnStructure(data) {
+            if (data.length < 4) return { fixed: [], model: [], config: [] };
+
+            const headerRow3 = data[3] || []; // 第4行（索引3）
+            const totalCols = headerRow3.length;
+
+            const result = {
+                fixed: [],
+                model: [],
+                config: []
+            };
+
+            // 前8列为固定列
+            for (let i = 0; i < Math.min(8, totalCols); i++) {
+                result.fixed.push(i);
+            }
+
+            // 从第8列开始，区分数字（车型）和字母（配置，包括ALL）
+            for (let i = 8; i < totalCols; i++) {
+                const cellValue = String(getCellValue(headerRow3, i)).trim();
+                if (/^\d+$/.test(cellValue)) {
+                    // 数字列为车型列
+                    result.model.push({ index: i, key: cellValue });
+                } else {
+                    // 字母列为配置列（包括ALL）
+                    result.config.push({ index: i, key: cellValue || `Config_${i}` });
+                }
+            }
+
+            return result;
+        }
+
+        // 比对两个Excel
+        function compareExcel(data1, data2, colWidths) {
+            const structure1 = parseColumnStructure(data1);
+            const structure2 = parseColumnStructure(data2);
+
+            // 收集所有列信息 - 按列名判断是否真正的新增/删除
+            const allColumns = new Map(); // key: 新版本索引, value: { index, key, existsInV1, existsInV2, type }
+            const deletedColumnsInfo = []; // 记录真正删除的列
+
+            // 添加新版本的列
+            structure2.model.forEach(m => {
+                const existsInV1 = structure1.model.some(m1 => m1.key === m.key);
+                allColumns.set(m.index, {
+                    index: m.index,
+                    key: m.key,
+                    existsInV1,
+                    existsInV2: true,
+                    type: 'model',
+                    isAdded: !existsInV1  // 标记新增列
+                });
+            });
+
+            structure2.config.forEach(c => {
+                const existsInV1 = structure1.config.some(c1 => c1.key === c.key);
+                allColumns.set(c.index, {
+                    index: c.index,
+                    key: c.key,
+                    existsInV1,
+                    existsInV2: true,
+                    type: 'config',
+                    isAdded: !existsInV1  // 标记新增列
+                });
+            });
+
+            // 找出真正删除的列（只存在于旧版本，不存在于新版本）
+            structure1.model.forEach(m => {
+                const existsInV2 = structure2.model.some(m2 => m2.key === m.key);
+                if (!existsInV2) {
+                    deletedColumnsInfo.push({ ...m, type: 'model' });
+                }
+            });
+
+            structure1.config.forEach(c => {
+                const existsInV2 = structure2.config.some(c2 => c2.key === c.key);
+                if (!existsInV2) {
+                    deletedColumnsInfo.push({ ...c, type: 'config' });
+                }
+            });
+
+            // 将删除的列也添加到显示中，保持原始位置
+            deletedColumnsInfo.forEach((col) => {
+                allColumns.set(col.index, {
+                    index: col.index, // 使用原始索引
+                    key: col.key,
+                    existsInV1: true,
+                    existsInV2: false, // 标记为删除
+                    type: col.type,
+                    isDeleted: true
+                });
+            });
+
+            // 添加固定列
+            for (let i = 0; i < 8; i++) {
+                if (!allColumns.has(i)) {
+                    allColumns.set(i, {
+                        index: i,
+                        key: '',
+                        existsInV1: true,
+                        existsInV2: true,
+                        type: 'fixed'
+                    });
+                }
+            }
+
+            const sortedColumns = Array.from(allColumns.keys()).sort((a, b) => a - b);
+
+            // 构建车型和配置的映射：零件号+车型/配置 -> 行索引+列索引
+            const modelData1 = new Map(); // key: "零件号_车型", value: { rowIdx, colIdx, value }
+            const modelData2 = new Map();
+            const configData1 = new Map(); // key: "零件号_配置", value: { rowIdx, colIdx, value }
+            const configData2 = new Map();
+            const fixedData1 = new Map(); // key: 零件号, value: rowIdx
+            const fixedData2 = new Map();
+
+            // 从第5行开始（索引4）为数据行
+            for (let i = 4; i < data1.length; i++) {
+                const partNo = String(getCellValue(data1[i], 0)).trim();
+                if (!partNo) continue;
+
+                fixedData1.set(partNo, i);
+
+                // 收集车型数据
+                structure1.model.forEach(m => {
+                    const key = `${partNo}_${m.key}`;
+                    const value = getCellValue(data1[i], m.index);
+                    modelData1.set(key, { rowIdx: i, colIdx: m.index, value, modelKey: m.key, partNo });
+                });
+
+                // 收集配置数据
+                structure1.config.forEach(c => {
+                    const key = `${partNo}_${c.key}`;
+                    const value = getCellValue(data1[i], c.index);
+                    configData1.set(key, { rowIdx: i, colIdx: c.index, value, configKey: c.key, partNo });
+                });
+            }
+
+            for (let i = 4; i < data2.length; i++) {
+                const partNo = String(getCellValue(data2[i], 0)).trim();
+                if (!partNo) continue;
+
+                fixedData2.set(partNo, i);
+
+                // 收集车型数据
+                structure2.model.forEach(m => {
+                    const key = `${partNo}_${m.key}`;
+                    const value = getCellValue(data2[i], m.index);
+                    modelData2.set(key, { rowIdx: i, colIdx: m.index, value, modelKey: m.key, partNo });
+                });
+
+                // 收集配置数据
+                structure2.config.forEach(c => {
+                    const key = `${partNo}_${c.key}`;
+                    const value = getCellValue(data2[i], c.index);
+                    configData2.set(key, { rowIdx: i, colIdx: c.index, value, configKey: c.key, partNo });
+                });
+            }
+
+            // 识别新增和删除的列
+            const addedColumns = [];
+            const deletedColumns = [];
+
+            const modelKeys1 = new Set(structure1.model.map(m => m.key));
+            const modelKeys2 = new Set(structure2.model.map(m => m.key));
+            const configKeys1 = new Set(structure1.config.map(c => c.key));
+            const configKeys2 = new Set(structure2.config.map(c => c.key));
+
+            // 创建列名到新版本的索引映射（用于显示）
+            const modelKeyToIndex2 = new Map();
+            structure2.model.forEach(m => modelKeyToIndex2.set(m.key, m.index));
+            const configKeyToIndex2 = new Map();
+            structure2.config.forEach(c => configKeyToIndex2.set(c.key, c.index));
+
+            structure2.model.forEach(m => {
+                if (!modelKeys1.has(m.key)) {
+                    addedColumns.push({ index: m.index, key: m.key, type: 'model' });
+                }
+            });
+
+            structure1.model.forEach(m => {
+                if (!modelKeys2.has(m.key)) {
+                    deletedColumns.push({ index: m.index, key: m.key, type: 'model' });
+                }
+            });
+
+            structure2.config.forEach(c => {
+                if (!configKeys1.has(c.key)) {
+                    addedColumns.push({ index: c.index, key: c.key, type: 'config' });
+                }
+            });
+
+            structure1.config.forEach(c => {
+                if (!configKeys2.has(c.key)) {
+                    deletedColumns.push({ index: c.index, key: c.key, type: 'config' });
+                }
+            });
+
+            // 构建结果
+            const result = {
+                rows: [],
+                summary: {
+                    modifiedCells: 0,
+                    addedRows: 0,
+                    deletedRows: 0,
+                    addedColumns: addedColumns.length,
+                    deletedColumns: deletedColumns.length
+                },
+                columnInfo: {
+                    added: addedColumns,
+                    deleted: deletedColumns
+                }
+            };
+
+            // 收集所有差异
+            const differences = new Map(); // key: 零件号, value: { status, cells:[] }
+
+            // 对比固定列（前8列）
+            const allPartNumbers = new Set([...fixedData1.keys(), ...fixedData2.keys()]);
+
+            allPartNumbers.forEach(partNo => {
+                const row1Idx = fixedData1.get(partNo);
+                const row2Idx = fixedData2.get(partNo);
+
+                if (row1Idx === undefined) {
+                    // 新增零件号
+                    differences.set(partNo, { status: 'added', partNo, row2Idx, changes: [] });
+                } else if (row2Idx === undefined) {
+                    // 删除零件号
+                    differences.set(partNo, { status: 'deleted', partNo, row1Idx, changes: [] });
+                } else {
+                    // 两行都存在，检查固定列是否有变化
+                    const changes = [];
+                    for (let colIdx = 0; colIdx < 8; colIdx++) {
+                        const val1 = getCellValue(data1[row1Idx], colIdx);
+                        const val2 = getCellValue(data2[row2Idx], colIdx);
+                        if (String(val1).trim() !== String(val2).trim()) {
+                            changes.push({
+                                type: 'fixed',
+                                colIndex: colIdx,
+                                changeType: 'modified',
+                                oldValue: val1,
+                                newValue: val2
+                            });
+                        }
+                    }
+
+                    differences.set(partNo, {
+                        status: changes.length > 0 ? 'modified' : 'unchanged',
+                        partNo,
+                        row1Idx,
+                        row2Idx,
+                        changes
+                    });
+                }
+            });
+
+            // 对比车型列
+            const allModelKeys = new Set([...modelData1.keys(), ...modelData2.keys()]);
+
+            allModelKeys.forEach(key => {
+                const data1Item = modelData1.get(key);
+                const data2Item = modelData2.get(key);
+                const { partNo } = data2Item || data1Item;
+
+                const diff = differences.get(partNo);
+
+                // 只对比两个版本都存在的零件号
+                if (!diff || diff.status === 'added' || diff.status === 'deleted') {
+                    return;
+                }
+
+                if (data1Item && !data2Item) {
+                    // 删除的车型
+                    if (diff.status === 'unchanged') diff.status = 'modified';
+                    diff.changes.push({
+                        type: 'model',
+                        modelKey: data1Item.modelKey,
+                        colIndex: data1Item.colIdx,
+                        changeType: 'deleted',
+                        value: data1Item.value
+                    });
+                } else if (!data1Item && data2Item) {
+                    // 新增的车型
+                    if (diff.status === 'unchanged') diff.status = 'modified';
+                    diff.changes.push({
+                        type: 'model',
+                        modelKey: data2Item.modelKey,
+                        colIndex: data2Item.colIdx,
+                        changeType: 'added',
+                        value: data2Item.value
+                    });
+                } else if (data1Item && data2Item) {
+                    // 对比值
+                    if (String(data1Item.value).trim() !== String(data2Item.value).trim()) {
+                        if (diff.status === 'unchanged') diff.status = 'modified';
+                        diff.changes.push({
+                            type: 'model',
+                            modelKey: data1Item.modelKey,
+                            colIndex: data1Item.colIdx,
+                            changeType: 'modified',
+                            oldValue: data1Item.value,
+                            newValue: data2Item.value
+                        });
+                    }
+                }
+            });
+
+            // 对比配置列
+            const allConfigKeys = new Set([...configData1.keys(), ...configData2.keys()]);
+
+            allConfigKeys.forEach(key => {
+                const data1Item = configData1.get(key);
+                const data2Item = configData2.get(key);
+                const { partNo } = data2Item || data1Item;
+
+                const diff = differences.get(partNo);
+
+                // 只对比两个版本都存在的零件号
+                if (!diff || diff.status === 'added' || diff.status === 'deleted') {
+                    return;
+                }
+
+                if (data1Item && !data2Item) {
+                    // 删除的配置
+                    if (diff.status === 'unchanged') diff.status = 'modified';
+                    diff.changes.push({
+                        type: 'config',
+                        configKey: data1Item.configKey,
+                        colIndex: data1Item.colIdx,
+                        changeType: 'deleted',
+                        value: data1Item.value
+                    });
+                } else if (!data1Item && data2Item) {
+                    // 新增的配置
+                    if (diff.status === 'unchanged') diff.status = 'modified';
+                    diff.changes.push({
+                        type: 'config',
+                        configKey: data2Item.configKey,
+                        colIndex: data2Item.colIdx,
+                        changeType: 'added',
+                        value: data2Item.value
+                    });
+                } else if (data1Item && data2Item) {
+                    // 对比值
+                    if (String(data1Item.value).trim() !== String(data2Item.value).trim()) {
+                        if (diff.status === 'unchanged') diff.status = 'modified';
+                        diff.changes.push({
+                            type: 'config',
+                            configKey: data1Item.configKey,
+                            colIndex: data1Item.colIdx,
+                            changeType: 'modified',
+                            oldValue: data1Item.value,
+                            newValue: data2Item.value
+                        });
+                    }
+                }
+            });
+
+            // 转换为结果行
+            differences.forEach((diff, partNo) => {
+                if (diff.status === 'added') {
+                    result.summary.addedRows++;
+                    const row = {
+                        partNo,
+                        status: 'added',
+                        cells: []
+                    };
+                    sortedColumns.forEach(colIdx => {
+                        row.cells.push({
+                            colIndex: colIdx,
+                            value: getCellValue(data2[diff.row2Idx], colIdx),
+                            changed: false
+                        });
+                    });
+                    result.rows.push(row);
+                } else if (diff.status === 'deleted') {
+                    result.summary.deletedRows++;
+                    const row = {
+                        partNo,
+                        status: 'deleted',
+                        cells: []
+                    };
+                    sortedColumns.forEach(colIdx => {
+                        row.cells.push({
+                            colIndex: colIdx,
+                            value: getCellValue(data1[diff.row1Idx], colIdx),
+                            changed: false
+                        });
+                    });
+                    result.rows.push(row);
+                } else if (diff.status === 'modified' && diff.changes && diff.changes.length > 0) {
+                    const row = {
+                        partNo,
+                        status: 'modified',
+                        cells: [],
+                        row1Idx: diff.row1Idx,
+                        row2Idx: diff.row2Idx
+                    };
+
+                    sortedColumns.forEach(colIdx => {
+                        const change = diff.changes.find(c => c.colIndex === colIdx);
+                        if (change) {
+                            result.summary.modifiedCells++;
+                            row.cells.push({
+                                colIndex: colIdx,
+                                changed: true,
+                                oldValue: change.oldValue || '',
+                                newValue: change.newValue || change.value || '',
+                                changeType: change.changeType
+                            });
+                        } else {
+                            const val1 = diff.row1Idx !== undefined ? getCellValue(data1[diff.row1Idx], colIdx) : '';
+                            const val2 = diff.row2Idx !== undefined ? getCellValue(data2[diff.row2Idx], colIdx) : '';
+                            row.cells.push({
+                                colIndex: colIdx,
+                                changed: false,
+                                value: val2 || val1
+                            });
+                        }
+                    });
+
+                    result.rows.push(row);
+                }
+            });
+
+            return {
+                result,
+                data1,
+                data2,
+                structure1,
+                structure2,
+                sortedColumns,
+                allColumns,
+                modelKeyToIndex2,
+                configKeyToIndex2,
+                colWidths
+            };
+        }
+
+        // 开始比对
+        document.getElementById('compareBtn').addEventListener('click', () => {
+            const loading = document.getElementById('loading');
+            loading.classList.add('show');
+
+            setTimeout(() => {
+                try {
+                    const sheet1 = readSheetData(workbook1);
+                    const sheet2 = readSheetData(workbook2);
+
+                    comparisonResult = compareExcel(sheet1.data, sheet2.data, sheet2.colWidths);
+
+                    displayResult(comparisonResult);
+
+                    document.getElementById('exportBtn').disabled = false;
+                } catch (error) {
+                    alert('比对失败: ' + error.message);
+                } finally {
+                    loading.classList.remove('show');
+                }
+            }, 100);
+        });
+
+        // 显示结果
+        function displayResult(comparisonData, filter = 'all') {
+            const { result, data1, data2, structure1, structure2, sortedColumns, allColumns, modelKeyToIndex2, configKeyToIndex2, colWidths } = comparisonData;
+            currentFilter = filter;
+
+            // 更新摘要
+            document.getElementById('modifiedCount').textContent = result.summary.modifiedCells;
+            document.getElementById('addedRowsCount').textContent = result.summary.addedRows;
+            document.getElementById('deletedRowsCount').textContent = result.summary.deletedRows;
+            document.getElementById('addedColsCount').textContent = result.summary.addedColumns;
+            document.getElementById('deletedColsCount').textContent = result.summary.deletedColumns;
+
+            // 更新筛选按钮计数
+            let addedCount = 0;
+            let deletedCount = 0;
+            let modifiedCount = 0;
+
+            result.rows.forEach(row => {
+                if (row.status === 'added') addedCount++;
+                else if (row.status === 'deleted') deletedCount++;
+                else if (row.status === 'modified') modifiedCount++;
+            });
+
+            const filterBtns = document.querySelectorAll('.filter-btn');
+            filterBtns.forEach(btn => {
+                const btnFilter = btn.dataset.filter;
+                btn.classList.remove('active');
+
+                if (btnFilter === 'all') {
+                    btn.textContent = `全部 (${result.rows.length})`;
+                } else if (btnFilter === 'added') {
+                    btn.textContent = `新增 (${addedCount})`;
+                } else if (btnFilter === 'deleted') {
+                    btn.textContent = `删除 (${deletedCount})`;
+                } else if (btnFilter === 'modified') {
+                    btn.textContent = `变更 (${modifiedCount})`;
+                }
+
+                if (btnFilter === filter) {
+                    btn.classList.add('active');
+                }
+            });
+
+            // 生成表格预览
+            const tableContainer = document.getElementById('tableContainer');
+            let html = '<table><colgroup>';
+
+            // 应用Excel实际列宽
+            sortedColumns.forEach((colIdx, index) => {
+                const colInfo = allColumns.get(colIdx);
+                let width = 120;
+
+                if (colInfo) {
+                    if (colInfo.isDeleted) {
+                        // 删除的列，从旧版本列宽中获取
+                        width = colWidths && colWidths[colInfo.index] ? colWidths[colInfo.index] : 120;
+                    } else if (colInfo.isAdded) {
+                        // 新增的列，从新版本列宽中获取
+                        width = colWidths && colWidths[colInfo.index] ? colWidths[colInfo.index] : 120;
+                    } else {
+                        // 正常列
+                        width = colWidths && colWidths[colIdx] ? colWidths[colIdx] : 120;
+                    }
+                }
+
+                html += `<col style="width: ${width}px;">`;
+            });
+
+            html += '</colgroup><thead>';
+
+            // 前4行标题行作为固定表头
+            for (let i = 0; i < 4; i++) {
+                html += '<tr>';
+                sortedColumns.forEach(colIdx => {
+                    const colInfo = allColumns.get(colIdx);
+                    let cellValue;
+                    let thClass = '';
+
+                    // 如果是删除的列，从旧版本读取数据
+                    if (colInfo && colInfo.isDeleted) {
+                        cellValue = getCellValue(data1[i] || [], colInfo.index);
+                        // 第4行（索引3）用红色标记删除的列标题
+                        if (i === 3) {
+                            thClass = 'col-header-deleted';
+                        }
+                    } else if (colInfo && colInfo.isAdded) {
+                        // 新增的列，从新版本读取数据，使用colInfo.index
+                        cellValue = getCellValue(data2[i] || [], colInfo.index);
+                        // 第4行（索引3）用绿色标记新增的列标题
+                        if (i === 3) {
+                            thClass = 'col-header-added';
+                        }
+                    } else {
+                        // 普通列，从新版本读取，使用colIdx（显示索引，等于新版索引）
+                        cellValue = getCellValue(data2[i] || [], colIdx);
+                    }
+
+                    html += `<th class="${thClass}">${cellValue}</th>`;
+                });
+                html += '</tr>';
+            }
+
+            html += '</thead><tbody>';
+
+            // 添加分隔线
+            html += '<tr><td colspan="' + sortedColumns.length + '" style="background: #e8e8e8; color: #666; text-align: center; padding: 8px; font-size: 12px; font-weight: bold;">▼ 差异数据 ▼</td></tr>';
+
+            // 数据行（根据筛选条件过滤）
+            for (let i = 0; i < result.rows.length; i++) {
+                const row = result.rows[i];
+
+                // 根据筛选条件过滤
+                if (filter === 'added' && row.status !== 'added') continue;
+                if (filter === 'deleted' && row.status !== 'deleted') continue;
+                if (filter === 'modified' && row.status !== 'modified') continue;
+
+                let rowClass = '';
+                if (row.status === 'added') rowClass = 'row-added';
+                if (row.status === 'deleted') rowClass = 'row-deleted';
+
+                // 检查modified行是否有变化的单元格
+                if (row.status === 'modified') {
+                    const hasChangedCells = row.cells.some(cell => cell.changed);
+                    if (hasChangedCells) {
+                        rowClass += ' has-changes';
+                    }
+                }
+
+                html += `<tr class="${rowClass}">`;
+
+                row.cells.forEach(cell => {
+                    let cellClass = '';
+                    let cellValue = '';
+
+                    if (row.status === 'added' || row.status === 'deleted') {
+                        cellValue = cell.value || '';
+                    } else if (cell.changed) {
+                        // 变更只显示新值，用颜色标记
+                        cellClass = 'cell-modified';
+                        cellValue = cell.newValue || cell.value || '';
+                    } else {
+                        cellValue = cell.value || '';
+                    }
+
+                    html += `<td class="${cellClass}">${cellValue}</td>`;
+                });
+
+                html += '</tr>';
+            }
+
+            html += '</tbody></table>';
+
+            tableContainer.innerHTML = html;
+
+            document.getElementById('resultSection').classList.add('show');
+        }
+
+        // 筛选按钮事件监听
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (!comparisonResult) return;
+                const filter = btn.dataset.filter;
+                displayResult(comparisonResult, filter);
+            });
+        });
+
+        // 导出结果
+        document.getElementById('exportBtn').addEventListener('click', () => {
+            if (!comparisonResult) return;
+
+            const { result, data1, data2, sortedColumns } = comparisonResult;
+
+            // 创建导出数据
+            const exportData = [];
+
+            // 前4行（标题行）
+            for (let i = 0; i < 4; i++) {
+                const row = [];
+                sortedColumns.forEach(colIdx => {
+                    row.push(getCellValue(data2[i] || [], colIdx));
+                });
+                exportData.push(row);
+            }
+
+            // 添加空行
+            exportData.push(new Array(sortedColumns.length).fill(''));
+
+            // 添加统计信息
+            exportData.push(['比对结果摘要', '', '', '', '', '', '', '']);
+            exportData.push(['单元格变更', result.summary.modifiedCells, '', '', '', '', '', '']);
+            exportData.push(['新增行', result.summary.addedRows, '', '', '', '', '', '']);
+            exportData.push(['删除行', result.summary.deletedRows, '', '', '', '', '', '']);
+            exportData.push(['新增列', result.summary.addedColumns, '', '', '', '', '', '']);
+            exportData.push(['删除列', result.summary.deletedColumns, '', '', '', '', '', '']);
+
+            // 添加空行
+            exportData.push(new Array(sortedColumns.length).fill(''));
+
+            // 数据行
+            result.rows.forEach(row => {
+                const dataRow = [];
+                row.cells.forEach(cell => {
+                    if (row.status === 'added') {
+                        dataRow.push(cell.value || '');
+                    } else if (row.status === 'deleted') {
+                        dataRow.push(cell.value || '');
+                    } else if (cell.changed) {
+                        dataRow.push(cell.newValue || cell.value || '');
+                    } else {
+                        dataRow.push(cell.value || '');
+                    }
+                });
+                exportData.push(dataRow);
+            });
+
+            // 生成Excel
+            const ws = XLSX.utils.aoa_to_sheet(exportData);
+
+            // 设置列宽
+            const colWidths = sortedColumns.map(() => ({ wch: 15 }));
+            ws['!cols'] = colWidths;
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, '比对结果');
+
+            // 导出文件
+            const now = new Date();
+            const timestamp = now.toISOString().slice(0, 10).replace(/-/g, '');
+            XLSX.writeFile(wb, `MasterList比对结果_${timestamp}.xlsx`);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,3506 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>保险丝与线径匹配清单生成工具 v4.2 (直接连接版 - 去除焊点和Inline)</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0a0e0f;
+            --bg-card: #141a1d;
+            --bg-hover: #1c2428;
+            --text-primary: #e8eaec;
+            --text-secondary: #8b949e;
+            --accent-lime: #7fff00;
+            --accent-orange: #ff6b35;
+            --accent-cyan: #00d9ff;
+            --border: #2d353b;
+            --fuse-5a: #4ade80;
+            --fuse-10a: #60a5fa;
+            --fuse-15a: #a78bfa;
+            --fuse-20a: #f472b6;
+            --fuse-25a: #fb923c;
+            --fuse-30a: #facc15;
+            --fuse-40a: #f87171;
+            --fuse-50a: #e879f9;
+            --fuse-60a: #2dd4bf;
+            --fuse-70a: #94a3b8;
+            --fuse-80a: #a3a3a3;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Animated circuit board background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image:
+                linear-gradient(rgba(127, 255, 0, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(127, 255, 0, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            width: 100%;
+            max-width: none;
+            margin: 0 auto;
+            padding: 2rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        header {
+            margin-bottom: 3rem;
+            animation: fadeInDown 0.6s ease-out;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-lime), var(--accent-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            font-weight: 500;
+        }
+
+        /* Upload Section */
+        .upload-section {
+            background: var(--bg-card);
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 3rem 2rem;
+            text-align: center;
+            margin-bottom: 2rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-section::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(127, 255, 0, 0.05) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+
+        .upload-section:hover {
+            border-color: var(--accent-lime);
+            transform: translateY(-2px);
+        }
+
+        .upload-section:hover::before {
+            opacity: 1;
+        }
+
+        .upload-section.dragover {
+            border-color: var(--accent-lime);
+            background: rgba(127, 255, 0, 0.05);
+            transform: scale(1.01);
+        }
+
+        .upload-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 1rem;
+            background: linear-gradient(135deg, var(--accent-lime), var(--accent-cyan));
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: var(--bg-dark);
+        }
+
+        .upload-text {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .upload-hint {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .file-info {
+            display: none;
+            margin-top: 1rem;
+            padding: 1rem;
+            background: var(--bg-hover);
+            border-radius: 8px;
+            border-left: 4px solid var(--accent-lime);
+        }
+
+        .file-info.active {
+            display: block;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .file-name {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .file-size {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Stats Section */
+        .stats-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            border-color: var(--accent-lime);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(127, 255, 0, 0.1);
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--accent-lime);
+        }
+
+        /* Results Section */
+        .results-section {
+            display: none;
+        }
+
+        .results-section.active {
+            display: block;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .results-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .export-buttons {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .export-btn {
+            background: linear-gradient(135deg, var(--accent-lime), #5cb600);
+            color: var(--bg-dark);
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap;
+        }
+
+        .export-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(127, 255, 0, 0.3);
+        }
+
+        .export-btn:active {
+            transform: translateY(0);
+        }
+
+        #copyHtmlBtn {
+            background: linear-gradient(135deg, var(--accent-cyan), #0891b2);
+        }
+
+        #copyHtmlBtn:hover {
+            box-shadow: 0 4px 15px rgba(0, 217, 255, 0.3);
+        }
+
+        /* Table */
+        .table-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+
+        thead {
+            background: var(--bg-hover);
+            border-bottom: 2px solid var(--border);
+        }
+
+        th {
+            padding: 1rem;
+            text-align: left;
+            font-weight: 700;
+            color: var(--text-primary);
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+        }
+
+        th:hover {
+            background: rgba(127, 255, 0, 0.05);
+        }
+
+        th.sortable::after {
+            content: '↕';
+            position: absolute;
+            right: 0.5rem;
+            opacity: 0.3;
+            font-size: 0.75rem;
+        }
+
+        th.sort-asc::after {
+            content: '↑';
+            opacity: 1;
+            color: var(--accent-lime);
+        }
+
+        th.sort-desc::after {
+            content: '↓';
+            opacity: 1;
+            color: var(--accent-lime);
+        }
+
+        tbody tr {
+            border-bottom: 1px solid var(--border);
+            transition: all 0.2s ease;
+        }
+
+        tbody tr:hover {
+            background: var(--bg-hover);
+        }
+
+        td {
+            padding: 0.875rem 1rem;
+            color: var(--text-primary);
+        }
+
+        /* Table column width control */
+        table {
+            table-layout: fixed;
+        }
+
+        /* 保险丝代号列 */
+        th:nth-child(1), td:nth-child(1) {
+            width: 100px;
+        }
+
+        /* 回路号列 */
+        th:nth-child(2), td:nth-child(2) {
+            width: 150px;
+        }
+
+        /* Option列 */
+        th:nth-child(3), td:nth-child(3) {
+            width: 150px;
+        }
+
+        /* 功能线径列 */
+        th:nth-child(6), td:nth-child(6) {
+            width: 120px;
+        }
+
+        /* 保险丝功能列 */
+        th:nth-child(7), td:nth-child(7) {
+            width: 450px;
+        }
+
+        .wire-diameter {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            color: var(--accent-cyan);
+        }
+
+        .fuse-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 0.875rem;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .fuse-5 { background: rgba(74, 222, 128, 0.15); color: var(--fuse-5a); border: 1px solid var(--fuse-5a); }
+        .fuse-7 { background: rgba(74, 222, 128, 0.15); color: var(--fuse-5a); border: 1px solid var(--fuse-5a); }
+        .fuse-10 { background: rgba(96, 165, 250, 0.15); color: var(--fuse-10a); border: 1px solid var(--fuse-10a); }
+        .fuse-15 { background: rgba(167, 139, 250, 0.15); color: var(--fuse-15a); border: 1px solid var(--fuse-15a); }
+        .fuse-20 { background: rgba(244, 114, 182, 0.15); color: var(--fuse-20a); border: 1px solid var(--fuse-20a); }
+        .fuse-25 { background: rgba(251, 146, 60, 0.15); color: var(--fuse-25a); border: 1px solid var(--fuse-25a); }
+        .fuse-30 { background: rgba(250, 204, 21, 0.15); color: var(--fuse-30a); border: 1px solid var(--fuse-30a); }
+        .fuse-35 { background: rgba(248, 113, 113, 0.15); color: var(--fuse-40a); border: 1px solid var(--fuse-40a); }
+        .fuse-40 { background: rgba(248, 113, 113, 0.15); color: var(--fuse-40a); border: 1px solid var(--fuse-40a); }
+        .fuse-50 { background: rgba(232, 121, 249, 0.15); color: var(--fuse-50a); border: 1px solid var(--fuse-50a); }
+        .fuse-60 { background: rgba(45, 212, 191, 0.15); color: var(--fuse-60a); border: 1px solid var(--fuse-60a); }
+        .fuse-70 { background: rgba(148, 163, 184, 0.15); color: var(--fuse-70a); border: 1px solid var(--fuse-70a); }
+        .fuse-80 { background: rgba(163, 163, 163, 0.15); color: var(--fuse-80a); border: 1px solid var(--fuse-80a); }
+
+        .fuse-type {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        .harness-group {
+            background: rgba(127, 255, 0, 0.03);
+            font-weight: 600;
+        }
+
+        .index {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-secondary);
+        }
+
+        /* Fuse Distribution Chart */
+        .distribution-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .distribution-title {
+            font-size: 1.125rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        .distribution-bars {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .distribution-bar {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .bar-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            min-width: 50px;
+            color: var(--text-primary);
+        }
+
+        .bar-track {
+            flex: 1;
+            height: 24px;
+            background: var(--bg-hover);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .bar-fill {
+            height: 100%;
+            transition: width 0.5s ease-out;
+            border-radius: 4px;
+        }
+
+        .bar-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            min-width: 40px;
+            text-align: right;
+            color: var(--text-secondary);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            h1 {
+                font-size: 1.75rem;
+            }
+
+            .upload-section {
+                padding: 2rem 1rem;
+            }
+
+            .results-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            table {
+                font-size: 0.75rem;
+            }
+
+            th, td {
+                padding: 0.5rem;
+            }
+        }
+
+        /* Loading state */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent-lime);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: var(--text-secondary);
+        }
+
+        /* Upload Container */
+        .upload-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        /* Process Section */
+        .process-section {
+            margin-bottom: 2rem;
+        }
+
+        #processBtn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        #processBtn:disabled:hover {
+            box-shadow: none;
+        }
+
+        /* Filter Section */
+        .filter-section {
+            display: none;
+            margin-bottom: 2rem;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .filter-section.active {
+            display: block;
+        }
+
+        .filter-title {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .filter-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        .filter-btn {
+            background: var(--bg-card);
+            border: 2px solid var(--border);
+            color: var(--text-primary);
+            padding: 0.75rem 1.25rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .filter-btn:hover {
+            border-color: var(--accent-lime);
+            transform: translateY(-2px);
+        }
+
+        .filter-btn.active {
+            background: linear-gradient(135deg, var(--accent-lime), #5cb600);
+            border-color: var(--accent-lime);
+            color: var(--bg-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(127, 255, 0, 0.3);
+        }
+
+        .filter-btn .count {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 0.125rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .filter-btn.active .count {
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .from-to-badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: rgba(0, 217, 255, 0.1);
+            color: var(--accent-cyan);
+            border: 1px solid rgba(0, 217, 255, 0.3);
+        }
+
+        /* Warning Badge */
+        .warning-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: rgba(255, 107, 53, 0.1);
+            color: var(--accent-orange);
+            border: 1px solid rgba(255, 107, 53, 0.3);
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            display: none;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .progress-container.active {
+            display: block;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .progress-label {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .progress-percentage {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--accent-lime);
+            font-weight: 700;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--bg-hover);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-lime), var(--accent-cyan));
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .progress-status {
+            margin-top: 0.75rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        /* Template Download Section */
+        .template-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .template-title {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .template-buttons {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .template-btn {
+            background: var(--bg-hover);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 0.75rem 1.25rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+        }
+
+        .template-btn:hover {
+            border-color: var(--accent-cyan);
+            transform: translateY(-2px);
+        }
+
+        /* Analysis Dashboard */
+        .analysis-dashboard {
+            display: none;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .analysis-dashboard.active {
+            display: block;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .analysis-header {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            color: var(--text-primary);
+        }
+
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .analysis-card {
+            background: var(--bg-hover);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+        }
+
+        .analysis-card-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+        }
+
+        .analysis-value {
+            font-size: 2rem;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--accent-lime);
+            margin-bottom: 0.5rem;
+        }
+
+        .analysis-subtext {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        /* Alert Messages */
+        .alert-box {
+            display: none;
+            padding: 1rem 1.25rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid;
+        }
+
+        .alert-box.active {
+            display: block;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .alert-warning {
+            background: rgba(255, 107, 53, 0.1);
+            border-color: var(--accent-orange);
+            color: var(--accent-orange);
+        }
+
+        .alert-info {
+            background: rgba(0, 217, 255, 0.1);
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+        }
+
+        .alert-success {
+            background: rgba(127, 255, 0, 0.1);
+            border-color: var(--accent-lime);
+            color: var(--accent-lime);
+        }
+
+        /* Config Panel */
+        .config-panel {
+            display: none;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .config-panel.active {
+            display: block;
+        }
+
+        .config-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .config-title {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .config-toggle-btn {
+            background: var(--bg-hover);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .config-toggle-btn:hover {
+            border-color: var(--accent-lime);
+        }
+
+        .config-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .config-section-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .config-input-group {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .config-input {
+            flex: 1;
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 0.625rem 0.875rem;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.875rem;
+        }
+
+        .config-input:focus {
+            outline: none;
+            border-color: var(--accent-lime);
+        }
+
+        .config-unit {
+            color: var(--text-secondary);
+            padding: 0.625rem 0.875rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.875rem;
+        }
+
+        .config-btn {
+            background: linear-gradient(135deg, var(--accent-lime), #5cb600);
+            color: var(--bg-dark);
+            border: none;
+            padding: 0.625rem 1.25rem;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .config-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(127, 255, 0, 0.3);
+        }
+
+        /* 第5-9列统一样式：确保对齐 */
+        #resultsTable td:nth-child(5),
+        #resultsTable td:nth-child(6),
+        #resultsTable td:nth-child(7),
+        #resultsTable td:nth-child(8),
+        #resultsTable td:nth-child(9) {
+            white-space: pre-line;
+            font-size: 0.75rem;  /* 减小字体大小 */
+            line-height: 1.3;     /* 统一行高 */
+            vertical-align: top;  /* 顶部对齐 */
+        }
+
+        /* TO对应回路号列（第6列）：逗号分隔不换行，宽度翻倍 */
+        #resultsTable td:nth-child(6) {
+            word-break: keep-all;
+            overflow-wrap: normal;
+            font-family: 'JetBrains Mono', monospace;
+            min-width: 300px;     /* 增加宽度 */
+            max-width: 500px;
+        }
+
+        /* 回路号Option列（第7列）：逗号分隔不换行，宽度翻倍 */
+        #resultsTable td:nth-child(7) {
+            word-break: keep-all;
+            overflow-wrap: normal;
+            font-family: 'JetBrains Mono', monospace;
+            min-width: 250px;     /* 增加宽度 */
+            max-width: 400px;
+        }
+
+        /* 回路线径列（第8列）：逗号分隔不换行 */
+        #resultsTable td:nth-child(8) {
+            word-break: keep-all;
+            overflow-wrap: normal;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* 保险丝功能列（第9列）：允许自动换行 */
+        #resultsTable td:nth-child(9) {
+            word-break: break-word;  /* 允许长单词换行 */
+            overflow-wrap: break-word;
+            min-width: 250px;
+            max-width: 400px;
+        }
+
+        /* 最后五列（第11-15列）：调窄宽度 */
+        #resultsTable td:nth-child(11),
+        #resultsTable td:nth-child(12),
+        #resultsTable td:nth-child(13),
+        #resultsTable td:nth-child(14),
+        #resultsTable td:nth-child(15) {
+            min-width: 60px;       /* 调窄 */
+            max-width: 100px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>保险丝与线径匹配工具 v4.2</h1>
+            <p class="subtitle">自动分析线束清单，过滤中间节点 | 仅显示最终连接的插件（去除Inline和焊点中间节点）</p>
+        </header>
+
+        <!-- Template Download Section -->
+        <div class="template-section">
+            <div class="template-title">
+                <span>📥</span>
+                <span>导入模板下载</span>
+            </div>
+            <div class="template-buttons">
+                <button class="template-btn" onclick="downloadWirelistTemplate()">
+                    <span>📋</span>
+                    <span>Wirelist 模板</span>
+                </button>
+                <button class="template-btn" onclick="downloadConnlistTemplate()">
+                    <span>🔌</span>
+                    <span>Connlist 模板</span>
+                </button>
+                <button class="template-btn" onclick="downloadInlineTemplate()">
+                    <span>🔗</span>
+                    <span>Inline 模板</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="upload-container">
+            <div class="upload-section" id="wirelistUploadZone">
+                <div class="upload-icon">📋</div>
+                <div class="upload-text">拖拽或点击上传 Wirelist 文件</div>
+                <div class="upload-hint">必须包含：Wire ID、Size / Gauge、From Code、From Pin、To Code、To Pin列</div>
+                <input type="file" id="wirelistInput" accept=".xlsx,.xls">
+                <div class="file-info" id="wirelistFileInfo">
+                    <div class="file-name" id="wirelistFileName"></div>
+                    <div class="file-size" id="wirelistFileSize"></div>
+                </div>
+            </div>
+
+            <div class="upload-section" id="connlistUploadZone">
+                <div class="upload-icon">🔌</div>
+                <div class="upload-text">拖拽或点击上传 Connlist 文件（必选）</div>
+                <div class="upload-hint">用于识别保险丝功能（必须上传）</div>
+                <input type="file" id="connlistInput" accept=".xlsx,.xls">
+                <div class="file-info" id="connlistFileInfo">
+                    <div class="file-name" id="connlistFileName"></div>
+                    <div class="file-size" id="connlistFileSize"></div>
+                </div>
+            </div>
+
+            <div class="upload-section" id="inlineUploadZone">
+                <div class="upload-icon">🔗</div>
+                <div class="upload-text">拖拽或点击上传 Inline 文件（必选）</div>
+                <div class="upload-hint">用于识别同一回路连接关系（必须上传）</div>
+                <input type="file" id="inlineInput" accept=".xlsx,.xls">
+                <div class="file-info" id="inlineFileInfo">
+                    <div class="file-name" id="inlineFileName"></div>
+                    <div class="file-size" id="inlineFileSize"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="process-section">
+            <button class="export-btn" id="processBtn" style="width: 100%; justify-content: center; font-size: 1rem; padding: 1rem;">
+                <span>🚀</span>
+                <span>开始分析</span>
+            </button>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-header">
+                <div class="progress-label" id="progressLabel">正在处理...</div>
+                <div class="progress-percentage" id="progressPercentage">0%</div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-status" id="progressStatus">准备中...</div>
+        </div>
+
+        <!-- Alert Messages -->
+        <div class="alert-box alert-warning" id="warningAlert">
+            <strong>⚠️ 警告：</strong><span id="warningMessage"></span>
+        </div>
+        <div class="alert-box alert-info" id="infoAlert">
+            <strong>ℹ️ 信息：</strong><span id="infoMessage"></span>
+        </div>
+        <div class="alert-box alert-success" id="successAlert">
+            <strong>✅ 成功：</strong><span id="successMessage"></span>
+        </div>
+
+        <!-- Config Panel -->
+        <div class="config-panel" id="configPanel">
+            <div class="config-header">
+                <div class="config-title">⚙️ 保险丝规则配置</div>
+                <button class="config-toggle-btn" id="toggleConfigBtn">收起</button>
+            </div>
+
+            <div class="config-section">
+                <div class="config-section-title">线径到保险丝规格映射</div>
+                <div id="fuseConfigContainer"></div>
+                <button class="config-btn" onclick="addFuseMapping()" style="margin-top: 0.5rem;">
+                    <span>+</span> 添加映射规则
+                </button>
+            </div>
+
+            <div class="config-section">
+                <div class="config-section-title">自定义电器盒代码</div>
+                <div class="config-input-group">
+                    <input type="text" class="config-input" id="customBoxCode" placeholder="例如：JEC">
+                    <button class="config-btn" onclick="addCustomBoxCode()">添加</button>
+                </div>
+                <div style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-secondary);">
+                    当前有效代码：<span id="validCodesDisplay"></span>
+                </div>
+            </div>
+
+            <div class="config-section">
+                <div class="config-section-title">数据验证规则</div>
+                <div class="config-input-group">
+                    <label style="color: var(--text-primary); padding: 0.625rem;">
+                        <input type="checkbox" id="validateWireDiameter" checked>
+                        启用线径验证
+                    </label>
+                </div>
+                <div class="config-input-group">
+                    <label style="color: var(--text-primary); padding: 0.625rem;">
+                        <input type="checkbox" id="validateFuseRating" checked>
+                        启用保险丝规格验证
+                    </label>
+                </div>
+                <button class="config-btn" onclick="saveConfig()" style="margin-top: 0.5rem;">
+                    💾 保存配置
+                </button>
+            </div>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">正在分析数据...</div>
+        </div>
+
+        <div class="filter-section" id="filterSection">
+            <div class="filter-title">按电器盒筛选</div>
+            <div class="filter-buttons" id="filterButtons"></div>
+        </div>
+
+        <div class="stats-section" id="statsSection"></div>
+
+        <!-- Analysis Dashboard -->
+        <div class="analysis-dashboard" id="analysisDashboard">
+            <div class="analysis-header">📊 数据分析仪表板</div>
+
+            <div class="analysis-grid">
+                <div class="analysis-card">
+                    <div class="analysis-card-title">平均线径</div>
+                    <div class="analysis-value" id="avgWireDiameter">-</div>
+                    <div class="analysis-subtext">mm²</div>
+                </div>
+                <div class="analysis-card">
+                    <div class="analysis-card-title">最小线径</div>
+                    <div class="analysis-value" id="minWireDiameter">-</div>
+                    <div class="analysis-subtext">mm²</div>
+                </div>
+                <div class="analysis-card">
+                    <div class="analysis-card-title">最大线径</div>
+                    <div class="analysis-value" id="maxWireDiameter">-</div>
+                    <div class="analysis-subtext">mm²</div>
+                </div>
+                <div class="analysis-card">
+                    <div class="analysis-card-title">焊点连接数</div>
+                    <div class="analysis-value" id="solderJointCount">-</div>
+                    <div class="analysis-subtext">条线路</div>
+                </div>
+                <div class="analysis-card">
+                    <div class="analysis-card-title">直接连接数</div>
+                    <div class="analysis-value" id="directConnectionCount">-</div>
+                    <div class="analysis-subtext">条线路</div>
+                </div>
+                <div class="analysis-card">
+                    <div class="analysis-card-title">异常数据</div>
+                    <div class="analysis-value" id="abnormalDataCount">-</div>
+                    <div class="analysis-subtext">条需要人工确认</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="results-section" id="resultsSection">
+            <div class="results-header">
+                <div class="results-title">匹配结果</div>
+                <div class="export-buttons">
+                    <button class="export-btn" id="exportBtn">
+                        <span>📥</span>
+                        <span>导出彩色Excel</span>
+                    </button>
+                    <button class="export-btn" id="copyHtmlBtn">
+                        <span>📋</span>
+                        <span>复制HTML</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th>保险丝代号</th>
+                            <th>回路号</th>
+                            <th>Option</th>
+                            <th>FROM</th>
+                            <th>TO</th>
+                            <th>TO对应回路号</th>
+                            <th>回路号Option</th>
+                            <th>回路线径</th>
+                            <th>保险丝功能</th>
+                            <th class="sortable" data-column="wireDiameter">线径 (mm²)</th>
+                            <th class="sortable" data-column="circuitType">电路类型</th>
+                            <th class="sortable" data-column="harnessType">线束类型</th>
+                            <th class="sortable" data-column="fuseRating">推荐保险丝</th>
+                            <th>保险丝类型</th>
+                            <th>备注</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsBody"></tbody>
+                </table>
+            </div>
+
+            <div class="distribution-section">
+                <div class="distribution-title">保险丝规格分布</div>
+                <div class="distribution-bars" id="distributionBars"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 检查必要的库是否已加载
+        if (typeof XLSX === 'undefined') {
+            console.error('错误：SheetJS (XLSX) 库未加载！');
+            alert('SheetJS库加载失败，请检查网络连接或刷新页面重试。');
+        }
+        if (typeof ExcelJS === 'undefined') {
+            console.error('错误：ExcelJS库未加载！');
+            alert('ExcelJS库加载失败，请检查网络连接或刷新页面重试。');
+        }
+
+        // Wire diameter to fuse rating mapping (automotive industry standard)
+        const fuseMapping = {
+            0.5: { rating: '5A/7.5A', type: 'Mini Fuse', primary: 5 },
+            0.75: { rating: '10A', type: 'Mini Fuse', primary: 10 },
+            0.85: { rating: '10A/15A', type: 'Mini Fuse', primary: 10 },
+            1.0: { rating: '15A', type: 'Mini Fuse', primary: 15 },
+            1.25: { rating: '15A/20A', type: 'Mini Fuse', primary: 15 },
+            1.5: { rating: '20A/25A', type: 'Mini Fuse', primary: 20 },
+            2.0: { rating: '25A', type: 'Mini/Maxi', primary: 25 },
+            2.5: { rating: '30A', type: 'Maxi Fuse', primary: 30 },
+            4.0: { rating: '35A/40A', type: 'Maxi Fuse', primary: 40 },
+            6.0: { rating: '50A', type: 'Maxi/JCASE', primary: 50 },
+            8.0: { rating: '60A', type: 'JCASE/Mega', primary: 60 },
+            10.0: { rating: '70A/80A', type: 'JCASE/Mega', primary: 70 }
+        };
+
+        // Filter definitions
+        const boxFilters = {
+            '前仓电器盒': { codes: ['UEC', 'FFB'], color: '#4ade80' },
+            '仪表电器盒': { codes: ['IEC', 'IPFB'], color: '#60a5fa' },
+            '行李箱电器盒': { codes: ['TFB', 'REC'], color: '#f472b6' },
+            '预保险丝盒': { codes: ['PFB'], color: '#fbbf24' }
+        };
+
+        const validCodes = ['UEC', 'IEC', 'PFB', 'FFB', 'IPFB', 'TFB', 'REC'];
+
+        // Configuration
+        let customFuseMapping = {...fuseMapping}; // 可自定义的保险丝映射
+        let customBoxCodes = [...validCodes]; // 可自定义的电器盒代码
+        let configSettings = {
+            validateWireDiameter: true,
+            validateFuseRating: true
+        };
+
+        let allData = [];
+        let filteredData = [];
+        let activeFilter = null;
+        let currentSort = { column: null, direction: 'asc' };
+
+        // Connlist data
+        let connectorFunctions = {}; // 插件代码 -> 功能映射（B列 -> C列）
+
+        // Wirelist data
+        let wirelistAllData = []; // 完整的wirelist数据（用于查找焊点连接）
+        let wirelistFile = null; // 存储wirelist文件
+        let connlistFile = null; // 存储connlist文件
+        let inlineFile = null; // 存储inline文件
+
+        // Inline data
+        let inlineMapping = {}; // inline连接映射: LEFT -> RIGHT, RIGHT -> LEFT
+        let inlineCodes = new Set(); // 所有inline代码集合
+        let circuitGroups = []; // 同一回路的分组数据
+
+        // DOM Elements (在DOMContentLoaded内初始化)
+        let wirelistUploadZone, connlistUploadZone, inlineUploadZone;
+        let wirelistInput, connlistInput, inlineInput;
+        let wirelistFileInfo, connlistFileInfo, inlineFileInfo;
+        let wirelistFileName, wirelistFileSize;
+        let connlistFileName, connlistFileSize;
+        let inlineFileName, inlineFileSize;
+        let loading, filterSection, filterButtons;
+        let statsSection, resultsSection, resultsBody, exportBtn, copyHtmlBtn, distributionBars, processBtn;
+
+        function handleDragOver(e, zone) {
+            e.preventDefault();
+            zone.classList.add('dragover');
+        }
+
+        function handleWirelistDrop(e) {
+            e.preventDefault();
+            wirelistUploadZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleWirelistFile(files[0]);
+            }
+        }
+
+        function handleConnlistDrop(e) {
+            e.preventDefault();
+            connlistUploadZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleConnlistFile(files[0]);
+            }
+        }
+
+        function handleInlineDrop(e) {
+            e.preventDefault();
+            inlineUploadZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleInlineFile(files[0]);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化DOM元素
+            wirelistUploadZone = document.getElementById('wirelistUploadZone');
+            connlistUploadZone = document.getElementById('connlistUploadZone');
+            inlineUploadZone = document.getElementById('inlineUploadZone');
+            wirelistInput = document.getElementById('wirelistInput');
+            connlistInput = document.getElementById('connlistInput');
+            inlineInput = document.getElementById('inlineInput');
+            wirelistFileInfo = document.getElementById('wirelistFileInfo');
+            connlistFileInfo = document.getElementById('connlistFileInfo');
+            inlineFileInfo = document.getElementById('inlineFileInfo');
+            wirelistFileName = document.getElementById('wirelistFileName');
+            wirelistFileSize = document.getElementById('wirelistFileSize');
+            connlistFileName = document.getElementById('connlistFileName');
+            connlistFileSize = document.getElementById('connlistFileSize');
+            inlineFileName = document.getElementById('inlineFileName');
+            inlineFileSize = document.getElementById('inlineFileSize');
+            loading = document.getElementById('loading');
+            filterSection = document.getElementById('filterSection');
+            filterButtons = document.getElementById('filterButtons');
+            statsSection = document.getElementById('statsSection');
+            resultsSection = document.getElementById('resultsSection');
+            resultsBody = document.getElementById('resultsBody');
+            exportBtn = document.getElementById('exportBtn');
+            copyHtmlBtn = document.getElementById('copyHtmlBtn');
+            distributionBars = document.getElementById('distributionBars');
+            processBtn = document.getElementById('processBtn');
+
+            // Event Listeners
+            wirelistUploadZone.addEventListener('click', () => wirelistInput.click());
+            wirelistInput.addEventListener('change', (e) => handleWirelistFile(e.target.files[0]));
+            wirelistUploadZone.addEventListener('dragover', (e) => handleDragOver(e, wirelistUploadZone));
+            wirelistUploadZone.addEventListener('dragleave', () => wirelistUploadZone.classList.remove('dragover'));
+            wirelistUploadZone.addEventListener('drop', (e) => handleWirelistDrop(e));
+
+            connlistUploadZone.addEventListener('click', () => connlistInput.click());
+            connlistInput.addEventListener('change', (e) => handleConnlistFile(e.target.files[0]));
+            connlistUploadZone.addEventListener('dragover', (e) => handleDragOver(e, connlistUploadZone));
+            connlistUploadZone.addEventListener('dragleave', () => connlistUploadZone.classList.remove('dragover'));
+            connlistUploadZone.addEventListener('drop', (e) => handleConnlistDrop(e));
+
+            inlineUploadZone.addEventListener('click', () => inlineInput.click());
+            inlineInput.addEventListener('change', (e) => handleInlineFile(e.target.files[0]));
+            inlineUploadZone.addEventListener('dragover', (e) => handleDragOver(e, inlineUploadZone));
+            inlineUploadZone.addEventListener('dragleave', () => inlineUploadZone.classList.remove('dragover'));
+            inlineUploadZone.addEventListener('drop', (e) => handleInlineDrop(e));
+
+            processBtn.addEventListener('click', processDataFiles);
+            exportBtn.addEventListener('click', exportToExcel);
+            copyHtmlBtn.addEventListener('click', copyHtmlToClipboard);
+
+            // Setup sortable headers
+            document.querySelectorAll('th.sortable').forEach(th => {
+                th.addEventListener('click', () => handleSort(th.dataset.column));
+            });
+
+            // Load configuration
+            loadConfig();
+            updateValidCodesDisplay();
+            renderFuseConfig();
+
+            // Config panel toggle
+            document.getElementById('toggleConfigBtn').addEventListener('click', toggleConfigPanel);
+        });
+
+        // Load config from localStorage
+        function loadConfig() {
+            const savedConfig = localStorage.getItem('fuseMatcherConfig');
+            if (savedConfig) {
+                try {
+                    const config = JSON.parse(savedConfig);
+                    customFuseMapping = config.fuseMapping || customFuseMapping;
+                    customBoxCodes = config.boxCodes || customBoxCodes;
+                    configSettings = config.settings || configSettings;
+                } catch (e) {
+                    console.error('❌ 配置加载失败:', e);
+                }
+            }
+        }
+
+        // Save config to localStorage
+        function saveConfig() {
+            const config = {
+                fuseMapping: customFuseMapping,
+                boxCodes: customBoxCodes,
+                settings: configSettings
+            };
+            localStorage.setItem('fuseMatcherConfig', JSON.stringify(config));
+            showAlert('success', '配置已保存到本地存储');
+        }
+
+        // Alert messages
+        function showAlert(type, message) {
+            const alertBox = document.getElementById(`${type}Alert`);
+            const messageSpan = document.getElementById(`${type}Message`);
+            messageSpan.textContent = message;
+            alertBox.classList.add('active');
+
+            setTimeout(() => {
+                alertBox.classList.remove('active');
+            }, 5000);
+        }
+
+        // Progress bar
+        function updateProgress(label, percentage, status) {
+            const progressContainer = document.getElementById('progressContainer');
+            const progressLabel = document.getElementById('progressLabel');
+            const progressPercentage = document.getElementById('progressPercentage');
+            const progressFill = document.getElementById('progressFill');
+            const progressStatus = document.getElementById('progressStatus');
+
+            progressContainer.classList.add('active');
+            progressLabel.textContent = label;
+            progressPercentage.textContent = `${percentage}%`;
+            progressFill.style.width = `${percentage}%`;
+            progressStatus.textContent = status;
+        }
+
+        function hideProgress() {
+            setTimeout(() => {
+                document.getElementById('progressContainer').classList.remove('active');
+            }, 500);
+        }
+
+        // Template download functions
+        function downloadWirelistTemplate() {
+            const template = [
+                {
+                    'Wire ID': 'W001',
+                    'Size / Gauge': 0.5,
+                    'From Code': 'UEC',
+                    'From Pin': '1A',
+                    'To Code': 'E101',
+                    'To Pin': '1',
+                    'Circuit': '电源',
+                    'Harness': '前仓线束'
+                },
+                {
+                    'Wire ID': 'W002',
+                    'Size / Gauge': 1.0,
+                    'From Code': 'IEC',
+                    'From Pin': '2B',
+                    'To Code': 'E201',
+                    'To Pin': '3',
+                    'Circuit': '信号',
+                    'Harness': '仪表线束'
+                }
+            ];
+
+            const ws = XLSX.utils.json_to_sheet(template);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Wirelist模板');
+            XLSX.writeFile(wb, 'Wirelist导入模板.xlsx');
+            showAlert('success', 'Wirelist模板已下载');
+        }
+
+        function downloadConnlistTemplate() {
+            const template = [
+                {
+                    '更改记录': '',
+                    '插件代码': 'UEC',
+                    '中文描述': '前仓电器盒'
+                },
+                {
+                    '更改记录': '',
+                    '插件代码': 'IEC',
+                    '中文描述': '仪表电器盒'
+                },
+                {
+                    '更改记录': '',
+                    '插件代码': 'PFB',
+                    '中文描述': '预保险丝盒'
+                },
+                {
+                    '更改记录': '',
+                    '插件代码': 'E101',
+                    '中文描述': '发动机控制模块'
+                }
+            ];
+
+            const ws = XLSX.utils.json_to_sheet(template);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Connlist模板');
+            XLSX.writeFile(wb, 'Connlist导入模板.xlsx');
+            showAlert('success', 'Connlist模板已下载');
+        }
+
+        function downloadInlineTemplate() {
+            const template = [
+                {
+                    'INLINE-LEFT': 'BDBT',
+                    'INLINE-RIGHT': 'BTBD'
+                },
+                {
+                    'INLINE-LEFT': 'BDDHT',
+                    'INLINE-RIGHT': 'DHTBD'
+                },
+                {
+                    'INLINE-LEFT': 'BDEG5',
+                    'INLINE-RIGHT': 'EGBD5'
+                },
+                {
+                    'INLINE-LEFT': 'BDIPM',
+                    'INLINE-RIGHT': 'IPBDM'
+                }
+            ];
+
+            const ws = XLSX.utils.json_to_sheet(template);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Inline模板');
+            XLSX.writeFile(wb, 'Inline导入模板.xlsx');
+            showAlert('success', 'Inline模板已下载');
+        }
+
+        // Config panel functions
+        function toggleConfigPanel() {
+            const panel = document.getElementById('configPanel');
+            const btn = document.getElementById('toggleConfigBtn');
+            panel.classList.toggle('active');
+            btn.textContent = panel.classList.contains('active') ? '收起' : '展开';
+        }
+
+        function addFuseMapping() {
+            const wireDiameter = prompt('请输入线径 (mm²):');
+            if (!wireDiameter) return;
+
+            const fuseRating = prompt('请输入保险丝规格 (例如: 5A):');
+            if (!fuseRating) return;
+
+            const fuseType = prompt('请输入保险丝类型 (例如: Mini Fuse):');
+            if (!fuseType) return;
+
+            customFuseMapping[parseFloat(wireDiameter)] = {
+                rating: fuseRating,
+                type: fuseType,
+                primary: parseInt(fuseRating)
+            };
+
+            renderFuseConfig();
+            showAlert('success', `已添加: ${wireDiameter}mm² → ${fuseRating}`);
+        }
+
+        function renderFuseConfig() {
+            const container = document.getElementById('fuseConfigContainer');
+            container.innerHTML = '';
+
+            Object.entries(customFuseMapping)
+                .sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]))
+                .forEach(([diameter, info]) => {
+                    const div = document.createElement('div');
+                    div.className = 'config-input-group';
+                    div.innerHTML = `
+                        <input type="number" class="config-input" value="${diameter}" step="0.1" readonly>
+                        <span class="config-unit">→</span>
+                        <input type="text" class="config-input" value="${info.rating}" readonly>
+                        <span class="config-unit">(${info.type})</span>
+                        <button class="config-btn" onclick="removeFuseMapping('${diameter}')" style="padding: 0.625rem;">×</button>
+                    `;
+                    container.appendChild(div);
+                });
+        }
+
+        function removeFuseMapping(diameter) {
+            delete customFuseMapping[diameter];
+            renderFuseConfig();
+            showAlert('info', `已删除线径 ${diameter}mm² 的映射规则`);
+        }
+
+        function addCustomBoxCode() {
+            const input = document.getElementById('customBoxCode');
+            const code = input.value.trim().toUpperCase();
+
+            if (!code) {
+                showAlert('warning', '请输入电器盒代码');
+                return;
+            }
+
+            if (customBoxCodes.includes(code)) {
+                showAlert('warning', `代码 ${code} 已存在`);
+                return;
+            }
+
+            customBoxCodes.push(code);
+            updateValidCodesDisplay();
+            input.value = '';
+            showAlert('success', `已添加电器盒代码: ${code}`);
+        }
+
+        function updateValidCodesDisplay() {
+            document.getElementById('validCodesDisplay').textContent = customBoxCodes.join(', ');
+        }
+
+        function handleWirelistFile(file) {
+            if (!file) return;
+
+            // Display file info
+            wirelistFileName.textContent = file.name;
+            wirelistFileSize.textContent = formatFileSize(file.size);
+            wirelistFileInfo.classList.add('active');
+
+            // Store file
+            wirelistFile = file;
+
+        }
+
+        async function handleConnlistFile(file) {
+            if (!file) return;
+
+            // Display file info
+            connlistFileName.textContent = file.name;
+            connlistFileSize.textContent = formatFileSize(file.size);
+            connlistFileInfo.classList.add('active');
+
+            // Store file
+            connlistFile = file;
+
+            // Process connlist immediately
+            try {
+                await processConnlistFile(file);
+            } catch (error) {
+                console.error('Connlist 处理失败:', error);
+                connlistFileName.textContent = `${file.name} (处理失败)`;
+            }
+        }
+
+        async function handleInlineFile(file) {
+            if (!file) return;
+
+            // Display file info
+            inlineFileName.textContent = file.name;
+            inlineFileSize.textContent = formatFileSize(file.size);
+            inlineFileInfo.classList.add('active');
+
+            // Store file
+            inlineFile = file;
+
+            // Process inline immediately
+            try {
+                await processInlineFile(file);
+                showAlert('success', `Inline文件已加载，识别到 ${inlineCodes.size} 个inline连接`);
+            } catch (error) {
+                console.error('Inline 处理失败:', error);
+                inlineFileName.textContent = `${file.name} (处理失败)`;
+            }
+        }
+
+        async function processDataFiles() {
+
+            if (!wirelistFile) {
+                showAlert('warning', '请先上传 Wirelist 文件');
+                return;
+            }
+
+            if (!connlistFile) {
+                showAlert('warning', '请先上传 Connlist 文件（必选）\n\nConnlist文件用于识别保险丝功能，必须上传才能生成完整的保险丝匹配清单。');
+                return;
+            }
+
+            if (!inlineFile) {
+                showAlert('warning', '请先上传 Inline 文件（必选）\n\nInline文件用于识别同一回路连接关系，必须上传才能识别同一回路。');
+                return;
+            }
+
+            // 检查connlist是否正确加载
+            if (Object.keys(connectorFunctions).length === 0) {
+                showAlert('warning', 'Connlist文件处理失败或格式不正确\n\n请确保Connlist文件包含B列（插件代码）和C列（中文描述）。');
+                return;
+            }
+
+            // 检查inline是否正确加载
+            if (inlineCodes.size === 0) {
+                showAlert('warning', 'Inline文件处理失败或格式不正确\n\n请确保Inline文件包含INLINE-LEFT和INLINE-RIGHT列。');
+                return;
+            }
+
+
+            // Reset data
+            allData = [];
+            filteredData = [];
+
+            // Show loading and progress
+            loading.classList.add('active');
+            resultsSection.classList.remove('active');
+            statsSection.innerHTML = '';
+            document.getElementById('analysisDashboard').classList.remove('active');
+            filterSection.classList.remove('active');
+            processBtn.disabled = true;
+
+            updateProgress('正在读取文件...', 10, '准备解析 Wirelist 文件');
+
+            try {
+                // 开始性能计时
+                const startTime = performance.now();
+
+                // Process wirelist with progress updates
+                updateProgress('正在解析 Wirelist...', 30, '读取数据中');
+                await processWirelistFile(wirelistFile);
+
+                updateProgress('正在验证数据...', 60, '检查数据完整性');
+                await validateData();
+
+                updateProgress('正在识别同一回路...', 70, '分析inline连接和焊点关系');
+                // 识别同一回路
+                circuitGroups = identifyCircuitGroups(allData);
+                console.log(`✅ 识别到 ${circuitGroups.length} 个回路组`);
+
+                updateProgress('正在生成分析结果...', 80, '计算统计数据');
+
+                // 计算处理时间
+                const endTime = performance.now();
+                const processingTime = ((endTime - startTime) / 1000).toFixed(2);
+                console.log(`⚡ 处理完成，耗时: ${processingTime}秒`);
+
+                // Initialize filter buttons
+                initializeFilters();
+
+                // Display results
+                displayResults();
+                displayStats();
+                displayAnalysisDashboard();
+
+                updateProgress('处理完成！', 100, `成功处理 ${allData.length} 条数据`);
+                hideProgress();
+                showAlert('success', `分析完成！共处理 ${allData.length} 条线路数据，耗时 ${processingTime} 秒`);
+
+                // Re-enable button and hide loading
+                loading.classList.remove('active');
+                processBtn.disabled = false;
+
+            } catch (error) {
+                console.error('Error processing files:', error);
+                showAlert('warning', '文件处理失败：' + error.message);
+                hideProgress();
+                loading.classList.remove('active');
+                processBtn.disabled = false;
+            }
+        }
+
+        function processWirelistFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+
+                        const workbook = XLSX.read(data, { type: 'array' });
+
+                        // Get first sheet
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+
+                        if (jsonData.length === 0) {
+                            alert('Wirelist文件为空或格式不正确');
+                            reject(new Error('Empty file'));
+                            return;
+                        }
+
+                        // Find column names
+                        const columns = findColumns(jsonData[0]);
+
+                        // Debug: Show found columns
+                        console.log('识别到的列:', columns);
+                        console.log('Excel中的所有列名:', Object.keys(jsonData[0]));
+                        console.log('线束类型列识别为:', columns.harnessType ? `"${columns.harnessType}"` : '未找到（将使用默认值）');
+
+                        if (!columns.wireDiameter) {
+                            alert('未找到"线径"列，请确保Excel中包含线径信息');
+                            reject(new Error('Missing wire diameter column'));
+                            return;
+                        }
+
+                        if (!columns.from || !columns.to) {
+                            alert(`未找到From Code或to Code列。\n\n识别到的列: ${Object.keys(jsonData[0]).join(', ')}\n\n请确保Excel中包含From Code和to Code列`);
+                            reject(new Error('Missing From/To columns'));
+                            return;
+                        }
+
+                        // Store all wirelist data for later reference
+                        wirelistAllData = jsonData.map((row, index) => {
+                            const wireId = (columns.wireId && row[columns.wireId]) ? String(row[columns.wireId]) : `Wire${index + 1}`;
+                            return {
+                                wireId: wireId,
+                                from: columns.from ? String(row[columns.from] || '') : '',
+                                fromPin: columns.fromPin ? String(row[columns.fromPin] || '') : '',
+                                to: columns.to ? String(row[columns.to] || '') : '',
+                                toPin: columns.toPin ? String(row[columns.toPin] || '') : '',
+                                wireDiameter: columns.wireDiameter ? (parseFloat(row[columns.wireDiameter]) || 0) : 0,
+                                option: columns.option ? String(row[columns.option] || '') : ''
+                            };
+                        });
+
+                        // Process data
+                        // 构建连通图（只构建一次，大幅提升性能）
+                        updateProgress('正在构建连通图...', 40, '分析电路连接关系');
+                        const circuitGraph = buildConnectivityGraph(wirelistAllData);
+                        console.log('✅ 连通图构建完成，节点数:', circuitGraph.size);
+
+                        // 构建wirelist索引（加速查找）
+                        updateProgress('正在构建索引...', 50, '优化数据查找');
+                        const wirelistIndex = buildWirelistIndex(wirelistAllData);
+                        console.log('✅ Wirelist索引构建完成，索引数:', wirelistIndex.size);
+
+                        allData = processData(jsonData, columns, wirelistAllData, circuitGraph, wirelistIndex);
+
+
+                        if (allData.length === 0) {
+                            alert(`未找到符合条件的线路。\n\n原始数据有 ${jsonData.length} 条，但没有FROM或TO包含以下代码的线路：\nUEC、IEC、PFB、FFB、IPFB、TFB、REC\n\n请检查Excel中的FROM和TO列。`);
+                            reject(new Error('No matching data'));
+                            return;
+                        }
+
+                        filteredData = [...allData];
+                        resolve();
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        function processConnlistFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+
+
+                        // 方法1：直接从sheet读取特定列（按列字母）
+                        // B列 = 插件代码，C列 = 中文描述
+                        const columnB = [];
+                        const columnC = [];
+                        const range = XLSX.utils.decode_range(firstSheet['!ref']);
+
+
+                        // 遍历所有行（从第2行开始，跳过表头）
+                        for (let rowNum = range.s.r + 1; rowNum <= range.e.r; rowNum++) {
+                            // B列（列索引=1）
+                            const cellB = firstSheet[XLSX.utils.encode_cell({ r: rowNum, c: 1 })];
+                            // C列（列索引=2）
+                            const cellC = firstSheet[XLSX.utils.encode_cell({ r: rowNum, c: 2 })];
+
+                            if (cellB) {
+                                const codeValue = String(cellB.v).trim();
+                                columnB.push(codeValue);
+                            } else {
+                                columnB.push('');
+                            }
+
+                            if (cellC) {
+                                const funcValue = String(cellC.v).trim();
+                                columnC.push(funcValue);
+                            } else {
+                                columnC.push('');
+                            }
+                        }
+
+
+                        // Clear previous data
+                        connectorFunctions = {};
+
+                        // 构建映射表
+                        let validCount = 0;
+                        let skippedEmpty = 0;
+                        let skippedDash = 0;
+
+                        for (let i = 0; i < columnB.length; i++) {
+                            const codeValue = columnB[i];
+                            const funcValue = columnC[i];
+
+                            // 跳过空值
+                            if (!codeValue || codeValue === '') {
+                                skippedEmpty++;
+                                continue;
+                            }
+
+                            // 跳过占位符
+                            if (codeValue === '-' || codeValue === 'N/A') {
+                                skippedDash++;
+                                continue;
+                            }
+
+                            // 存储映射（代码规范化：去除空格，转大写）
+                            const normalizedCode = codeValue.replace(/\s+/g, '').toUpperCase();
+                            const normalizedFunc = funcValue || '未知功能';
+
+                            connectorFunctions[normalizedCode] = normalizedFunc;
+                            validCount++;
+
+                        }
+
+
+                        // 显示前10个映射
+                        const sampleCodes = Object.keys(connectorFunctions).slice(0, 10);
+                        sampleCodes.forEach(code => {
+                        });
+
+                        // 检查是否成功
+                        if (Object.keys(connectorFunctions).length === 0) {
+                            console.error('❌ 错误：未建立任何插件功能映射！');
+                            console.error('columnB长度:', columnB.length);
+                            console.error('columnC长度:', columnC.length);
+                            console.error('跳过空行:', skippedEmpty);
+                            console.error('跳过占位符:', skippedDash);
+                            console.error('前5个B列值:', columnB.slice(0, 5));
+                            console.error('前5个C列值:', columnC.slice(0, 5));
+
+                            alert('Connlist文件处理失败：未找到有效的插件代码和功能描述\n\n请检查：\n1. B列是否包含插件代码\n2. C列是否包含功能描述\n3. 数据是否有效（非空、非"-"）\n\n详细错误信息请查看浏览器控制台（F12）');
+                            reject(new Error('No valid mappings found'));
+                            return;
+                        }
+
+                        console.log('✅ Connlist处理成功！共建立', Object.keys(connectorFunctions).length, '个映射');
+                        console.log('有效数据:', validCount, '跳过空行:', skippedEmpty, '跳过占位符:', skippedDash);
+
+
+                        resolve();
+                    } catch (error) {
+                        console.error('❌ Connlist处理异常:', error);
+                        reject(error);
+                    }
+                };
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        function processInlineFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+
+                        if (jsonData.length === 0) {
+                            alert('Inline文件为空或格式不正确');
+                            reject(new Error('Empty inline file'));
+                            return;
+                        }
+
+                        // 清空之前的数据
+                        inlineMapping = {};
+                        inlineCodes.clear();
+
+                        // 构建inline映射（双向）
+                        let validCount = 0;
+                        jsonData.forEach(row => {
+                            const left = String(row['INLINE-LEFT'] || '').trim();
+                            const right = String(row['INLINE-RIGHT'] || '').trim();
+
+                            if (left && right && left !== '-' && right !== '-') {
+                                const normalizedLeft = left.toUpperCase();
+                                const normalizedRight = right.toUpperCase();
+
+                                // 双向映射
+                                inlineMapping[normalizedLeft] = normalizedRight;
+                                inlineMapping[normalizedRight] = normalizedLeft;
+
+                                // 添加到代码集合
+                                inlineCodes.add(normalizedLeft);
+                                inlineCodes.add(normalizedRight);
+
+                                validCount++;
+                            }
+                        });
+
+                        console.log(`✅ Inline文件已加载：识别到 ${validCount} 对连接，共 ${inlineCodes.size} 个代码`);
+
+                        if (inlineCodes.size === 0) {
+                            alert('Inline文件未找到有效数据\n\n请确保文件包含INLINE-LEFT和INLINE-RIGHT列');
+                            reject(new Error('No valid inline data'));
+                            return;
+                        }
+
+                        resolve();
+                    } catch (error) {
+                        console.error('❌ Inline处理异常:', error);
+                        reject(error);
+                    }
+                };
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        // 构建wirelist索引 - 加速查找性能
+        function buildWirelistIndex(data) {
+            const index = new Map(); // key: "code-pin" -> value: [wire1, wire2, ...]
+
+            data.forEach(wire => {
+                const from = String(wire.from || '').trim().toUpperCase();
+                const to = String(wire.to || '').trim().toUpperCase();
+                const fromPin = String(wire.fromPin || '').trim();
+                const toPin = String(wire.toPin || '').trim();
+
+                // 索引FROM端
+                const fromKey = fromPin ? `${from}-${fromPin}` : from;
+                if (!index.has(fromKey)) {
+                    index.set(fromKey, []);
+                }
+                index.get(fromKey).push(wire);
+
+                // 索引TO端
+                const toKey = toPin ? `${to}-${toPin}` : to;
+                if (!index.has(toKey)) {
+                    index.set(toKey, []);
+                }
+                index.get(toKey).push(wire);
+            });
+
+            return index;
+        }
+
+        // 根据code-pin快速查找对应的wire
+        function findWiresByCodePin(code, pin, wirelistIndex) {
+            const key = pin ? `${code}-${pin}` : code;
+            return wirelistIndex.get(key) || [];
+        }
+
+        // 构建连通图 - V4.2：包含inline和焊点，用于查找所有连接
+        function buildConnectivityGraph(data) {
+            const graph = new Map(); // 节点 -> 相邻节点列表
+
+            // 添加边到图中
+            function addEdge(node1, node2) {
+                if (!node1 || !node2) return;
+                if (!graph.has(node1)) {
+                    graph.set(node1, new Set());
+                }
+                if (!graph.has(node2)) {
+                    graph.set(node2, new Set());
+                }
+                graph.get(node1).add(node2);
+                graph.get(node2).add(node1);
+            }
+
+            // 第一步：遍历所有wire，构建直接连接
+            data.forEach(wire => {
+                const from = String(wire.from || '').trim().toUpperCase();
+                const to = String(wire.to || '').trim().toUpperCase();
+                const fromPin = String(wire.fromPin || '').trim();
+                const toPin = String(wire.toPin || '').trim();
+
+                if (!from || !to) return;
+
+                // 1. 直接连接：FROM -> TO
+                const fromNode = fromPin ? `${from}-${fromPin}` : from;
+                const toNode = toPin ? `${to}-${toPin}` : to;
+                addEdge(fromNode, toNode);
+            });
+
+            // 第二步：处理焊点连接（所有连接到同一焊点的节点互相连接）
+            const solderPoints = new Map(); // 焊点代码 -> 连接的节点列表
+
+            data.forEach(wire => {
+                const from = String(wire.from || '').trim().toUpperCase();
+                const to = String(wire.to || '').trim().toUpperCase();
+                const fromPin = String(wire.fromPin || '').trim();
+                const toPin = String(wire.toPin || '').trim();
+
+                // 收集FROM端焊点
+                if (fromPin === 'X') {
+                    const fromNode = from; // 焊点节点（不带pin）
+                    if (!solderPoints.has(fromNode)) {
+                        solderPoints.set(fromNode, []);
+                    }
+                    // 收集连接到这个焊点的另一端节点
+                    const toNode = toPin ? `${to}-${toPin}` : to;
+                    solderPoints.get(fromNode).push(toNode);
+                }
+
+                // 收集TO端焊点
+                if (toPin === 'X') {
+                    const toNode = to; // 焊点节点（不带pin）
+                    if (!solderPoints.has(toNode)) {
+                        solderPoints.set(toNode, []);
+                    }
+                    // 收集连接到这个焊点的另一端节点
+                    const fromNode = fromPin ? `${from}-${fromPin}` : from;
+                    solderPoints.get(toNode).push(fromNode);
+                }
+            });
+
+            // 将连接到同一焊点的所有节点互相连接
+            solderPoints.forEach((nodes, solderPoint) => {
+                // 所有连接到这个焊点的节点互相连接
+                for (let i = 0; i < nodes.length; i++) {
+                    for (let j = i + 1; j < nodes.length; j++) {
+                        addEdge(nodes[i], nodes[j]);
+                    }
+                }
+            });
+
+            // 第三步：处理Inline连接（相同pin的inline两端互相连接）
+            data.forEach(wire => {
+                const from = String(wire.from || '').trim().toUpperCase();
+                const to = String(wire.to || '').trim().toUpperCase();
+                const fromPin = String(wire.fromPin || '').trim();
+                const toPin = String(wire.toPin || '').trim();
+
+                if (!from || !to) return;
+
+                const fromNode = fromPin ? `${from}-${fromPin}` : from;
+                const toNode = toPin ? `${to}-${toPin}` : to;
+
+                // 检查FROM是否在inline中
+                if (inlineMapping[from]) {
+                    const inlineTarget = inlineMapping[from];
+                    // 查找所有连接到inline目标端且pin相同的节点
+                    data.forEach(otherWire => {
+                        if (otherWire === wire) return;
+                        const otherFrom = String(otherWire.from || '').trim().toUpperCase();
+                        const otherTo = String(otherWire.to || '').trim().toUpperCase();
+                        const otherFromPin = String(otherWire.fromPin || '').trim();
+                        const otherToPin = String(otherWire.toPin || '').trim();
+
+                        // 如果otherWire的FROM连接到inline目标端，且pin相同
+                        if (otherFrom === inlineTarget && otherFromPin === fromPin) {
+                            const otherToNode = otherToPin ? `${otherTo}-${otherToPin}` : otherTo;
+                            addEdge(fromNode, otherToNode);
+                        }
+                        // 如果otherWire的TO连接到inline目标端，且pin相同
+                        if (otherTo === inlineTarget && otherToPin === fromPin) {
+                            const otherFromNode = otherFromPin ? `${otherFrom}-${otherFromPin}` : otherFrom;
+                            addEdge(fromNode, otherFromNode);
+                        }
+                    });
+                }
+
+                // 检查TO是否在inline中
+                if (inlineMapping[to]) {
+                    const inlineTarget = inlineMapping[to];
+                    // 查找所有连接到inline目标端且pin相同的节点
+                    data.forEach(otherWire => {
+                        if (otherWire === wire) return;
+                        const otherFrom = String(otherWire.from || '').trim().toUpperCase();
+                        const otherTo = String(otherWire.to || '').trim().toUpperCase();
+                        const otherFromPin = String(otherWire.fromPin || '').trim();
+                        const otherToPin = String(otherWire.toPin || '').trim();
+
+                        // 如果otherWire的FROM连接到inline目标端，且pin相同
+                        if (otherFrom === inlineTarget && otherFromPin === toPin) {
+                            const otherToNode = otherToPin ? `${otherTo}-${otherToPin}` : otherTo;
+                            addEdge(toNode, otherToNode);
+                        }
+                        // 如果otherWire的TO连接到inline目标端，且pin相同
+                        if (otherTo === inlineTarget && otherToPin === toPin) {
+                            const otherFromNode = otherFromPin ? `${otherFrom}-${otherFromPin}` : otherFrom;
+                            addEdge(toNode, otherFromNode);
+                        }
+                    });
+                }
+            });
+
+            console.log('✅ V4.2连通图构建完成（包含inline和焊点），节点数:', graph.size);
+            return graph;
+        }
+
+        // 判断节点是否为中间节点（inline或焊点）
+        function isIntermediateNode(node) {
+            const nodeUpper = String(node).trim().toUpperCase();
+
+            // 提取code部分（不含pin）
+            let code = nodeUpper;
+            if (code.includes('-')) {
+                code = code.split('-')[0];
+            }
+
+            // 1. 检查是否为inline节点
+            if (inlineMapping[code]) {
+                return true;
+            }
+
+            // 2. 检查是否为焊点节点（节点名本身不带pin，说明是焊点）
+            // 或者节点包含-X
+            if (!nodeUpper.includes('-') || nodeUpper.endsWith('-X')) {
+                return true;
+            }
+
+            return false;
+        }
+
+        // 查找所有与起点连通的节点（BFS）
+        function findConnectedNodes(startNode, graph) {
+            if (!graph.has(startNode)) return [];
+
+            const visited = new Set();
+            const queue = [startNode];
+            const connectedNodes = [];
+
+            while (queue.length > 0) {
+                const node = queue.shift();
+                if (visited.has(node)) continue;
+                visited.add(node);
+
+                // 不包含起点本身
+                if (node !== startNode) {
+                    connectedNodes.push(node);
+                }
+
+                // 添加所有相邻节点
+                const neighbors = graph.get(node);
+                if (neighbors) {
+                    neighbors.forEach(neighbor => {
+                        if (!visited.has(neighbor)) {
+                            queue.push(neighbor);
+                        }
+                    });
+                }
+            }
+
+            return connectedNodes;
+        }
+
+        // 识别同一回路（保留原有接口）
+        function identifyCircuitGroups(data) {
+            const groups = [];
+            const processed = new Set();
+
+            data.forEach((item, index) => {
+                if (processed.has(index)) return;
+
+                const group = {
+                    groupId: groups.length + 1,
+                    wires: [item],
+                    allFunctions: item.fuseFunction ? [item.fuseFunction] : []
+                };
+
+                processed.add(index);
+                groups.push(group);
+            });
+
+            return groups;
+        }
+
+        // 查找相关的回路（通过inline连接）
+        function findRelatedWires(item, data, currentIndex) {
+            const related = new Set();
+            const from = String(item.from || '').trim().toUpperCase();
+            const to = String(item.to || '').trim().toUpperCase();
+            const fromPin = String(item.fromPin || '').trim();
+            const toPin = String(item.toPin || '').trim();
+
+            // 1. 检查inline连接
+            // 如果FROM在inline中，查找连接到对应端的回路
+            if (inlineMapping[from]) {
+                const inlineTarget = inlineMapping[from];
+                data.forEach((wire, idx) => {
+                    if (idx === currentIndex) return;
+                    const wireFrom = String(wire.from || '').trim().toUpperCase();
+                    const wireTo = String(wire.to || '').trim().toUpperCase();
+
+                    // 检查是否连接到inline对应端且pin相同
+                    if ((wireFrom === inlineTarget && fromPin === wire.fromPin) ||
+                        (wireTo === inlineTarget && toPin === wire.toPin)) {
+                        related.add(idx);
+                    }
+                });
+            }
+
+            // 如果TO在inline中，查找连接到对应端的回路
+            if (inlineMapping[to]) {
+                const inlineTarget = inlineMapping[to];
+                data.forEach((wire, idx) => {
+                    if (idx === currentIndex) return;
+                    const wireFrom = String(wire.from || '').trim().toUpperCase();
+                    const wireTo = String(wire.to || '').trim().toUpperCase();
+
+                    // 检查是否连接到inline对应端且pin相同
+                    if ((wireFrom === inlineTarget && fromPin === wire.fromPin) ||
+                        (wireTo === inlineTarget && toPin === wire.toPin)) {
+                        related.add(idx);
+                    }
+                });
+            }
+
+            // 2. 检查焊点连接（已有逻辑）
+            if (fromPin === 'X' || toPin === 'X') {
+                data.forEach((wire, idx) => {
+                    if (idx === currentIndex) return;
+                    const wireFrom = String(wire.from || '').trim().toUpperCase();
+                    const wireTo = String(wire.to || '').trim().toUpperCase();
+                    const wireFromPin = String(wire.fromPin || '').trim();
+                    const wireToPin = String(wire.toPin || '').trim();
+
+                    // 检查是否连接到同一焊点
+                    if ((fromPin === 'X' && wireFromPin === 'X' && wireTo === to) ||
+                        (toPin === 'X' && wireToPin === 'X' && wireFrom === from)) {
+                        related.add(idx);
+                    }
+                });
+            }
+
+            return Array.from(related);
+        }
+
+        // 获取inline另一侧连接的所有回路
+        function getInlineConnectedWires(inlineTargetCode, targetPin, currentFrom) {
+            const connectedWires = [];
+            const currentFromUpper = String(currentFrom || '').trim().toUpperCase();
+
+            // 在wirelist中查找所有连接到inline目标端的回路
+            wirelistAllData.forEach(wire => {
+                const wireFrom = String(wire.from || '').trim().toUpperCase();
+                const wireTo = String(wire.to || '').trim().toUpperCase();
+                const wireFromPin = String(wire.fromPin || '').trim();
+                const wireToPin = String(wire.toPin || '').trim();
+
+                // 检查是否连接到inline目标端且pin相同
+                // 情况1: FROM = inline目标代码 且 FromPin = 目标Pin
+                if (wireFrom === inlineTargetCode && wireFromPin === targetPin) {
+                    // 获取另一端的代码（TO端）
+                    const otherEnd = wireTo;
+                    if (otherEnd && otherEnd !== currentFromUpper && otherEnd !== inlineTargetCode) {
+                        // 格式：代码-Pin
+                        const displayFormat = wireToPin ? `${otherEnd}-${wireToPin}` : otherEnd;
+                        connectedWires.push(displayFormat);
+                    }
+                }
+
+                // 情况2: TO = inline目标代码 且 ToPin = 目标Pin
+                if (wireTo === inlineTargetCode && wireToPin === targetPin) {
+                    // 获取另一端的代码（FROM端）
+                    const otherEnd = wireFrom;
+                    if (otherEnd && otherEnd !== currentFromUpper && otherEnd !== inlineTargetCode) {
+                        // 格式：代码-Pin
+                        const displayFormat = wireFromPin ? `${otherEnd}-${wireFromPin}` : otherEnd;
+                        connectedWires.push(displayFormat);
+                    }
+                }
+            });
+
+            // 去重
+            return [...new Set(connectedWires)];
+        }
+
+        // Data validation function
+        async function validateData() {
+            let warnings = [];
+            let errors = [];
+
+            // 验证线径
+            if (configSettings.validateWireDiameter) {
+                const abnormalWires = allData.filter(item => {
+                    const wireDiameter = item.wireDiameter;
+                    return wireDiameter < 0.3 || wireDiameter > 10.0;
+                });
+
+                if (abnormalWires.length > 0) {
+                    warnings.push(`发现 ${abnormalWires.length} 条线径异常数据（<0.3mm² 或 >10mm²）`);
+                    console.warn(`⚠️ 线径异常: ${abnormalWires.length} 条`);
+                }
+            }
+
+            // 验证保险丝规格
+            if (configSettings.validateFuseRating) {
+                const noFuseRating = allData.filter(item => item.fuseRating === '需人工确认');
+
+                if (noFuseRating.length > 0) {
+                    warnings.push(`发现 ${noFuseRating.length} 条无法匹配保险丝规格的数据`);
+                    console.warn(`⚠️ 无法匹配保险丝: ${noFuseRating.length} 条`);
+                }
+            }
+
+            // 验证保险丝功能
+            const noFuseFunction = allData.filter(item => item.fuseFunction === '无');
+            if (noFuseFunction.length > 0) {
+                warnings.push(`发现 ${noFuseFunction.length} 条无保险丝功能描述的数据`);
+                console.warn(`⚠️ 无保险丝功能: ${noFuseFunction.length} 条`);
+            }
+
+            // 显示验证结果
+            if (warnings.length > 0) {
+                showAlert('warning', warnings.join('\n'));
+            }
+
+            return { errors, warnings };
+        }
+
+        // Analysis dashboard
+        function displayAnalysisDashboard() {
+            const dashboard = document.getElementById('analysisDashboard');
+
+            if (filteredData.length === 0) {
+                dashboard.classList.remove('active');
+                return;
+            }
+
+            // 计算统计数据
+            const wireDiameters = filteredData.map(d => d.wireDiameter).filter(d => d > 0);
+            const avgWireDiameter = wireDiameters.length > 0
+                ? (wireDiameters.reduce((a, b) => a + b, 0) / wireDiameters.length).toFixed(2)
+                : 0;
+            const minWireDiameter = wireDiameters.length > 0 ? Math.min(...wireDiameters).toFixed(2) : 0;
+            const maxWireDiameter = wireDiameters.length > 0 ? Math.max(...wireDiameters).toFixed(2) : 0;
+
+            const solderJointCount = filteredData.filter(d => d.connectionType === '焊点').length;
+            const directConnectionCount = filteredData.filter(d => d.connectionType === '直接连接').length;
+            const abnormalDataCount = filteredData.filter(d =>
+                d.note === '需人工确认' || d.fuseFunction === '无'
+            ).length;
+
+            // 更新显示
+            document.getElementById('avgWireDiameter').textContent = avgWireDiameter;
+            document.getElementById('minWireDiameter').textContent = minWireDiameter;
+            document.getElementById('maxWireDiameter').textContent = maxWireDiameter;
+            document.getElementById('solderJointCount').textContent = solderJointCount;
+            document.getElementById('directConnectionCount').textContent = directConnectionCount;
+            document.getElementById('abnormalDataCount').textContent = abnormalDataCount;
+
+            // 如果有异常数据，改变颜色
+            const abnormalElement = document.getElementById('abnormalDataCount');
+            if (abnormalDataCount > 0) {
+                abnormalElement.style.color = 'var(--accent-orange)';
+            } else {
+                abnormalElement.style.color = 'var(--accent-lime)';
+            }
+
+            dashboard.classList.add('active');
+        }
+
+        function findColumns(row) {
+            const columns = {};
+
+            Object.keys(row).forEach(key => {
+                const normalizedKey = key.toLowerCase().trim();
+
+                // 识别Wire ID列（回路号）
+                if (normalizedKey === 'wire id' || normalizedKey === 'wireid' ||
+                    (normalizedKey.includes('wire') && normalizedKey.includes('id')) ||
+                    normalizedKey === 'id' || normalizedKey === '线路号' || normalizedKey === '回路号') {
+                    columns.wireId = key;
+                }
+                // 识别线径列
+                else if (normalizedKey.includes('线径') || normalizedKey.includes('wire') ||
+                    normalizedKey.includes('diameter') || normalizedKey.includes('截面') ||
+                    normalizedKey.includes('size') || normalizedKey.includes('gauge') ||
+                    normalizedKey.includes('mm2') || normalizedKey.includes('mm²')) {
+                    columns.wireDiameter = key;
+                }
+                // 识别电路类型列
+                else if (normalizedKey.includes('电路') || normalizedKey.includes('circuit')) {
+                    columns.circuitType = key;
+                }
+                // 识别线束类型列（优先Ident Tag）
+                else if (normalizedKey === 'ident tag' || normalizedKey === 'identtag' ||
+                         normalizedKey === 'ident' || normalizedKey.includes('ident')) {
+                    columns.harnessType = key;
+                }
+                else if (normalizedKey.includes('线束') || normalizedKey.includes('harness')) {
+                    columns.harnessType = key;
+                }
+                // 识别Option列
+                else if (normalizedKey === 'option' || normalizedKey === 'options') {
+                    columns.option = key;
+                }
+                // 识别FROM列 - 优先匹配 "from code"，避免匹配 "from pin"
+                else if (normalizedKey === 'from code' || normalizedKey === 'fromcode') {
+                    columns.from = key;
+                }
+                else if (!columns.from && (normalizedKey === 'from' || normalizedKey === 'from设备' ||
+                    normalizedKey.includes('源') || normalizedKey.includes('source'))) {
+                    columns.from = key;
+                }
+                // 识别From Pin列
+                else if (normalizedKey === 'from pin' || normalizedKey === 'frompin' ||
+                    (normalizedKey.includes('from') && normalizedKey.includes('pin'))) {
+                    columns.fromPin = key;
+                }
+                // 识别TO列 - 优先匹配 "to code"，避免匹配 "to pin"
+                else if (normalizedKey === 'to code' || normalizedKey === 'tocode') {
+                    columns.to = key;
+                }
+                else if (!columns.to && (normalizedKey === 'to' || normalizedKey === 'to设备' ||
+                    normalizedKey.includes('目标') || normalizedKey.includes('destination'))) {
+                    columns.to = key;
+                }
+                // 识别To Pin列
+                else if (normalizedKey === 'to pin' || normalizedKey === 'topin' ||
+                    (normalizedKey.includes('to') && normalizedKey.includes('pin'))) {
+                    columns.toPin = key;
+                }
+            });
+
+            return columns;
+        }
+
+        function determineConnectionType(fromCode, toCode, fromPin, toPin) {
+            const fromPinUpper = String(fromPin).trim().toUpperCase();
+            const toPinUpper = String(toPin).trim().toUpperCase();
+
+            // 判断是否为焊点：From Pin或To Pin有一端是X
+            const isSolderJoint = (fromPinUpper === 'X' || toPinUpper === 'X');
+
+            return isSolderJoint ? '焊点' : '直接连接';
+        }
+
+        function getConnectorsForSolderJoint(fromCode, toCode, fromPin, toPin) {
+            // 对于焊点，查找连接的所有其他回路的插件代码和Pin脚
+            const fromUpper = String(fromCode).trim().toUpperCase();
+            const toUpper = String(toCode).trim().toUpperCase();
+            const fromPinUpper = String(fromPin).trim().toUpperCase();
+            const toPinUpper = String(toPin).trim().toUpperCase();
+
+            // 确定哪一端是焊点（Pin=X的那端）
+            // 重要：如果两端都是X，焊点应该是非电器盒端
+            let solderPointCode = null;
+
+            // 检查哪一端是电器盒
+            const fromIsBox = validCodes.some(code => fromUpper.includes(code));
+            const toIsBox = validCodes.some(code => toUpper.includes(code));
+
+            if (fromPinUpper === 'X' && toPinUpper === 'X') {
+                // 两端都是X，选择非电器盒端作为焊点
+                if (fromIsBox && !toIsBox) {
+                    solderPointCode = toUpper;  // TO端是非电器盒，是焊点
+                } else if (!fromIsBox && toIsBox) {
+                    solderPointCode = fromUpper;  // FROM端是非电器盒，是焊点
+                } else if (fromIsBox && toIsBox) {
+                    // 两端都是电器盒，无法确定
+                    return [];
+                } else {
+                    // 两端都不是电器盒，优先选TO端
+                    solderPointCode = toUpper;
+                }
+            } else if (fromPinUpper === 'X') {
+                solderPointCode = fromUpper;  // FROM端是焊点
+            } else if (toPinUpper === 'X') {
+                solderPointCode = toUpper;   // TO端是焊点
+            }
+
+            if (!solderPointCode) {
+                return [];  // 没有焊点
+            }
+
+
+            // 查找所有连接到这个焊点的其他回路
+            // 条件：TO = 焊点代码 且 TO Pin = X
+            let relatedWires = wirelistAllData.filter(wire => {
+                const wireToUpper = String(wire.to).trim().toUpperCase();
+                const wireToPinUpper = String(wire.toPin || '').trim().toUpperCase();
+
+                // TO必须完全等于焊点代码，且TO Pin必须是X
+                return (wireToUpper === solderPointCode && wireToPinUpper === 'X');
+            });
+
+            // 如果没有找到，尝试使用包含匹配（可能焊点代码是其他格式）
+            if (relatedWires.length === 0) {
+                // 尝试模糊匹配：TO包含焊点代码
+                const relatedWiresFuzzy = wirelistAllData.filter(wire => {
+                    const wireToUpper = String(wire.to).trim().toUpperCase();
+                    const wireToPinUpper = String(wire.toPin || '').trim().toUpperCase();
+
+                    return (wireToUpper.includes(solderPointCode) || solderPointCode.includes(wireToUpper)) && wireToPinUpper === 'X';
+                });
+                relatedWires = relatedWiresFuzzy;
+            }
+
+            // 收集所有回路的FROM端插件代码和Pin脚
+            const connectorArray = [];
+            relatedWires.forEach(wire => {
+                const wireFromUpper = String(wire.from).trim().toUpperCase();
+                const wireFromPinUpper = String(wire.fromPin || '').trim().toUpperCase();
+
+                // 添加FROM代码和Pin（格式：代码-Pin）
+                if (wireFromUpper && wireFromUpper !== '') {
+                    const connectorWithPin = wireFromPinUpper && wireFromPinUpper !== ''
+                        ? `${wireFromUpper}-${wireFromPinUpper}`
+                        : wireFromUpper;
+                    connectorArray.push(connectorWithPin);
+                }
+            });
+
+            return connectorArray;
+        }
+
+
+        function processData(jsonData, columns, wirelistData, circuitGraph, wirelistIndex) {
+            const processed = jsonData.map((row, index) => {
+                // 安全地获取Wire ID，如果列不存在则使用索引
+                let wireId = `Wire${index + 1}`;
+                if (columns.wireId && row[columns.wireId]) {
+                    wireId = String(row[columns.wireId]);
+                } else if (columns.wireDiameter && row[columns.wireDiameter]) {
+                    wireId = String(row[columns.wireDiameter]);
+                }
+
+                const wireDiameter = columns.wireDiameter ? parseFloat(row[columns.wireDiameter] || 0) : 0;
+                const circuitType = (columns.circuitType && row[columns.circuitType]) ? String(row[columns.circuitType]) : '未知';
+                const harnessType = (columns.harnessType && row[columns.harnessType]) ? String(row[columns.harnessType]) : '默认线束';
+                const option = (columns.option && row[columns.option]) ? String(row[columns.option]) : '';
+
+                // 调试：输出前3条数据的线束类型和Option信息
+                if (index < 3) {
+                    console.log(`回路${index + 1}: 列名="${columns.harnessType || '未找到'}", 线束类型值="${harnessType}", Option="${option}"`);
+                }
+
+                const fromValue = columns.from ? String(row[columns.from] || '') : '';
+                const toValue = columns.to ? String(row[columns.to] || '') : '';
+                const fromPinValue = columns.fromPin ? String(row[columns.fromPin] || '') : '';
+                const toPinValue = columns.toPin ? String(row[columns.toPin] || '') : '';
+
+                // FROM/TO调换逻辑：如果电器盒代码在TO位置，调换到FROM位置
+                let finalFrom = fromValue;
+                let finalTo = toValue;
+                let finalFromPin = fromPinValue;
+                let finalToPin = toPinValue;
+                let swapped = false;
+
+                // 先用原始值判断是否需要调换
+                const originalFromUpper = String(fromValue).trim().toUpperCase();
+                const originalToUpper = String(toValue).trim().toUpperCase();
+
+                // 检查TO是否包含电器盒代码
+                const toHasBoxCode = validCodes.some(code => originalToUpper.includes(code));
+                // 检查FROM是否不包含电器盒代码
+                const fromHasBoxCode = validCodes.some(code => originalFromUpper.includes(code));
+
+                // 如果TO有电器盒代码但FROM没有，则调换
+                if (toHasBoxCode && !fromHasBoxCode) {
+                    finalFrom = toValue;
+                    finalTo = fromValue;
+                    finalFromPin = toPinValue;
+                    finalToPin = fromPinValue;
+                    swapped = true;
+                }
+
+                // 提取保险丝代号：取回路号前四位
+                let fuseCode = '';
+                if (wireId && wireId.length >= 4) {
+                    fuseCode = wireId.substring(0, 4).toUpperCase();
+                } else {
+                    fuseCode = wireId.substring(0, 4).toUpperCase();
+                }
+
+                // 判断连接类型
+                const connectionType = determineConnectionType(finalFrom, finalTo, finalFromPin, finalToPin);
+
+                // Find closest match in fuse mapping
+                let fuseInfo = { rating: 'N/A', type: '未知', primary: 0 };
+                let minDiff = Infinity;
+
+                Object.entries(fuseMapping).forEach(([diameter, info]) => {
+                    const diff = Math.abs(wireDiameter - parseFloat(diameter));
+                    if (diff < minDiff) {
+                        minDiff = diff;
+                        fuseInfo = info;
+                    }
+                });
+
+                // If no close match found, use default
+                if (minDiff > 2) {
+                    fuseInfo = { rating: '需人工确认', type: '未知', primary: 0 };
+                }
+
+                // V4.2：显示TO列，过滤掉inline和焊点中间节点
+                let toDisplay = '';
+                let toWireIds = '';
+                let toWireOptions = '';
+                let toWireDiameters = '';
+                const fromCode = finalFrom.trim().toUpperCase();
+                const fromPin = finalFromPin ? String(finalFromPin).trim() : '';
+                const fromNode = fromPin ? `${fromCode}-${fromPin}` : fromCode;
+
+                // 查找所有与FROM连通的节点
+                const connectedNodes = findConnectedNodes(fromNode, circuitGraph);
+
+                if (connectedNodes.length > 0) {
+                    // 过滤掉FROM本身和中间节点（inline、焊点）
+                    const filteredNodes = connectedNodes.filter(node => {
+                        const nodeUpper = node.toUpperCase();
+                        const fromUpper = fromNode.toUpperCase();
+
+                        // 去掉FROM本身
+                        if (nodeUpper === fromUpper) return false;
+
+                        // 去掉中间节点（inline和焊点）
+                        if (isIntermediateNode(node)) return false;
+
+                        return true;
+                    });
+
+                    if (filteredNodes.length > 0) {
+                        // 为每个节点查找对应的回路号、option和线径，保持一一对应
+                        const toList = [];
+                        const wireIdList = [];
+                        const optionList = [];
+                        const diameterList = [];
+
+                        filteredNodes.forEach(node => {
+                            const nodeTrimmed = node.trim();
+                            if (!nodeTrimmed) return;
+
+                            // 解析code和pin
+                            let code, pin;
+                            if (nodeTrimmed.includes('-')) {
+                                const parts = nodeTrimmed.split('-');
+                                code = parts[0];
+                                pin = parts.slice(1).join('-');
+                            } else {
+                                code = nodeTrimmed;
+                                pin = '';
+                            }
+
+                            // 添加到TO列表
+                            toList.push(nodeTrimmed);
+
+                            // 使用索引快速查找对应的wire（性能优化）
+                            const matchedWires = findWiresByCodePin(code, pin, wirelistIndex);
+
+                            // 收集回路号（可能有多个wire连接到同一个点）
+                            const wireIds = [];
+                            const options = [];
+                            const diameters = [];
+
+                            matchedWires.forEach(wire => {
+                                if (wire.wireId && !wireIds.includes(wire.wireId)) {
+                                    wireIds.push(wire.wireId);
+                                }
+                                // 收集option
+                                if (wire.option && !options.includes(wire.option)) {
+                                    options.push(wire.option);
+                                }
+                                // 收集线径
+                                if (wire.wireDiameter && !diameters.includes(wire.wireDiameter)) {
+                                    diameters.push(wire.wireDiameter);
+                                }
+                            });
+
+                            // 添加回路号
+                            if (wireIds.length > 0) {
+                                wireIdList.push(wireIds.join(', '));
+                            } else {
+                                wireIdList.push('');
+                            }
+
+                            // 添加option
+                            if (options.length > 0) {
+                                optionList.push(options.join(', '));
+                            } else {
+                                optionList.push('');
+                            }
+
+                            // 添加线径
+                            if (diameters.length > 0) {
+                                // 格式化线径显示
+                                diameterList.push(diameters.map(d => d.toFixed(2)).join(', '));
+                            } else {
+                                diameterList.push('');
+                            }
+                        });
+
+                        // 合并为显示字符串（保持对应关系）
+                        toDisplay = toList.join('\n');
+                        toWireIds = wireIdList.join('\n');
+                        toWireOptions = optionList.join('\n');
+                        toWireDiameters = diameterList.join('\n');
+                    }
+                }
+
+                // 获取保险丝功能（将TO列去除PIN脚后在connlist中查找）
+                let fuseFunction = '无';
+                // 只有当toDisplay不为空时才处理
+                if (toDisplay && toDisplay.trim() !== '') {
+                    const toDisplayLines = toDisplay.split('\n');
+
+                    if (toDisplayLines.length > 0) {
+                        const descriptions = [];
+
+                        toDisplayLines.forEach((line, idx) => {
+                            let connectorCode = line.trim();
+                            if (!connectorCode) return;
+
+                            // 规范化代码：去除空格，转大写
+                            const normalizedCode = connectorCode.replace(/\s+/g, '').toUpperCase();
+
+                            // 去除最后一个"-"及其后面的PIN脚
+                            let baseCode = normalizedCode;
+                            if (baseCode.includes('-')) {
+                                // 找到最后一个"-"的位置，去除它及之后的所有内容
+                                const lastDashIndex = baseCode.lastIndexOf('-');
+                                baseCode = baseCode.substring(0, lastDashIndex);
+                            }
+
+                            // 在connlist中查找
+                            let matchedFunction = null;
+                            if (baseCode && connectorFunctions[baseCode]) {
+                                matchedFunction = connectorFunctions[baseCode];
+                            }
+
+                            // 如果找到匹配，添加到描述列表
+                            if (matchedFunction) {
+                                descriptions.push(matchedFunction);
+                            }
+                        });
+
+                        if (descriptions.length > 0) {
+                            fuseFunction = descriptions.join('\n');  // 使用换行符连接
+                        }
+                    }
+                }
+
+                return {
+                    index: index + 1,
+                    wireId: wireId,
+                    fuseCode: fuseCode,
+                    wireDiameter: wireDiameter || 0,
+                    circuitType: String(circuitType),
+                    harnessType: String(harnessType),
+                    option: option,  // Option配置
+                    from: finalFrom,
+                    fromPin: finalFromPin,
+                    to: finalTo,
+                    toPin: finalToPin,
+                    toDisplay: toDisplay,  // 用于显示的TO值
+                    toWireIds: toWireIds,  // TO列对应的回路号
+                    toWireOptions: toWireOptions,  // TO对应回路号的Option
+                    toWireDiameters: toWireDiameters,  // TO对应回路号的线径
+                    connectionType: connectionType,
+                    fuseFunction: fuseFunction,  // 保险丝功能
+                    fuseRating: fuseInfo.rating,
+                    fuseType: fuseInfo.type,
+                    fusePrimary: fuseInfo.primary,
+                    note: minDiff > 0.1 ? '接近标准规格' : '标准匹配',
+                    swapped: swapped
+                };
+            });
+
+            // Debug: 输出前5条数据的FROM和TO值
+            processed.slice(0, 5).forEach((item, i) => {
+            });
+
+            // Filter rows to only include those with valid codes in FROM or TO
+            const filtered = processed.filter(item => {
+                // 去除空格并转为大写，确保匹配准确
+                const fromUpper = String(item.from).trim().toUpperCase();
+                const toUpper = String(item.to).trim().toUpperCase();
+
+                // 检查是否包含任何有效代码（只要包含该字符即可）
+                const matches = validCodes.some(code =>
+                    fromUpper.includes(code) || toUpper.includes(code)
+                );
+
+                return matches;
+            });
+
+            // Debug: 输出过滤原因
+
+            // 显示一些匹配示例
+            if (filtered.length > 0) {
+                filtered.slice(0, 3).forEach((item, i) => {
+                    const matchedCodes = [];
+                    const fromUpper = item.from.toUpperCase();
+                    const toUpper = item.to.toUpperCase();
+                    validCodes.forEach(code => {
+                        if (fromUpper.includes(code) || toUpper.includes(code)) {
+                            matchedCodes.push(code);
+                        }
+                    });
+                });
+            }
+
+            return filtered;
+        }
+
+        function initializeFilters() {
+            filterButtons.innerHTML = '';
+
+            // Add "全部" button
+            const allBtn = document.createElement('button');
+            allBtn.className = 'filter-btn active';
+            allBtn.innerHTML = `全部 <span class="count">${allData.length}</span>`;
+            allBtn.onclick = () => applyFilter(null, allBtn);
+            filterButtons.appendChild(allBtn);
+
+            // Add box-specific buttons
+            Object.entries(boxFilters).forEach(([boxName, boxInfo]) => {
+                const count = countByBox(boxInfo.codes);
+                const btn = document.createElement('button');
+                btn.className = 'filter-btn';
+                btn.innerHTML = `${boxName} <span class="count">${count}</span>`;
+                btn.onclick = () => applyFilter(boxName, btn);
+                filterButtons.appendChild(btn);
+            });
+
+            filterSection.classList.add('active');
+        }
+
+        function countByBox(codes) {
+            return allData.filter(item => {
+                const fromUpper = String(item.from).trim().toUpperCase();
+                const toUpper = String(item.to).trim().toUpperCase();
+
+                return codes.some(code =>
+                    fromUpper.includes(code) || toUpper.includes(code)
+                );
+            }).length;
+        }
+
+        function applyFilter(filterName, clickedBtn) {
+            activeFilter = filterName;
+
+            // Update button states
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            clickedBtn.classList.add('active');
+
+            // Apply filter
+            if (filterName === null) {
+                filteredData = [...allData];
+            } else {
+                const codes = boxFilters[filterName].codes;
+                filteredData = allData.filter(item => {
+                    const fromUpper = String(item.from).trim().toUpperCase();
+                    const toUpper = String(item.to).trim().toUpperCase();
+
+                    return codes.some(code =>
+                        fromUpper.includes(code) || toUpper.includes(code)
+                    );
+                });
+            }
+
+
+            displayResults();
+            displayStats();
+            displayAnalysisDashboard();
+        }
+
+        function displayResults() {
+            resultsBody.innerHTML = '';
+
+            // 检查是否有数据
+            if (filteredData.length === 0) {
+                resultsBody.innerHTML = `
+                    <tr>
+                        <td colspan="15" style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                            没有符合条件的数据
+                        </td>
+                    </tr>
+                `;
+                resultsSection.classList.add('active');
+                return;
+            }
+
+            // Group by harness type
+            const grouped = {};
+            filteredData.forEach(row => {
+                if (!grouped[row.harnessType]) {
+                    grouped[row.harnessType] = [];
+                }
+                grouped[row.harnessType].push(row);
+            });
+
+            Object.entries(grouped).forEach(([harnessType, rows]) => {
+                // Add group header
+                const headerRow = document.createElement('tr');
+                headerRow.className = 'harness-group';
+                headerRow.innerHTML = `
+                    <td colspan="15">${harnessType} (${rows.length} 条线路)</td>
+                `;
+                resultsBody.appendChild(headerRow);
+
+                // Add rows
+                rows.forEach(row => {
+                    const tr = document.createElement('tr');
+                    const fuseClass = `fuse-${row.fusePrimary || 'unknown'}`;
+
+                    // toDisplay已经在processData中被过滤过了，直接使用
+                    const toDisplayContent = row.toDisplay || '';
+
+                    tr.innerHTML = `
+                        <td style="font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--accent-lime);">${row.fuseCode}</td>
+                        <td style="font-family: 'JetBrains Mono', monospace; color: var(--text-primary);">${row.wireId}</td>
+                        <td style="font-family: 'JetBrains Mono', monospace; color: var(--accent-orange); font-weight: 500;">${row.option || ''}</td>
+                        <td><span class="from-to-badge">${row.from}${row.fromPin ? '-' + row.fromPin : ''}</span></td>
+                        <td>${toDisplayContent}</td>
+                        <td style="font-family: 'JetBrains Mono', monospace; color: var(--text-secondary);">${row.toWireIds || ''}</td>
+                        <td style="font-family: 'JetBrains Mono', monospace; color: var(--accent-orange);">${row.toWireOptions || ''}</td>
+                        <td style="font-family: 'JetBrains Mono', monospace; color: var(--accent-cyan);">${row.toWireDiameters || ''}</td>
+                        <td title="${row.fuseFunction}">${row.fuseFunction}</td>
+                        <td class="wire-diameter">${row.wireDiameter.toFixed(2)}</td>
+                        <td>${row.circuitType}</td>
+                        <td>${row.harnessType}</td>
+                        <td><span class="fuse-badge ${fuseClass}">${row.fuseRating}</span></td>
+                        <td><span class="fuse-type">${row.fuseType}</span></td>
+                        <td style="color: ${row.note.includes('标准') ? 'var(--accent-lime)' : 'var(--accent-orange)'}">${row.note}</td>
+                    `;
+                    resultsBody.appendChild(tr);
+                });
+            });
+
+            resultsSection.classList.add('active');
+        }
+
+        function displayStats() {
+            const totalCircuits = filteredData.length;
+            const harnessCount = new Set(filteredData.map(d => d.harnessType)).size;
+
+            // Count fuse ratings
+            const fuseCounts = {};
+            filteredData.forEach(row => {
+                const key = row.fusePrimary;
+                fuseCounts[key] = (fuseCounts[key] || 0) + 1;
+            });
+
+            // Calculate max for distribution bars
+            const maxCount = Math.max(...Object.values(fuseCounts), 1);
+
+            // Create stats cards
+            statsSection.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-label">总线路数</div>
+                    <div class="stat-value">${totalCircuits}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">线束类型数</div>
+                    <div class="stat-value">${harnessCount}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">保险丝规格数</div>
+                    <div class="stat-value">${Object.keys(fuseCounts).length}</div>
+                </div>
+            `;
+
+            // Create distribution bars
+            const sortedFuses = Object.entries(fuseCounts).sort((a, b) => a[0] - b[0]);
+            distributionBars.innerHTML = sortedFuses.map(([fuse, count]) => {
+                const percentage = (count / maxCount) * 100;
+                const fuseClass = `fuse-${fuse}`;
+                return `
+                    <div class="distribution-bar">
+                        <div class="bar-label">${fuse}A</div>
+                        <div class="bar-track">
+                            <div class="bar-fill ${fuseClass}" style="width: ${percentage}%"></div>
+                        </div>
+                        <div class="bar-value">${count}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function handleSort(column) {
+            // Update sort direction
+            if (currentSort.column === column) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.column = column;
+                currentSort.direction = 'asc';
+            }
+
+            // Update header classes
+            document.querySelectorAll('th.sortable').forEach(th => {
+                th.classList.remove('sort-asc', 'sort-desc');
+                if (th.dataset.column === column) {
+                    th.classList.add(`sort-${currentSort.direction}`);
+                }
+            });
+
+            // Sort data
+            const multiplier = currentSort.direction === 'asc' ? 1 : -1;
+            filteredData.sort((a, b) => {
+                if (column === 'wireDiameter') {
+                    return (a.wireDiameter - b.wireDiameter) * multiplier;
+                } else if (column === 'fuseRating') {
+                    return (a.fusePrimary - b.fusePrimary) * multiplier;
+                } else {
+                    return String(a[column]).localeCompare(String(b[column])) * multiplier;
+                }
+            });
+
+            // Re-display
+            displayResults();
+        }
+
+        async function exportToExcel() {
+            if (filteredData.length === 0) {
+                alert('没有数据可导出');
+                return;
+            }
+
+            try {
+                // 创建工作簿
+                const workbook = new ExcelJS.Workbook();
+                const worksheet = workbook.addWorksheet('保险丝匹配清单');
+
+                // 定义列
+                const columns = [
+                    { header: '保险丝代号', key: 'fuseCode', width: 12 },
+                    { header: '回路号', key: 'wireId', width: 10 },
+                    { header: 'Option', key: 'option', width: 8 },
+                    { header: 'FROM', key: 'from', width: 12 },
+                    { header: 'TO', key: 'to', width: 15 },
+                    { header: 'TO对应回路号', key: 'toWireIds', width: 40 },
+                    { header: '回路号Option', key: 'toWireOptions', width: 30 },
+                    { header: '回路线径', key: 'toWireDiameters', width: 12 },
+                    { header: '保险丝功能', key: 'fuseFunction', width: 40 },
+                    { header: '线径(mm²)', key: 'wireDiameter', width: 8 },
+                    { header: '电路类型', key: 'circuitType', width: 10 },
+                    { header: '线束类型', key: 'harnessType', width: 10 },
+                    { header: '推荐保险丝', key: 'fuseRating', width: 10 },
+                    { header: '保险丝类型', key: 'fuseType', width: 10 },
+                    { header: '备注', key: 'note', width: 10 }
+                ];
+                worksheet.columns = columns;
+
+                // 定义样式
+                const headerStyle = {
+                    font: { name: '微软雅黑', size: 8, bold: true, color: { argb: 'FFFFFFFF' } },
+                    fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF404040' } },
+                    alignment: { horizontal: 'center', vertical: 'middle' },
+                    border: {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' }
+                    }
+                };
+
+                // 应用表头样式
+                worksheet.getRow(1).eachCell(cell => {
+                    cell.style = headerStyle;
+                });
+
+                // 添加数据并应用样式
+                filteredData.forEach((row, index) => {
+                    const rowIndex = index + 2;
+                    const fromValue = row.fromPin ? `${row.from}-${row.fromPin}` : row.from;
+
+                    worksheet.addRow({
+                        fuseCode: row.fuseCode,
+                        wireId: row.wireId,
+                        option: row.option || '',
+                        from: fromValue,
+                        to: row.toDisplay || '',
+                        toWireIds: row.toWireIds || '',
+                        toWireOptions: row.toWireOptions || '',
+                        toWireDiameters: row.toWireDiameters || '',
+                        fuseFunction: row.fuseFunction,
+                        wireDiameter: row.wireDiameter,
+                        circuitType: row.circuitType,
+                        harnessType: row.harnessType,
+                        fuseRating: row.fuseRating,
+                        fuseType: row.fuseType,
+                        note: row.note
+                    });
+
+                    // 获取行对象
+                    const dataRow = worksheet.getRow(rowIndex);
+
+                    // 设置数据行样式
+                    dataRow.eachCell((cell, colNumber) => {
+                        // 基础样式
+                        cell.font = { name: '微软雅黑', size: 8, color: { argb: 'FF000000' } };
+                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
+                        cell.alignment = { vertical: 'top' };
+                        cell.border = {
+                            top: { style: 'thin' },
+                            left: { style: 'thin' },
+                            bottom: { style: 'thin' },
+                            right: { style: 'thin' }
+                        };
+
+                        // 列特定样式
+                        switch (colNumber) {
+                            case 1: // 保险丝代号 - 亮绿色，粗体
+                                cell.font.color = { argb: 'FF7FFF00' };
+                                cell.font.bold = true;
+                                break;
+                            case 2: // 回路号 - 粗体
+                                cell.font.bold = true;
+                                break;
+                            case 3: // Option - 橙色，粗体
+                                cell.font.color = { argb: 'FFFF8C00' };
+                                cell.font.bold = true;
+                                break;
+                            case 5: // TO - 自动换行
+                            case 9: // 保险丝功能 - 自动换行
+                                cell.alignment.wrapText = true;
+                                break;
+                            case 6: // TO对应回路号 - 灰色，自动换行
+                                cell.font.color = { argb: 'FF999999' };
+                                cell.alignment.wrapText = true;
+                                break;
+                            case 7: // 回路号Option - 橙色，自动换行
+                                cell.font.color = { argb: 'FFFF8C00' };
+                                cell.alignment.wrapText = true;
+                                break;
+                            case 8: // 回路线径 - 青色，自动换行
+                                cell.font.color = { argb: 'FF00FFFF' };
+                                cell.alignment.wrapText = true;
+                                break;
+                            case 15: // 备注 - 根据内容设置颜色
+                                if (cell.value && typeof cell.value === 'string') {
+                                    if (cell.value.includes('标准')) {
+                                        cell.font.color = { argb: 'FF7FFF00' };
+                                    } else if (cell.value.includes('接近')) {
+                                        cell.font.color = { argb: 'FFFF8C00' };
+                                    }
+                                }
+                                break;
+                        }
+                    });
+                });
+
+                // 生成文件名
+                const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+                const filterSuffix = activeFilter ? `_${activeFilter}` : '';
+                const filename = `保险丝匹配清单${filterSuffix}_${timestamp}.xlsx`;
+
+                // 导出Excel文件
+                const buffer = await workbook.xlsx.writeBuffer();
+                const blob = new Blob([buffer], {
+                    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+            } catch (error) {
+                console.error('导出Excel失败:', error);
+                alert('导出Excel失败: ' + error.message);
+            }
+        }
+
+        // 复制HTML到剪切板
+        function copyHtmlToClipboard() {
+            if (filteredData.length === 0) {
+                alert('没有数据可复制');
+                return;
+            }
+
+            // 创建一个新的表格，手动构建HTML以确保与Excel导出完全一致
+            const columnWidths = [
+                90,   // 保险丝代号 (12 * 7.5)
+                75,   // 回路号 (10 * 7.5)
+                60,   // Option (8 * 7.5)
+                90,   // FROM (12 * 7.5)
+                112,  // TO (15 * 7.5)
+                300,  // TO对应回路号 (40 * 7.5)
+                225,  // 回路号Option (30 * 7.5)
+                90,   // 回路线径 (12 * 7.5)
+                300,  // 保险丝功能 (40 * 7.5)
+                60,   // 线径 (8 * 7.5)
+                75,   // 电路类型 (10 * 7.5)
+                75,   // 线束类型 (10 * 7.5)
+                75,   // 推荐保险丝 (10 * 7.5)
+                75,   // 保险丝类型 (10 * 7.5)
+                75    // 备注 (10 * 7.5)
+            ];
+
+            // 构建colgroup
+            let colgroupHtml = '<colgroup>';
+            columnWidths.forEach(width => {
+                colgroupHtml += `<col style="width:${width}px">`;
+            });
+            colgroupHtml += '</colgroup>';
+
+            // 构建表头
+            let headerHtml = '<thead><tr>';
+            const headers = [
+                '保险丝代号', '回路号', 'Option', 'FROM', 'TO',
+                'TO对应回路号', '回路号Option', '回路线径', '保险丝功能',
+                '线径(mm²)', '电路类型', '线束类型', '推荐保险丝', '保险丝类型', '备注'
+            ];
+            headers.forEach(header => {
+                headerHtml += `<th style="background-color:#404040;color:#ffffff;font-family:微软雅黑;font-size:8pt;font-weight:bold;text-align:center;vertical-align:middle;border:1px solid #000000;padding:4px;">${header}</th>`;
+            });
+            headerHtml += '</tr></thead>';
+
+            // 构建数据行
+            let bodyHtml = '<tbody>';
+
+            filteredData.forEach(row => {
+                bodyHtml += '<tr>';
+
+                // 辅助函数：将换行符转换为br标签
+                const nl2br = (text) => {
+                    if (!text) return '';
+                    return String(text).replace(/\n/g, '<br>');
+                };
+
+                // 保险丝代号 - 亮绿色，粗体
+                bodyHtml += `<td style="font-family:微软雅黑;font-size:8pt;color:#7FFF00;font-weight:bold;vertical-align:top;border:1px solid #000000;padding:4px;">${row.fuseCode}</td>`;
+
+                // 回路号 - 粗体
+                bodyHtml += `<td style="font-family:微软雅黑;font-size:8pt;color:#000000;font-weight:bold;vertical-align:top;border:1px solid #000000;padding:4px;">${row.wireId}</td>`;
+
+                // Option - 橙色，粗体
+                bodyHtml += `<td style="font-family:微软雅黑;font-size:8pt;color:#FF8C00;font-weight:bold;vertical-align:top;border:1px solid #000000;padding:4px;">${row.option || ''}</td>`;
+
+                // FROM
+                const fromValue = row.fromPin ? `${row.from}-${row.fromPin}` : row.from;
+                bodyHtml += `<td style="font-family:微软雅黑;font-size:8pt;color:#000000;vertical-align:top;border:1px solid #000000;padding:4px;">${fromValue}</td>`;
+
+                // TO - 需要保留换行符
+                bodyHtml += `<td style="font-family:微软雅黑;font-size:8pt;color:#000000;vertical-align:top;border:1px solid #000000;padding:4px;">${nl2br(row.toDisplay || '')}</td>`;
+
+                // TO对应回路号 - 灰色，需要保留换行符
+                bodyHtml += `<td style="font-family:微软雅黑;font-size:8pt;color:#999999;vertical-align:top;border:1px solid #000000;padding:4px;">${nl2br(row.toWireIds || '')}</td>`;
+
+                // 回路号Option - 橙色，需要保留换行符
+                bodyHtml += `<td style="font-family:微软雅黑;font-size:8pt;color:#FF8C00;vertical-align:top;border:1px solid #000000;padding:4px;">${nl2br(row.toWireOptions || '')}</td>`;
+
+                // 回路线径 - 青色，需要保留换行符
+                bodyHtml += `<td style="font-family:微软雅黑;font-size:8pt;color:#00FFFF;vertical-align:top;border:1px solid #000000;padding:4px;">${nl2br(row.toWireDiameters || '')}</td>`;
+
+                // 保险丝功能 - 需要保留换行符
+                bodyHtml += `<td style="font-family:微软雅黑;font-size:8pt;color:#000000;vertical-align:top;border:1px solid #000000;padding:4px;">${nl2br(row.fuseFunction)}</td>`;
+
+                // 线径
+                bodyHtml += `<td style="font-family:微软雅黑;font-size:8pt;color:#000000;vertical-align:top;border:1px solid #000000;padding:4px;">${row.wireDiameter.toFixed(2)}</td>`;
+
+                // 电路类型
+                bodyHtml += `<td style="font-family:微软雅黑;font-size:8pt;color:#000000;vertical-align:top;border:1px solid #000000;padding:4px;">${row.circuitType}</td>`;
+
+                // 线束类型
+                bodyHtml += `<td style="font-family:微软雅黑;font-size:8pt;color:#000000;vertical-align:top;border:1px solid #000000;padding:4px;">${row.harnessType}</td>`;
+
+                // 推荐保险丝
+                bodyHtml += `<td style="font-family:微软雅黑;font-size:8pt;color:#000000;vertical-align:top;border:1px solid #000000;padding:4px;">${row.fuseRating}</td>`;
+
+                // 保险丝类型
+                bodyHtml += `<td style="font-family:微软雅黑;font-size:8pt;color:#000000;vertical-align:top;border:1px solid #000000;padding:4px;">${row.fuseType}</td>`;
+
+                // 备注 - 根据内容设置颜色
+                let noteStyle = 'font-family:微软雅黑;font-size:8pt;color:#000000;vertical-align:top;border:1px solid #000000;padding:4px;';
+                if (row.note && row.note.includes('标准')) {
+                    noteStyle = 'font-family:微软雅黑;font-size:8pt;color:#7FFF00;vertical-align:top;border:1px solid #000000;padding:4px;';
+                } else if (row.note && row.note.includes('接近')) {
+                    noteStyle = 'font-family:微软雅黑;font-size:8pt;color:#FF8C00;vertical-align:top;border:1px solid #000000;padding:4px;';
+                }
+                bodyHtml += `<td style="${noteStyle}">${row.note}</td>`;
+
+                bodyHtml += '</tr>';
+            });
+            bodyHtml += '</tbody>';
+
+            // 构建完整表格
+            const tableHtml = `<table border="1" cellspacing="0" cellpadding="0" style="border-collapse:collapse;font-family:微软雅黑;font-size:8pt;">${colgroupHtml}${headerHtml}${bodyHtml}</table>`;
+
+            const htmlContent = tableHtml;
+
+            // 构建纯文本内容（制表符分隔）
+            let textContent = headers.join('\t') + '\n';
+            filteredData.forEach(row => {
+                const fromValue = row.fromPin ? `${row.from}-${row.fromPin}` : row.from;
+                const rowData = [
+                    row.fuseCode,
+                    row.wireId,
+                    row.option || '',
+                    fromValue,
+                    row.toDisplay || '',
+                    row.toWireIds || '',
+                    row.toWireOptions || '',
+                    row.toWireDiameters || '',
+                    row.fuseFunction,
+                    row.wireDiameter.toFixed(2),
+                    row.circuitType,
+                    row.harnessType,
+                    row.fuseRating,
+                    row.fuseType,
+                    row.note
+                ];
+                // 移除换行符，替换为空格
+                const cleanRowData = rowData.map(cell =>
+                    String(cell).replace(/\n/g, ' ').replace(/\r/g, '')
+                );
+                textContent += cleanRowData.join('\t') + '\n';
+            });
+
+            // 使用Clipboard API复制HTML
+            const clipboardItem = new ClipboardItem({
+                'text/html': new Blob([htmlContent], { type: 'text/html' }),
+                'text/plain': new Blob([textContent], { type: 'text/plain' })
+            });
+
+            navigator.clipboard.write([clipboardItem]).then(() => {
+                alert('✅ HTML已复制到剪切板！\n\n可以直接粘贴到Excel、Word或电子邮件中。');
+            }).catch(err => {
+                console.error('复制失败:', err);
+                // 降级方案：使用传统方法
+                const textarea = document.createElement('textarea');
+                textarea.value = htmlContent;
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                    alert('✅ HTML已复制到剪切板！');
+                } catch (e) {
+                    alert('❌ 复制失败，请手动选择表格内容复制。');
+                }
+                document.body.removeChild(textarea);
+            });
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+    </script>
+</body>
+</html>

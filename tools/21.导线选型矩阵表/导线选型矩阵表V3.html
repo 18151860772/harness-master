@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>导线选型矩阵表 V3.0</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="web.data.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Microsoft YaHei", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 100%;
+            margin: 0;
+            background: white;
+            border-radius: 0;
+            box-shadow: none;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .upload-section {
+            padding: 10px 15px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e0e0e0;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .upload-info {
+            margin-bottom: 0;
+            color: #666;
+            font-size: 12px;
+            flex: 1;
+        }
+
+        .upload-btn {
+            display: inline-block;
+            padding: 8px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: transform 0.2s;
+            white-space: nowrap;
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .tabs {
+            display: flex;
+            background: #f0f0f0;
+            border-bottom: 2px solid #ddd;
+            flex-shrink: 0;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            background: #f0f0f0;
+            border: none;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .tab:hover {
+            background: #e0e0e0;
+        }
+
+        .tab.active {
+            background: white;
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+        }
+
+        #sheetsContainer {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .table-container {
+            padding: 5px;
+            overflow: auto;
+            flex: 1;
+            max-height: calc(100vh - 200px);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 12px;
+            table-layout: fixed;
+        }
+
+        thead {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: table-header-group;
+        }
+
+        th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px 4px;
+            text-align: center;
+            font-weight: bold;
+            white-space: normal;
+            word-wrap: break-word;
+            font-size: 11px;
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        th:hover {
+            background: linear-gradient(135deg, #5568d3 0%, #6a4190 100%);
+        }
+
+        th.filter-active {
+            background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+            box-shadow: inset 0 0 0 2px #fff;
+        }
+
+        th.filter-active::after {
+            content: '🔽';
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            font-size: 10px;
+        }
+
+        td {
+            padding: 6px 4px;
+            border: 1px solid #e0e0e0;
+            text-align: center;
+            white-space: normal;
+            word-wrap: break-word;
+            font-size: 12px;
+            min-width: 40px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* 确保tbody单元格在sticky表头下方 */
+        tbody tr {
+            position: relative;
+            z-index: 1;
+        }
+
+        td.x-cell {
+            background: #28a745 !important;
+            color: white !important;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        tr:hover {
+            background: #e8f4f8;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+            font-size: 18px;
+        }
+
+        .sheet-content {
+            display: none;
+            flex: 1;
+            overflow: hidden;
+            flex-direction: column;
+        }
+
+        .sheet-content.active {
+            display: flex;
+        }
+
+        .stats {
+            padding: 8px 15px;
+            background: #e8f4f8;
+            border-bottom: 1px solid #d0e0f0;
+            font-size: 12px;
+            color: #333;
+            flex-shrink: 0;
+        }
+
+        .stats strong {
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>导线选型矩阵表 V3.0</h1>
+            <p>点击表头筛选该列有X的行 | 再次点击取消筛选</p>
+        </div>
+
+        <div class="upload-section">
+            <div class="upload-info">
+                当前数据来源: <span id="dataSource" style="font-weight: bold; color: #667eea;">本地默认文件</span>
+            </div>
+            <label class="upload-btn">
+                上传新的Excel文件
+                <input type="file" id="fileInput" accept=".xlsx,.xls">
+            </label>
+            <span id="fileName" style="margin-left: 15px; color: #666;"></span>
+        </div>
+
+        <div class="tabs" id="tabs" style="display: none;">
+        </div>
+
+        <div id="sheetsContainer"></div>
+    </div>
+
+    <script>
+        let workbookData = {};
+        // defaultData is loaded from web.data.js
+        let headerFilter = { sheetIndex: -1, colIndex: -1, headerName: '' };
+
+        // 页面加载时检查是否有默认数据
+        window.addEventListener('DOMContentLoaded', function() {
+            // 如果 defaultData 中有数据（通过 web.data.js 加载），则使用它
+            if (Object.keys(defaultData).length > 0) {
+                console.log('=== defaultData 调试信息 ===');
+                const sheetNames = Object.keys(defaultData);
+                console.log('Sheet数量:', sheetNames.length);
+                sheetNames.forEach((name, index) => {
+                    console.log(`\nSheet ${index}: ${name}`);
+                    const data = defaultData[name];
+                    console.log('  行数:', data.length);
+                    if (data.length > 0) {
+                        console.log('  列数:', data[0].length);
+                        console.log('  表头:', data[0]);
+                    }
+                });
+                workbookData = defaultData;
+                renderUI();
+                console.log('\n已加载预置数据');
+            } else {
+                console.log('未找到预置数据，请上传 Excel 文件');
+            }
+        });
+
+        // 处理文件上传
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('dataSource').textContent = '上传文件: ' + file.name;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const data = new Uint8Array(event.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+
+                workbookData = {};
+                workbook.SheetNames.forEach(sheetName => {
+                    const worksheet = workbook.Sheets[sheetName];
+                    // 使用 header: 1 读取为数组格式，defval: '' 保留空单元格
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, {
+                        header: 1,
+                        defval: '',  // 空单元格用空字符串填充
+                        blankrows: true  // 保留空行
+                    });
+
+                    // 找到最大列数，确保所有行都有相同数量的列
+                    let maxCols = 0;
+                    jsonData.forEach(row => {
+                        if (row.length > maxCols) {
+                            maxCols = row.length;
+                        }
+                    });
+
+                    // 填充每行到最大列数
+                    workbookData[sheetName] = jsonData.map(row => {
+                        const newRow = [];
+                        for (let i = 0; i < maxCols; i++) {
+                            newRow.push(row[i] !== undefined && row[i] !== null ? row[i] : '');
+                        }
+                        return newRow;
+                    });
+
+                    console.log(`Sheet ${sheetName}: ${jsonData.length} 行, 最大列数: ${maxCols}`);
+                });
+
+                // 重置筛选
+                headerFilter = { sheetIndex: -1, colIndex: -1, headerName: '' };
+                renderUI();
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        function renderUI() {
+            const sheetNames = Object.keys(workbookData);
+
+            if (sheetNames.length === 0) {
+                showError('没有找到任何数据');
+                return;
+            }
+
+            const tabsContainer = document.getElementById('tabs');
+            const sheetsContainer = document.getElementById('sheetsContainer');
+
+            tabsContainer.innerHTML = '';
+            sheetsContainer.innerHTML = '';
+
+            sheetNames.forEach((sheetName, index) => {
+                // 创建tab
+                const tab = document.createElement('button');
+                tab.className = 'tab' + (index === 0 ? ' active' : '');
+                tab.textContent = sheetName;
+                tab.onclick = () => switchTab(sheetName);
+                tabsContainer.appendChild(tab);
+
+                // 创建sheet内容容器
+                const sheetDiv = document.createElement('div');
+                sheetDiv.className = 'sheet-content' + (index === 0 ? ' active' : '');
+                sheetDiv.id = 'sheet-' + index;
+
+                // 创建统计信息栏
+                const statsDiv = document.createElement('div');
+                statsDiv.className = 'stats';
+                statsDiv.id = 'stats-' + index;
+                sheetDiv.appendChild(statsDiv);
+
+                // 创建表格容器
+                const tableContainer = document.createElement('div');
+                tableContainer.className = 'table-container';
+                tableContainer.id = 'table-' + index;
+                sheetDiv.appendChild(tableContainer);
+
+                sheetsContainer.appendChild(sheetDiv);
+            });
+
+            tabsContainer.style.display = 'flex';
+
+            // 初始化所有表格
+            sheetNames.forEach((sheetName, index) => {
+                renderTable(index, sheetName);
+            });
+        }
+
+        function switchTab(sheetName) {
+            const tabs = document.querySelectorAll('.tab');
+            const contents = document.querySelectorAll('.sheet-content');
+
+            tabs.forEach((tab, index) => {
+                if (tab.textContent === sheetName) {
+                    tab.classList.add('active');
+                    contents[index].classList.add('active');
+                } else {
+                    tab.classList.remove('active');
+                    contents[index].classList.remove('active');
+                }
+            });
+        }
+
+        // 切换表头筛选
+        function toggleHeaderFilter(sheetIndex, colIndex, headerName) {
+            console.log(`点击表头: Sheet=${sheetIndex}, 列=${colIndex}, 表头="${headerName}"`);
+
+            // 如果点击的是当前筛选的列，则取消筛选
+            if (headerFilter.sheetIndex === sheetIndex && headerFilter.colIndex === colIndex) {
+                console.log('取消筛选');
+                headerFilter = { sheetIndex: -1, colIndex: -1, headerName: '' };
+            } else {
+                // 设置新的筛选
+                console.log(`设置筛选: 列${colIndex} (${headerName})`);
+                headerFilter = { sheetIndex, colIndex, headerName };
+            }
+
+            // 重新渲染表格
+            renderTable(sheetIndex, Object.keys(workbookData)[sheetIndex]);
+        }
+
+        function renderTable(sheetIndex, sheetName) {
+            const data = workbookData[sheetName];
+            const tableContainer = document.getElementById('table-' + sheetIndex);
+            const statsContainer = document.getElementById('stats-' + sheetIndex);
+
+            if (!data || data.length === 0) {
+                tableContainer.innerHTML = '<div class="no-data">暂无数据</div>';
+                return;
+            }
+
+            // 检查是否当前sheet有筛选
+            const hasFilter = headerFilter.sheetIndex === sheetIndex && headerFilter.colIndex >= 0;
+            const filterColIndex = hasFilter ? headerFilter.colIndex : -1;
+
+            // 计算每列的内容宽度，用于设置固定列宽
+            const colWidths = [];
+            if (data.length > 0) {
+                for (let colIndex = 0; colIndex < data[0].length; colIndex++) {
+                    let maxLen = 0;
+                    // 检查前20行来估算列宽
+                    for (let i = 0; i < Math.min(data.length, 20); i++) {
+                        const cellValue = String(data[i][colIndex] || '');
+                        // 中文字符算2个字符宽度
+                        const len = cellValue.length + (cellValue.match(/[\u4e00-\u9fa5]/g) || []).length;
+                        if (len > maxLen) maxLen = len;
+                    }
+                    // 设置最小和最大宽度
+                    const width = Math.max(60, Math.min(maxLen * 8, 300));
+                    colWidths.push(width);
+                }
+            }
+
+            let html = '<table>';
+            html += '<colgroup>';
+            colWidths.forEach(width => {
+                html += `<col style="width: ${width}px;">`;
+            });
+            html += '</colgroup>';
+
+            // 表头
+            if (data.length > 0) {
+                html += '<thead><tr>';
+                const header = data[0];
+                header.forEach((cell, colIndex) => {
+                    const isActive = hasFilter && filterColIndex === colIndex;
+                    html += `<th class="${isActive ? 'filter-active' : ''}" onclick="toggleHeaderFilter(${sheetIndex}, ${colIndex}, '${cell || ''}')">${cell || ''}</th>`;
+                });
+                html += '</tr></thead>';
+            }
+
+            // 表体
+            html += '<tbody>';
+            let matchedRowCount = 0;
+            let totalRowCount = data.length - 1;
+
+            for (let i = 1; i < data.length; i++) {
+                // 如果有筛选，检查该行在筛选列是否有X
+                let rowHasX = true;
+                if (hasFilter) {
+                    const cellValue = String(data[i][filterColIndex] || '').trim().toUpperCase();
+                    rowHasX = cellValue === 'X' || cellValue === '✓';
+                    if (rowHasX) {
+                        matchedRowCount++;
+                    }
+                }
+
+                // 如果有筛选且该行没有X，跳过
+                if (hasFilter && !rowHasX) {
+                    continue;
+                }
+
+                html += '<tr>';
+                data[i].forEach((cell, colIndex) => {
+                    const cellValue = cell !== undefined && cell !== null ? String(cell).trim() : '';
+                    const isXCell = cellValue === 'X' || cellValue === '✓';
+                    const cellClass = isXCell ? 'x-cell' : '';
+                    const cellStyle = (hasFilter && colIndex === filterColIndex) ? 'background: #fff3cd; font-weight: bold;' : '';
+
+                    if (isXCell) {
+                        html += `<td class="${cellClass}" style="${cellStyle}">✓</td>`;
+                    } else {
+                        html += `<td style="${cellStyle}">${cell}</td>`;
+                    }
+                });
+                html += '</tr>';
+            }
+
+            html += '</tbody></table>';
+
+            tableContainer.innerHTML = html;
+
+            // 更新统计信息
+            if (statsContainer) {
+                if (hasFilter) {
+                    statsContainer.innerHTML = `筛选列: <strong>${headerFilter.headerName}</strong> | 显示: <strong>${matchedRowCount}</strong> 行 (共 ${totalRowCount} 行)`;
+                } else {
+                    statsContainer.innerHTML = `总行数: <strong>${totalRowCount}</strong> 行`;
+                }
+            }
+
+            console.log(`Sheet ${sheetName}: ${hasFilter ? '筛选' : '全部'} | 显示: ${matchedRowCount || totalRowCount}/${totalRowCount} 行`);
+        }
+
+        function showError(message) {
+            const sheetsContainer = document.getElementById('sheetsContainer');
+            sheetsContainer.innerHTML = `<div class="no-data" style="color: #dc3545;">${message}</div>`;
+        }
+    </script>
+</body>
+</html>

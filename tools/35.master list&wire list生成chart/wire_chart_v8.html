@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wire Chart 生成工具 V8</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Microsoft YaHei', sans-serif; background: #f5f5f5; min-height: 100vh; }
+        .btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; transition: background 0.2s; }
+        .btn-primary { background: #2170b8; color: white; }
+        .btn-primary:hover:not(:disabled) { background: #1a5a96; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-success:hover:not(:disabled) { background: #218838; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .toolbar { background: #e9ecef; padding: 12px 20px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+        .toolbar-group { display: flex; align-items: center; gap: 8px; }
+        .file-status { font-size: 12px; color: #666; min-width: 100px; }
+        .file-status.loaded { color: #28a745; font-weight: 500; }
+        .table-wrapper { position: relative; background: white; margin: 10px 20px; border: 1px solid #d4d4d4; height: calc(100vh - 170px); overflow: auto; contain: strict; }
+        table { border-collapse: collapse; min-width: 100%; table-layout: auto; width: max-content; }
+        tr { height: 28px; }
+        tr:hover { background: #e8f4fc; }
+        tr.header { background: #2170b8; color: white; position: sticky; top: 0; z-index: 10; height: 32px; font-weight: 500; }
+        tr.header1 { background: #1a5a96; color: white; position: sticky; top: 32px; z-index: 9; height: 28px; font-weight: 500; }
+        tr.header2 { background: #16589e; color: white; position: sticky; top: 60px; z-index: 8; height: 28px; }
+        tr.header3 { background: #134c85; color: white; position: sticky; top: 88px; z-index: 7; height: 28px; }
+        tr.header:hover { background: #2170b8; }
+        th, td { border: 1px solid #d4d4d4; padding: 2px 12px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; height: 28px; min-width: 100px; max-width: 250px; }
+        th:first-child, td:first-child { width: 100px; min-width: 100px; max-width: 100px; text-align: center; }
+        tr.header th:first-child { width: 100px; min-width: 100px; max-width: 100px; }
+        td.updated { background: #d4edda; }
+        td.action { background: #fff3cd; }
+        td.empty { background: #f5f5f5; }
+        .empty-state { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #999; }
+        .footer { background: #f8f9fa; padding: 10px 20px; border-top: 1px solid #d4d4d4; display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+        .page-nav { display: flex; gap: 10px; align-items: center; }
+        .progress-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .progress-box { background: white; padding: 30px 40px; border-radius: 8px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+        .progress-bar { width: 300px; height: 20px; background: #e9ecef; border-radius: 4px; overflow: hidden; margin: 15px 0; }
+        .progress-fill { height: 100%; background: linear-gradient(135deg, #2170b8 0%, #1a5a96 100%); width: 0%; transition: width 0.1s; }
+        .legend { display: flex; gap: 15px; font-size: 12px; }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .legend-color { width: 16px; height: 16px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <div class="toolbar-group">
+            <button class="btn btn-primary" onclick="selectFile('ecr')">上传ECR文件</button>
+            <span class="file-status" id="ecrStatus">未选择</span>
+        </div>
+        <div class="toolbar-group">
+            <button class="btn btn-primary" onclick="selectFile('chart')">上传Chart文件</button>
+            <span class="file-status" id="chartStatus">未选择</span>
+        </div>
+        <button class="btn btn-primary" id="generateBtn" onclick="generateData()" disabled>生成Wire Chart</button>
+        <button class="btn btn-primary" id="copyBtn" onclick="copyHtml()" disabled>复制纯文本</button>
+        <button class="btn btn-success" id="exportBtn" onclick="exportExcel()" disabled>导出Excel</button>
+        <button class="btn btn-success" id="exportAllBtn" onclick="exportAllPartNumberCharts()" disabled>导出全部零件号</button>
+        <div class="legend">
+            <div class="legend-item"><div class="legend-color" style="background:#d4edda"></div><span>已更新</span></div>
+            <div class="legend-item"><div class="legend-color" style="background:#fff3cd"></div><span>ACTION</span></div>
+        </div>
+    </div>
+
+    <div class="table-wrapper" id="tableWrapper">
+        <div class="empty-state" id="emptyState">
+            <div class="icon">📊</div>
+            <p>请上传ECR文件，然后点击生成</p>
+        </div>
+        <div id="tableContent"></div>
+    </div>
+
+    <div class="footer">
+        <span id="statsText">回路: 0 | 特征值: 0 | X打点: 0</span>
+        <div class="page-nav">
+            <button class="btn" onclick="prevPage()">上一页</button>
+            <span id="pageInfo">0 / 0</span>
+            <button class="btn" onclick="nextPage()">下一页</button>
+        </div>
+    </div>
+
+    <div class="progress-overlay" id="progressOverlay">
+        <div class="progress-box">
+            <h3 id="progressTitle">处理中...</h3>
+            <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+            <div class="progress-text" id="progressText">请稍候...</div>
+        </div>
+    </div>
+
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <script>
+        // 验证脚本正在加载
+        console.log('Wire Chart V8 脚本开始加载...');
+
+        // 全局状态
+        let generatedRows = [];
+        let partNumbers = [];
+        let currentPage = 0;
+        const pageSize = 500;
+        let totalPages = 0;
+        let chartHeader = [];
+        let chartHeaderRows = [];  // 存储所有表头行
+        let chartRows = [];
+        let ecrFile = null;
+        let chartFile = null;
+        let partColStart = 28;
+
+        // V8新增：存储master list数据和特征值映射
+        let masterlistData = null;
+        let wireData = null;
+        let partFeaturesMap = {};
+
+        // ==================== 表头处理工具函数 ====================
+
+        /**
+         * 规范化单元格值：处理嵌套数组和null/undefined
+         * @param {any} value - 原始单元格值
+         * @returns {string} 规范化后的字符串
+         */
+        function normalizeCellValue(value) {
+            if (value === null || value === undefined) return '';
+            // 处理多层嵌套数组（Excel合并单元格的情况）
+            while (Array.isArray(value)) {
+                value = value[0] || '';
+            }
+            return String(value).trim();
+        }
+
+        /**
+         * 判断一行是否为有效表头行
+         * @param {Array} row - 行数据
+         * @returns {boolean} 是否为有效表头行
+         */
+        function isValidHeaderRow(row) {
+            if (!row || !Array.isArray(row)) return false;
+            // 检查行是否有足够的列（至少5列）
+            if (row.length < 5) return false;
+            // 检查是否至少有一个非空单元格
+            const hasContent = row.some(cell => {
+                const val = normalizeCellValue(cell);
+                return val !== '';
+            });
+            return hasContent;
+        }
+
+        /**
+         * 从Chart文件中提取有效表头行
+         * @param {Array} allRows - Chart文件的所有行
+         * @param {number} maxHeaderRows - 最多提取的表头行数（默认4行）
+         * @returns {Object} { headerRows: Array, validRowCount: number }
+         */
+        function extractHeaderRows(allRows, maxHeaderRows = 4) {
+            const headerRows = [];
+            let validCount = 0;
+
+            for (let i = 0; i < Math.min(maxHeaderRows, allRows.length); i++) {
+                const row = allRows[i];
+                if (isValidHeaderRow(row)) {
+                    // 规范化每个单元格的值
+                    const normalizedRow = row.map(cell => normalizeCellValue(cell));
+                    headerRows.push(normalizedRow);
+                    validCount++;
+                }
+            }
+
+            return { headerRows, validRowCount: validCount };
+        }
+
+        /**
+         * 从表头行中提取列名（用于数据映射）
+         * @param {Array} headerRows - 表头行数组
+         * @param {number} rowIndex - 使用第几行作为列名（默认-1表示最后一行，0表示第一行，2表示第三行）
+         * @returns {Array} 列名数组
+         */
+        function extractColumnNames(headerRows, rowIndex = -1) {
+            if (!headerRows || headerRows.length === 0) return [];
+
+            // 支持负索引：-1表示最后一行，-2表示倒数第二行，依此类推
+            let targetIndex = rowIndex;
+            if (rowIndex < 0) {
+                targetIndex = headerRows.length + rowIndex;
+            }
+
+            // 边界检查
+            if (targetIndex < 0 || targetIndex >= headerRows.length) {
+                targetIndex = headerRows.length - 1;
+            }
+
+            const targetRow = headerRows[targetIndex];
+            return targetRow.map(cell => normalizeCellValue(cell));
+        }
+
+        // DOM缓存
+        const domCache = {
+            tableContent: null, pageInfo: null, progressFill: null,
+            progressOverlay: null, progressTitle: null, progressText: null,
+            statsText: null, emptyState: null, exportBtn: null,
+            copyBtn: null, generateBtn: null, exportAllBtn: null
+        };
+
+        function initDomCache() {
+            domCache.tableContent = document.getElementById('tableContent');
+            domCache.pageInfo = document.getElementById('pageInfo');
+            domCache.progressFill = document.getElementById('progressFill');
+            domCache.progressOverlay = document.getElementById('progressOverlay');
+            domCache.progressTitle = document.getElementById('progressTitle');
+            domCache.progressText = document.getElementById('progressText');
+            domCache.statsText = document.getElementById('statsText');
+            domCache.emptyState = document.getElementById('emptyState');
+            domCache.exportBtn = document.getElementById('exportBtn');
+            domCache.copyBtn = document.getElementById('copyBtn');
+            domCache.generateBtn = document.getElementById('generateBtn');
+            domCache.exportAllBtn = document.getElementById('exportAllBtn');
+        }
+
+        async function selectFile(type) {
+            console.log('selectFile 函数被调用，type:', type);
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.xlsx';
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const status = document.getElementById(type + 'Status');
+                status.textContent = file.name;
+                status.classList.add('loaded');
+
+                if (type === 'ecr') {
+                    ecrFile = file;
+                } else if (type === 'chart') {
+                    chartFile = file;
+                    try {
+                        const buffer = await file.arrayBuffer();
+                        const workbook = XLSX.read(buffer, { type: 'array' });
+                        const wireChartSheetName = Object.keys(workbook.Sheets).find(name => name.includes('Wire Chart'));
+                        if (wireChartSheetName) {
+                            chartRows = XLSX.utils.sheet_to_json(workbook.Sheets[wireChartSheetName], { header: 1 });
+                            console.log('Chart总行数:', chartRows.length);
+                            console.log('第1行长度:', chartRows[0]?.length);
+                            console.log('第1行内容:', chartRows[0]);
+                            console.log('第2行长度:', chartRows[1]?.length);
+                            console.log('第3行长度:', chartRows[2]?.length);
+                            console.log('第4行长度:', chartRows[3]?.length);
+                        }
+                    } catch (err) {
+                        console.error('读取Chart文件失败:', err);
+                    }
+                }
+
+                if (ecrFile) {
+                    domCache.generateBtn.disabled = false;
+                }
+            };
+            input.click();
+        }
+        console.log('selectFile 函数已定义');
+
+        function showProgress(show, title = '处理中...', text = '请稍候...') {
+            domCache.progressOverlay.style.display = show ? 'flex' : 'none';
+            domCache.progressTitle.textContent = title;
+            domCache.progressText.textContent = text;
+        }
+
+        function updateProgress(percent) {
+            domCache.progressFill.style.width = percent + '%';
+        }
+
+        async function readExcel(file) {
+            const buffer = await file.arrayBuffer();
+            const workbook = XLSX.read(buffer, { type: 'array' });
+            const sheets = {};
+            for (const name of workbook.SheetNames) {
+                sheets[name] = XLSX.utils.sheet_to_json(workbook.Sheets[name], { header: 1, defval: '' });
+            }
+            return sheets;
+        }
+
+        function calculateOption(expression, carConfigs) {
+            if (!expression || !String(expression).trim()) return false;
+            const expr = String(expression).replace(/\s+/g, '').toUpperCase();
+            const tokens = expr.split(/([&\/\-\(\)])/).filter(t => t);
+
+            const evalTokens = (tokens, start, end) => {
+                let result = null, currentOp = null, i = start;
+                while (i < end) {
+                    const token = tokens[i];
+                    let value;
+                    if (token === '(') {
+                        let depth = 1, j = i + 1;
+                        while (j < end && depth > 0) {
+                            if (tokens[j] === '(') depth++;
+                            else if (tokens[j] === ')') depth--;
+                            j++;
+                        }
+                        value = evalTokens(tokens, i + 1, j - 1);
+                        i = j;
+                    } else if (token === '-') {
+                        i++;
+                        if (i >= end) break;
+                        const next = tokens[i];
+                        if (next === '(') {
+                            let depth = 1, j = i + 1;
+                            while (j < end && depth > 0) {
+                                if (tokens[j] === '(') depth++;
+                                else if (tokens[j] === ')') depth--;
+                                j++;
+                            }
+                            value = evalTokens(tokens, i + 1, j - 1);
+                            value = value.map(x => !x);
+                            i = j;
+                        } else {
+                            value = [carConfigs.includes(next)];
+                            i++;
+                        }
+                    } else if (token === '&' || token === '/' || token === '') {
+                        i++;
+                        continue;
+                    } else {
+                        value = [carConfigs.includes(token)];
+                        i++;
+                    }
+                    if (result === null) result = value;
+                    else if (currentOp === '&') result = result.map((r, idx) => r && (value[idx] !== undefined ? value[idx] : r));
+                    else if (currentOp === '/') result = result.map((r, idx) => r || (value[idx] !== undefined ? value[idx] : false));
+                    if (i < end && (tokens[i] === '&' || tokens[i] === '/')) { currentOp = tokens[i]; i++; }
+                }
+                return result;
+            };
+
+            const result = evalTokens(tokens, 0, tokens.length);
+            return result && result[0];
+        }
+
+        async function generateData() {
+            if (!ecrFile) return;
+
+            showProgress(true, '读取文件...', '正在读取ECR文件...');
+
+            try {
+                const ecrSheets = await readExcel(ecrFile);
+                updateProgress(20);
+
+                // 找WIRE sheet和Masterlist sheet
+                const wireSheetName = Object.keys(ecrSheets).find(s => s.includes('WIRE'));
+                const masterlistSheetName = Object.keys(ecrSheets).find(s => s.includes('Masterlist') && !s.includes('CHG'));
+
+                if (!wireSheetName || !masterlistSheetName) {
+                    showProgress(false);
+                    alert('未找到WIRE或Masterlist sheet');
+                    return;
+                }
+
+                // V8: 保存到全局变量供导出全部零件号使用
+                wireData = ecrSheets[wireSheetName];
+                masterlistData = ecrSheets[masterlistSheetName];
+
+                console.log('WIRE数据行数:', wireData.length);
+                console.log('Masterlist sheet:', masterlistSheetName);
+                console.log('Masterlist数据行数:', masterlistData.length);
+
+                // 打印所有sheet名称
+                console.log('所有sheet:', Object.keys(ecrSheets));
+
+                // 读取Masterlist的特征值（第4行是特征值名称）
+                const masterlistFeatureRow = masterlistData[3] || [];
+                console.log('Masterlist特征值行长度:', masterlistFeatureRow.length);
+                console.log('Masterlist特征值行（前30个）:', masterlistFeatureRow.slice(0, 30));
+
+                // 打印Masterlist前几行数据
+                console.log('=== Masterlist数据行 ===');
+                for (let i = 4; i < Math.min(10, masterlistData.length); i++) {
+                    const row = masterlistData[i];
+                    console.log(`第${i}行: 零件号=${row[0]}, 数据=${row.slice(0, 30)}`);
+                }
+
+                // 查找包含"●"的行
+                console.log('=== 查找有●标记的行 ===');
+                for (let i = 4; i < Math.min(20, masterlistData.length); i++) {
+                    const row = masterlistData[i];
+                    const hasMark = row.some(cell => String(cell) === '●');
+                    if (hasMark) {
+                        console.log(`第${i}行有●标记:`, row.slice(0, 30));
+                        break;
+                    }
+                }
+
+                // 构建零件号到特征值的映射（V4逻辑）- 使用全局变量
+                partFeaturesMap = {};
+                for (let i = 2; i < masterlistData.length; i++) {
+                    const partNum = masterlistData[i][0];
+                    if (!partNum) continue;
+
+                    const partKey = String(partNum).trim();
+                    const features = new Set();
+
+                    for (let j = 1; j < masterlistData[i].length; j++) {
+                        const cellVal = masterlistData[i][j];
+                        if (String(cellVal).trim() === '●') {
+                            const featureName = masterlistFeatureRow[j];
+                            if (featureName) {
+                                features.add(String(featureName).trim());
+                            }
+                        }
+                    }
+                    partFeaturesMap[partKey] = features;
+                }
+
+                showProgress(true, '处理数据...', '正在生成Wire Chart...');
+                updateProgress(40);
+
+                generatedRows = [];
+                partNumbers = [];
+                let xCount = 0;
+
+                // 默认表头
+                function getDefaultHeader() {
+                    return ['ACTION', 'CHANGE DATE', 'CIRCUIT NBR', 'WIRE SIZE', 'Luxshare CABLE PART NBR',
+                        'CUSTOMER CABLE PART NBR', 'COLOR', 'MARKING COLOR', 'CABLE DESG', 'EST WIRE LENGTH',
+                        'GROUP NAME', 'POS NBR 1', 'CAV 1', 'TERMINAL CPN1', 'TERMINAL SPN1', 'TERMINAL LPN1',
+                        'TERMINAL CPN2', 'TERMINAL SPN2', 'TERMINAL LPN2', 'SEAL CPN2', 'SEAL SPN 2', 'SEAL LPN 2',
+                        'option', 'SEAL CPN1', 'SEAL SPN 1', 'SEAL LPN 1', 'POS NBR 2', 'CAV 2'];
+                }
+
+                // 使用优化的表头处理逻辑
+                if (chartFile && chartRows.length > 0) {
+                    // 提取所有有效表头行（用于渲染）
+                    const { headerRows, validRowCount } = extractHeaderRows(chartRows, 4);
+                    chartHeaderRows = headerRows;
+                    console.log(`从Chart文件中提取了 ${validRowCount} 行有效表头`);
+
+                    // 获取列名：保持与原V7逻辑一致
+                    // 原V7逻辑：如果chartRows[2]存在且是数组，使用chartRows[2]作为列名
+                    // chartRows[2] 是原文件的第3行
+                    if (chartRows[2] !== undefined && chartRows[2] !== null) {
+                        const row2 = chartRows[2];
+                        // 处理可能的嵌套数组情况
+                        let headerRow = row2;
+                        if (Array.isArray(row2) && row2.length > 0 && Array.isArray(row2[0])) {
+                            headerRow = row2[0];
+                        }
+                        chartHeader = Array.isArray(headerRow) ? headerRow.map(cell => normalizeCellValue(cell)) : [];
+                        console.log('使用原文件第3行作为列名，列数:', chartHeader.length);
+                    } else {
+                        // 如果第3行不存在，尝试从提取的表头行中获取
+                        if (headerRows.length > 0) {
+                            // 使用第3行（如果有的话），否则使用最后一行
+                            const rowIndex = Math.min(2, headerRows.length - 1);
+                            chartHeader = extractColumnNames(headerRows, rowIndex);
+                            console.log(`使用提取的表头行第${rowIndex + 1}行作为列名`);
+                        } else {
+                            console.log('未找到有效表头行，使用默认表头');
+                            chartHeader = getDefaultHeader();
+                            chartHeaderRows = [chartHeader];
+                        }
+                    }
+                } else {
+                    chartHeader = getDefaultHeader();
+                    chartHeaderRows = [chartHeader];
+                }
+
+                // 动态查找各列在Chart中的索引
+                const findColIdx = (name) => chartHeader.findIndex(h => String(h).trim() === name);
+
+                const colIdxMap = {
+                    CIRCUIT_NBR: findColIdx('CIRCUIT NBR'),
+                    WIRE_SIZE: findColIdx('WIRE SIZE'),
+                    COLOR: findColIdx('COLOR'),
+                    CABLE_DESG: findColIdx('CABLE DESG'),
+                    EST_WIRE_LENGTH: findColIdx('EST WIRE LENGTH'),
+                    GROUP_NAME: findColIdx('GROUP NAME'),
+                    POS_NBR_1: findColIdx('POS NBR 1'),
+                    CAV_1: findColIdx('CAV 1'),
+                    OPTION: findColIdx('option'),
+                    POS_NBR_2: findColIdx('POS NBR 2'),
+                    CAV_2: findColIdx('CAV 2')
+                };
+
+                // 查找零件号列
+                for (let i = partColStart; i < chartHeader.length; i++) {
+                    if (chartHeader[i] && String(chartHeader[i]).trim()) {
+                        partNumbers.push(String(chartHeader[i]).trim());
+                    }
+                }
+                console.log('零件号数量:', partNumbers.length);
+
+                const total = wireData.length - 3;
+                const headerLen = chartHeader.length;
+
+                // 预获取列索引
+                const circuitNbrIdx = colIdxMap.CIRCUIT_NBR;
+                const wireSizeIdx = colIdxMap.WIRE_SIZE;
+                const colorIdx = colIdxMap.COLOR;
+                const cableDesgIdx = colIdxMap.CABLE_DESG;
+                const estWireLenIdx = colIdxMap.EST_WIRE_LENGTH;
+                const groupNameIdx = colIdxMap.GROUP_NAME;
+                const posNbr1Idx = colIdxMap.POS_NBR_1;
+                const cav1Idx = colIdxMap.CAV_1;
+                const posNbr2Idx = colIdxMap.POS_NBR_2;
+                const cav2Idx = colIdxMap.CAV_2;
+                const optionIdx = colIdxMap.OPTION;
+
+                // 从WIRE提取所有回路数据
+                for (let i = 3; i < wireData.length; i++) {
+                    const row = wireData[i];
+                    const wireId = row[1];
+                    if (!wireId) continue;
+
+                    const newRow = new Array(headerLen).fill('');
+                    const updatedCols = [];
+
+                    // 批量填充数据
+                    if (circuitNbrIdx >= 0) { newRow[circuitNbrIdx] = wireId; updatedCols.push(circuitNbrIdx); }
+                    if (wireSizeIdx >= 0) { newRow[wireSizeIdx] = row[3]; updatedCols.push(wireSizeIdx); }
+                    if (colorIdx >= 0) { newRow[colorIdx] = row[2]; updatedCols.push(colorIdx); }
+                    if (cableDesgIdx >= 0) { newRow[cableDesgIdx] = row[4]; updatedCols.push(cableDesgIdx); }
+                    if (estWireLenIdx >= 0) { newRow[estWireLenIdx] = row[7]; updatedCols.push(estWireLenIdx); }
+                    if (groupNameIdx >= 0) { newRow[groupNameIdx] = row[6]; updatedCols.push(groupNameIdx); }
+                    if (posNbr1Idx >= 0) { newRow[posNbr1Idx] = row[8]; updatedCols.push(posNbr1Idx); }
+                    if (cav1Idx >= 0) { newRow[cav1Idx] = row[9]; updatedCols.push(cav1Idx); }
+                    if (posNbr2Idx >= 0) { newRow[posNbr2Idx] = row[10]; updatedCols.push(posNbr2Idx); }
+                    if (cav2Idx >= 0) { newRow[cav2Idx] = row[11]; updatedCols.push(cav2Idx); }
+                    if (optionIdx >= 0) { newRow[optionIdx] = row[5] || ''; }
+
+                    // 计算X打点（V4逻辑）
+                    const optionExpr = row[5];
+                    for (let pi = 0; pi < partNumbers.length; pi++) {
+                        const pn = partNumbers[pi];
+                        const partFeatures = partFeaturesMap[pn] || new Set();
+                        if (calculateOption(optionExpr, Array.from(partFeatures))) {
+                            const colIdx = partColStart + pi;
+                            if (colIdx < headerLen) {
+                                newRow[colIdx] = 'X';
+                                xCount++;
+                            }
+                        }
+                    }
+
+                    newRow._updatedCols = updatedCols;
+                    generatedRows.push(newRow);
+
+                    if (i % 500 === 0) {
+                        const percent = 40 + Math.round((i - 3) / total * 50);
+                        updateProgress(percent);
+                        await new Promise(r => setTimeout(r, 0));
+                    }
+                }
+
+                updateProgress(95);
+                showProgress(true, '渲染中...', '正在渲染表格...');
+
+                currentPage = 0;
+                totalPages = Math.ceil(generatedRows.length / pageSize);
+
+                renderTable();
+                domCache.statsText.textContent = `回路: ${generatedRows.length} | 特征值: ${partNumbers.length} | X打点: ${xCount}`;
+                domCache.exportBtn.disabled = false;
+                domCache.copyBtn.disabled = false;
+                // V8: 启用导出全部零件号按钮
+                domCache.exportAllBtn.disabled = false;
+                domCache.emptyState.style.display = 'none';
+
+                updateProgress(100);
+                showProgress(false);
+
+            } catch (err) {
+                showProgress(false);
+                console.error(err);
+                alert('处理出错: ' + err.message);
+            }
+        }
+
+        function renderTable() {
+            const start = currentPage * pageSize;
+            const end = Math.min(start + pageSize, generatedRows.length);
+            const pageData = generatedRows.slice(start, end);
+            const headerLen = chartHeader.length;
+
+            const fragment = document.createDocumentFragment();
+            const table = document.createElement('table');
+
+            // 使用优化的表头渲染逻辑
+            if (chartHeaderRows.length > 0) {
+                // 渲染所有已提取的表头行
+                for (let h = 0; h < chartHeaderRows.length; h++) {
+                    const rowData = chartHeaderRows[h];
+                    const headerRow = document.createElement('tr');
+                    headerRow.className = `header${h > 0 ? h : ''}`;
+
+                    // 确保表头行有足够的列（与生成的数据列数一致）
+                    const rowLen = Math.max(rowData.length, headerLen);
+                    for (let col = 0; col < rowLen; col++) {
+                        const th = document.createElement('th');
+                        const text = col < rowData.length ? rowData[col] : '';
+                        th.textContent = text;
+                        th.title = text;
+                        headerRow.appendChild(th);
+                    }
+                    table.appendChild(headerRow);
+                }
+            } else {
+                // 使用默认单行表头（降级处理）
+                const headerRow = document.createElement('tr');
+                headerRow.className = 'header';
+                for (let col = 0; col < headerLen; col++) {
+                    const th = document.createElement('th');
+                    const text = chartHeader[col] || '';
+                    th.textContent = text;
+                    th.title = text;
+                    headerRow.appendChild(th);
+                }
+                table.appendChild(headerRow);
+            }
+
+            // 数据行
+            for (let rowIdx = 0; rowIdx < pageData.length; rowIdx++) {
+                const row = pageData[rowIdx];
+                const tr = document.createElement('tr');
+                const updatedCols = row._updatedCols;
+
+                for (let col = 0; col < headerLen; col++) {
+                    const td = document.createElement('td');
+                    let val = row[col];
+                    if (val === null || val === undefined) val = '';
+                    else if (Array.isArray(val)) val = val.join(',');
+
+                    if (col === 0 && val === 'ACTION') td.className = 'action';
+                    else if (updatedCols && updatedCols.includes(col)) td.className = 'updated';
+                    else if (val === '') td.className = 'empty';
+
+                    td.textContent = val;
+                    tr.appendChild(td);
+                }
+                table.appendChild(tr);
+            }
+
+            fragment.appendChild(table);
+            domCache.tableContent.innerHTML = '';
+            domCache.tableContent.appendChild(fragment);
+            domCache.pageInfo.textContent = `${currentPage + 1} / ${totalPages}`;
+        }
+
+        function prevPage() {
+            if (currentPage > 0) { currentPage--; renderTable(); }
+        }
+
+        function nextPage() {
+            if (currentPage < totalPages - 1) { currentPage++; renderTable(); }
+        }
+
+        function exportExcel() {
+            if (!generatedRows.length) return;
+
+            showProgress(true, '导出中...', '正在生成Excel...');
+
+            try {
+                const dataRows = generatedRows.map(r => {
+                    const newRow = [...r];
+                    delete newRow._updatedCols;
+                    return newRow;
+                });
+
+                let ws;
+                // 使用优化的表头导出逻辑
+                if (chartHeaderRows.length > 0) {
+                    // 使用已提取的规范化的表头行
+                    console.log(`导出${chartHeaderRows.length}行表头`);
+
+                    // 确保所有行都有相同的列数（取最长行的长度）
+                    const allRows = [...chartHeaderRows, ...dataRows];
+                    const maxCols = Math.max(...allRows.map(row => row ? row.length : 0), chartHeader.length);
+                    console.log('最长列数:', maxCols);
+
+                    // 填充所有行到相同长度
+                    const paddedRows = allRows.map(row => {
+                        if (!row || row.length === 0) return new Array(maxCols).fill('');
+                        if (row.length >= maxCols) return row;
+                        return [...row, ...new Array(maxCols - row.length).fill('')];
+                    });
+
+                    // 使用 XLSX.utils.aoa_to_sheet 确保所有行都被包含
+                    ws = XLSX.utils.aoa_to_sheet(paddedRows, { skipHeader: true });
+
+                    // 手动设置范围，确保所有表头行都被包含
+                    const range = XLSX.utils.decode_range(ws['!ref']);
+                    range.e.r = Math.max(range.e.r, chartHeaderRows.length - 1);
+                    ws['!ref'] = XLSX.utils.encode_range(range);
+                } else {
+                    // 使用默认单行表头
+                    ws = XLSX.utils.aoa_to_sheet([chartHeader, ...dataRows]);
+                }
+
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Wire Chart');
+                XLSX.writeFile(wb, 'Wire_Chart_更新.xlsx');
+
+                showProgress(false);
+            } catch (err) {
+                showProgress(false);
+                console.error(err);
+                alert('导出失败: ' + err.message);
+            }
+        }
+
+        // V8新增：导出全部零件号的Wire Chart（包含master list中所有零件号列）
+        async function exportAllPartNumberCharts() {
+            if (!wireData || !masterlistData || !partFeaturesMap) {
+                alert('请先生成Wire Chart');
+                return;
+            }
+
+            showProgress(true, '导出中...', '正在生成包含全部零件号的Chart...');
+
+            try {
+                // 从master list中提取所有零件号及其名称（不重复）
+                const partNumberMap = new Map(); // 零件号 -> 零件名称
+                for (let i = 2; i < masterlistData.length; i++) {
+                    const partNum = masterlistData[i][0];
+                    if (partNum) {
+                        const partNumKey = String(partNum).trim();
+                        // 假设第2列（索引1）是零件名称
+                        const partName = masterlistData[i][1] || '';
+                        if (!partNumberMap.has(partNumKey)) {
+                            partNumberMap.set(partNumKey, String(partName).trim());
+                        }
+                    }
+                }
+
+                // 按零件号排序
+                const allPartNumArray = Array.from(partNumberMap.keys()).sort();
+                console.log(`Master list中共有 ${allPartNumArray.length} 个零件号`);
+
+                updateProgress(20);
+
+                // 构建完整表头：基础列 + 所有零件号列
+                const baseHeaderLength = partColStart; // 28列基础列
+
+                updateProgress(40);
+
+                // 获取列索引映射
+                const findColIdx = (name) => chartHeader.findIndex(h => String(h).trim() === name);
+
+                const colIdxMap = {
+                    CIRCUIT_NBR: findColIdx('CIRCUIT NBR'),
+                    WIRE_SIZE: findColIdx('WIRE SIZE'),
+                    COLOR: findColIdx('COLOR'),
+                    CABLE_DESG: findColIdx('CABLE DESG'),
+                    EST_WIRE_LENGTH: findColIdx('EST WIRE LENGTH'),
+                    GROUP_NAME: findColIdx('GROUP NAME'),
+                    POS_NBR_1: findColIdx('POS NBR 1'),
+                    CAV_1: findColIdx('CAV 1'),
+                    OPTION: findColIdx('option'),
+                    POS_NBR_2: findColIdx('POS NBR 2'),
+                    CAV_2: findColIdx('CAV 2')
+                };
+
+                // 为每个回路生成完整数据行
+                const fullRows = [];
+                let xCount = 0;
+                const total = wireData.length - 3;
+
+                for (let i = 3; i < wireData.length; i++) {
+                    const row = wireData[i];
+                    const wireId = row[1];
+                    if (!wireId) continue;
+
+                    // 创建完整行
+                    const newRow = new Array(baseHeaderLength + allPartNumArray.length).fill('');
+
+                    // 填充基础列数据
+                    const circuitNbrIdx = colIdxMap.CIRCUIT_NBR;
+                    const wireSizeIdx = colIdxMap.WIRE_SIZE;
+                    const colorIdx = colIdxMap.COLOR;
+                    const cableDesgIdx = colIdxMap.CABLE_DESG;
+                    const estWireLenIdx = colIdxMap.EST_WIRE_LENGTH;
+                    const groupNameIdx = colIdxMap.GROUP_NAME;
+                    const posNbr1Idx = colIdxMap.POS_NBR_1;
+                    const cav1Idx = colIdxMap.CAV_1;
+                    const posNbr2Idx = colIdxMap.POS_NBR_2;
+                    const cav2Idx = colIdxMap.CAV_2;
+                    const optionIdx = colIdxMap.OPTION;
+
+                    if (circuitNbrIdx >= 0) newRow[circuitNbrIdx] = wireId;
+                    if (wireSizeIdx >= 0) newRow[wireSizeIdx] = row[3];
+                    if (colorIdx >= 0) newRow[colorIdx] = row[2];
+                    if (cableDesgIdx >= 0) newRow[cableDesgIdx] = row[4];
+                    if (estWireLenIdx >= 0) newRow[estWireLenIdx] = row[7];
+                    if (groupNameIdx >= 0) newRow[groupNameIdx] = row[6];
+                    if (posNbr1Idx >= 0) newRow[posNbr1Idx] = row[8];
+                    if (cav1Idx >= 0) newRow[cav1Idx] = row[9];
+                    if (posNbr2Idx >= 0) newRow[posNbr2Idx] = row[10];
+                    if (cav2Idx >= 0) newRow[cav2Idx] = row[11];
+                    if (optionIdx >= 0) newRow[optionIdx] = row[5] || '';
+
+                    // 计算每个零件号的X打点
+                    const optionExpr = row[5];
+                    for (let pi = 0; pi < allPartNumArray.length; pi++) {
+                        const pn = allPartNumArray[pi];
+                        const partFeatures = partFeaturesMap[pn] || new Set();
+                        if (calculateOption(optionExpr, Array.from(partFeatures))) {
+                            const colIdx = baseHeaderLength + pi;
+                            newRow[colIdx] = 'X';
+                            xCount++;
+                        }
+                    }
+
+                    fullRows.push(newRow);
+
+                    // 更新进度
+                    if (i % 500 === 0) {
+                        const percent = 40 + Math.round((i - 3) / total * 50);
+                        updateProgress(percent);
+                        await new Promise(r => setTimeout(r, 0));
+                    }
+                }
+
+                updateProgress(95);
+
+                // 定义标准表头（28列）- 按照正确的顺序
+                const standardHeaderRow1 = [
+                    'ACTION', 'CHANGE DATE', 'CIRCUIT NBR', 'WIRE SIZE', 'Luxshare CABLE PART NBR',
+                    'CUSTOMER CABLE PART NBR', 'COLOR', 'MARKING COLOR', 'CABLE DESG', 'EST WIRE LENGTH',
+                    'GROUP NAME', 'POS NBR 1', 'CAV 1', 'TERMINAL CPN1', 'TERMINAL SPN1', 'TERMINAL LPN1',
+                    'SEAL CPN1', 'SEAL SPN 1', 'SEAL LPN 1', 'POS NBR 2', 'CAV 2',
+                    'TERMINAL CPN2', 'TERMINAL SPN2', 'TERMINAL LPN2', 'SEAL CPN2', 'SEAL SPN 2', 'SEAL LPN 2', 'option'
+                ];
+
+                const standardHeaderRow2 = [
+                    '动作', '更改日期', '导线号', '截面积', '立讯导线号', '客户导线号', '颜色', '中文颜色',
+                    '导线类型', '长度', '组名', 'From', 'Pin1', '端子客户号', '端子供应商号', '端子立讯号',
+                    '密封件客户号', '密封件供应商号', '密封件立讯号', 'To', 'Pin2',
+                    '端子客户号', '端子供应商号', '端子立讯号', '密封件客户号', '密封件供应商号', '密封件立讯号', '功能'
+                ];
+
+                // 构建两行表头
+                const headerRow1 = [...standardHeaderRow1]; // 第一行：英文列名 + 零件号
+                const headerRow2 = [...standardHeaderRow2]; // 第二行：中文列名 + 零件名称
+
+                // 添加所有零件号列（第一行：零件号，第二行：零件名称）
+                for (const partNum of allPartNumArray) {
+                    headerRow1.push(partNum);
+                    headerRow2.push(partNumberMap.get(partNum) || '');
+                }
+
+                const exportRows = [headerRow1, headerRow2, ...fullRows];
+
+                console.log(`准备导出 ${exportRows.length} 行数据，包含 ${allPartNumArray.length} 个零件号，共 ${xCount} 个X打点`);
+
+                // 创建worksheet
+                const ws = XLSX.utils.aoa_to_sheet(exportRows, { skipHeader: true });
+
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Wire Chart_全部零件号');
+
+                updateProgress(100);
+                XLSX.writeFile(wb, 'Wire_Chart_全部零件号.xlsx');
+
+                showProgress(false);
+                alert(`成功导出！\n零件号数量: ${allPartNumArray.length}\n回路数量: ${fullRows.length}\nX打点总数: ${xCount}`);
+
+            } catch (err) {
+                showProgress(false);
+                console.error(err);
+                alert('导出失败: ' + err.message);
+            }
+        }
+
+        function copyHtml() {
+            if (!generatedRows.length) {
+                alert('没有内容可复制');
+                return;
+            }
+
+            const sb = [];
+            sb.push(chartHeader.map(h => String(h || '')).join('\t'));
+            for (let i = 0; i < generatedRows.length; i++) {
+                const row = generatedRows[i];
+                sb.push(row.map(val => String(val || '')).join('\t'));
+            }
+            const text = sb.join('\n');
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    alert('已复制到剪贴板');
+                }).catch(() => {
+                    fallbackCopy(text);
+                });
+            } else {
+                fallbackCopy(text);
+            }
+        }
+
+        function fallbackCopy(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.left = '-9999px';
+            textarea.style.top = '-9999px';
+            document.body.appendChild(textarea);
+            textarea.select();
+            textarea.setSelectionRange(0, 999999);
+
+            try {
+                const successful = document.execCommand('copy');
+                document.body.removeChild(textarea);
+                if (successful) {
+                    alert('已复制到剪贴板');
+                } else {
+                    alert('复制失败，请手动选择复制');
+                }
+            } catch (err) {
+                document.body.removeChild(textarea);
+                alert('复制失败，请手动选择复制');
+            }
+        }
+
+        // 初始化
+        initDomCache();
+
+        // 调试：验证关键函数已加载
+        window.addEventListener('DOMContentLoaded', function() {
+            console.log('页面已加载');
+            console.log('selectFile 函数是否存在:', typeof selectFile !== 'undefined');
+            console.log('generateData 函数是否存在:', typeof generateData !== 'undefined');
+            console.log('exportExcel 函数是否存在:', typeof exportExcel !== 'undefined');
+            console.log('所有全局函数:', Object.keys(window).filter(k => typeof window[k] === 'function').slice(-10));
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(data-analysis)",
+      "Bash(python:*)",
+      "Bash(dir:*)",
+      "Bash(node:*)",
+      "Bash(pip install:*)",
+      "Bash(python3:*)",
+      "Skill(xlsx)"
+    ]
+  }
+}

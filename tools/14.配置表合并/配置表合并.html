@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>配置表合并工具</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 40px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+
+        .upload-section {
+            margin-bottom: 30px;
+        }
+
+        .upload-box {
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            background: #f8f9ff;
+            transition: all 0.3s;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+
+        .upload-box:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+        }
+
+        .upload-box.dragover {
+            border-color: #764ba2;
+            background: #e8ebff;
+            transform: scale(1.02);
+        }
+
+        .upload-box input[type="file"] {
+            display: none;
+        }
+
+        .upload-box label {
+            display: block;
+            color: #667eea;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .upload-box .icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .file-info {
+            display: none;
+            background: #e8f5e9;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+
+        .file-info.active {
+            display: block;
+        }
+
+        .file-info strong {
+            color: #2e7d32;
+        }
+
+        .options {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+
+        .options h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .radio-group label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .merge-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .merge-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .merge-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .progress {
+            display: none;
+            margin-top: 20px;
+            text-align: center;
+            color: #667eea;
+        }
+
+        .progress.active {
+            display: block;
+        }
+
+        .result {
+            display: none;
+            margin-top: 30px;
+            padding: 20px;
+            background: #e8f5e9;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .result.active {
+            display: block;
+        }
+
+        .result h3 {
+            color: #2e7d32;
+            margin-bottom: 15px;
+        }
+
+        .result-info {
+            margin: 10px 0;
+            color: #333;
+        }
+
+        .download-btn {
+            margin-top: 15px;
+            padding: 12px 30px;
+            background: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .download-btn:hover {
+            background: #45a049;
+        }
+
+        .error {
+            display: none;
+            margin-top: 20px;
+            padding: 15px;
+            background: #ffebee;
+            border-radius: 8px;
+            color: #c62828;
+        }
+
+        .error.active {
+            display: block;
+        }
+
+        .preview {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+
+        .preview h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .preview-table {
+            overflow-x: auto;
+            overflow-y: auto;
+            max-height: 500px;
+            position: relative;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        /* 强制显示滚动条 */
+        .preview-table::-webkit-scrollbar {
+            width: 12px;
+            height: 12px;
+        }
+
+        .preview-table::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 6px;
+        }
+
+        .preview-table::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 6px;
+        }
+
+        .preview-table::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        .preview-table table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            table-layout: fixed;
+        }
+
+        .preview-table th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: #667eea;
+            color: white;
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 150px;
+            min-width: 150px;
+            max-width: 150px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* 前三行数据固定显示 */
+        .preview-table tbody tr.fixed-row-1 td,
+        .preview-table tbody tr.fixed-row-2 td,
+        .preview-table tbody tr.fixed-row-3 td {
+            position: sticky;
+            background: #fff3e0;
+            font-weight: bold;
+            z-index: 5;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        /* 第一行数据固定在 top: 41px (表头高度) */
+        .preview-table tbody tr.fixed-row-1 td {
+            top: 41px;
+        }
+
+        /* 第二行数据固定在 top: 82px */
+        .preview-table tbody tr.fixed-row-2 td {
+            top: 82px;
+        }
+
+        /* 第三行数据固定在 top: 123px */
+        .preview-table tbody tr.fixed-row-3 td {
+            top: 123px;
+        }
+
+        .preview-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 150px;
+            min-width: 150px;
+            max-width: 150px;
+        }
+
+        .preview-table tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+
+        /* 滚动提示图标 */
+        .scroll-indicator {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #667eea;
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            cursor: pointer;
+            z-index: 1000;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {
+                transform: translateY(0);
+            }
+            40% {
+                transform: translateY(-10px);
+            }
+            60% {
+                transform: translateY(-5px);
+            }
+        }
+
+        .scroll-indicator:hover {
+            background: #764ba2;
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 配置表合并工具</h1>
+
+        <div class="upload-section">
+            <h3>文件1（主文件）</h3>
+            <div class="upload-box" id="uploadBox1">
+                <input type="file" id="file1" accept=".xlsx,.xls">
+                <label for="file1">
+                    <div class="icon">📁</div>
+                    <div>点击或拖拽上传第一个配置表</div>
+                </label>
+            </div>
+            <div class="file-info" id="fileInfo1">
+                <strong>✓ 已选择：</strong> <span id="fileName1"></span>
+            </div>
+        </div>
+
+        <div class="upload-section">
+            <h3>文件2（合并文件）</h3>
+            <div class="upload-box" id="uploadBox2">
+                <input type="file" id="file2" accept=".xlsx,.xls">
+                <label for="file2">
+                    <div class="icon">📁</div>
+                    <div>点击或拖拽上传第二个配置表</div>
+                </label>
+            </div>
+            <div class="file-info" id="fileInfo2">
+                <strong>✓ 已选择：</strong> <span id="fileName2"></span>
+            </div>
+        </div>
+
+        <button class="merge-btn" id="mergeBtn" disabled>开始合并</button>
+
+        <div class="progress" id="progress">
+            <p>⏳ 正在处理...</p>
+        </div>
+
+        <div class="error" id="error"></div>
+
+        <div class="result" id="result">
+            <h3>✅ 合并完成！</h3>
+            <p class="result-info" id="resultInfo"></p>
+            <button class="download-btn" id="downloadBtn">📥 下载合并文件</button>
+        </div>
+
+        <div class="preview" id="preview" style="display: none;">
+            <h3>📊 数据预览（所有内容）</h3>
+            <div class="preview-table" id="previewTable"></div>
+        </div>
+    </div>
+
+    <!-- 滚动提示图标 -->
+    <div class="scroll-indicator" id="scrollIndicator" title="可左右滚动查看更多内容">↔️</div>
+
+    <script>
+        let file1Data = null;
+        let file2Data = null;
+        let mergedWorkbook = null;
+
+        // 文件上传处理
+        function setupFileUpload(uploadBoxId, fileInputId, fileInfoId, fileNameId, dataVar) {
+            const uploadBox = document.getElementById(uploadBoxId);
+            const fileInput = document.getElementById(fileInputId);
+            const fileInfo = document.getElementById(fileInfoId);
+            const fileName = document.getElementById(fileNameId);
+
+            uploadBox.addEventListener('click', () => fileInput.click());
+
+            uploadBox.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadBox.classList.add('dragover');
+            });
+
+            uploadBox.addEventListener('dragleave', () => {
+                uploadBox.classList.remove('dragover');
+            });
+
+            uploadBox.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadBox.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    fileInput.files = files;
+                    handleFile(files[0], fileInfo, fileName, dataVar);
+                }
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handleFile(e.target.files[0], fileInfo, fileName, dataVar);
+                }
+            });
+        }
+
+        function handleFile(file, fileInfo, fileName, dataVar) {
+            const reader = new FileReader();
+
+            reader.onload = (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+
+                    if (dataVar === 'file1Data') {
+                        file1Data = workbook;
+                    } else {
+                        file2Data = workbook;
+                    }
+
+                    fileInfo.classList.add('active');
+                    fileName.textContent = file.name;
+
+                    checkFilesReady();
+                } catch (error) {
+                    showError('读取文件失败：' + error.message);
+                }
+            };
+
+            reader.readAsArrayBuffer(file);
+        }
+
+        function checkFilesReady() {
+            const mergeBtn = document.getElementById('mergeBtn');
+            mergeBtn.disabled = !(file1Data && file2Data);
+
+            // 当两个文件都准备好时，自动触发合并
+            if (file1Data && file2Data) {
+                // 延迟执行，确保UI更新
+                setTimeout(() => {
+                    performMerge();
+                }, 500);
+            }
+        }
+
+        function performMerge() {
+            const progress = document.getElementById('progress');
+            const result = document.getElementById('result');
+            const error = document.getElementById('error');
+            const preview = document.getElementById('preview');
+
+            progress.classList.add('active');
+            result.classList.remove('active');
+            error.classList.remove('active');
+            preview.style.display = 'none';
+
+            try {
+                mergedWorkbook = mergeExcelFiles(file1Data, file2Data);
+
+                const sheet1 = file1Data.Sheets[file1Data.SheetNames[0]];
+                const sheet2 = file2Data.Sheets[file2Data.SheetNames[0]];
+                const rows1 = XLSX.utils.sheet_to_json(sheet1, { header: 1 });
+                const rows2 = XLSX.utils.sheet_to_json(sheet2, { header: 1 });
+
+                document.getElementById('resultInfo').textContent =
+                    `文件1：${rows1.length - 1} 行数据 | 文件2：${rows2.length - 1} 行数据 | 合并模式：VBS风格（空单元格填充，不同值用分号连接）`;
+
+                showPreview(mergedWorkbook);
+
+                progress.classList.remove('active');
+                result.classList.add('active');
+
+                // 自动下载合并文件
+                setTimeout(() => {
+                    XLSX.writeFile(mergedWorkbook, '合并配置表.xlsx');
+                }, 1000);
+            } catch (error) {
+                progress.classList.remove('active');
+                showError('合并失败：' + error.message);
+            }
+        }
+
+        // 手动合并按钮（保留备用）
+        document.getElementById('mergeBtn').addEventListener('click', performMerge);
+
+        function mergeExcelFiles(workbook1, workbook2) {
+            const sheet1 = workbook1.Sheets[workbook1.SheetNames[0]];
+            const sheet2 = workbook2.Sheets[workbook2.SheetNames[0]];
+
+            const rows1 = XLSX.utils.sheet_to_json(sheet1, { header: 1 });
+            const rows2 = XLSX.utils.sheet_to_json(sheet2, { header: 1 });
+
+            if (rows1.length === 0 || rows2.length === 0) {
+                throw new Error('文件为空');
+            }
+
+            if (rows1.length < 5 || rows2.length < 5) {
+                throw new Error('文件至少需要5行（4行固定行+数据）');
+            }
+
+            // 前四行是固定行（保持不变）
+            const fixedRows1 = rows1.slice(0, 4);
+            const fixedRows2 = rows2.slice(0, 4);
+            const headers1 = rows1[0] || [];
+            const headers2 = rows2[0] || [];
+            const dataRows1 = rows1.slice(4);
+            const dataRows2 = rows2.slice(4);
+
+            // 检查第一行表头（从第四列开始）是否有数字表头
+            const checkIsNumber = (value) => {
+                if (value === null || value === undefined || value === '') return false;
+                const num = Number(value);
+                return !isNaN(num) && isFinite(num);
+            };
+
+            // 检查文件1的第一行表头（从第四列开始）是否有数字
+            let hasNumberHeader1 = false;
+            for (let i = 3; i < headers1.length; i++) {
+                if (checkIsNumber(headers1[i])) {
+                    hasNumberHeader1 = true;
+                    break;
+                }
+            }
+
+            // 检查文件2的第一行表头（从第四列开始）是否有数字
+            let hasNumberHeader2 = false;
+            for (let i = 3; i < headers2.length; i++) {
+                if (checkIsNumber(headers2[i])) {
+                    hasNumberHeader2 = true;
+                    break;
+                }
+            }
+
+            if (!hasNumberHeader1 && !hasNumberHeader2) {
+                throw new Error('表头中未找到数字代码列，不进行合并操作');
+            }
+
+            // 前三列：固定列（索引0,1,2），直接复制
+            // 从第四列开始（索引3开始）：通过列名进行VLOOKUP合并
+
+            // 创建文件2的列名映射（从第四列开始，索引3）
+            const headerMap2 = new Map();
+            for (let i = 3; i < headers2.length; i++) {
+                const headerName = String(headers2[i] || '').trim();
+                if (headerName !== '') {
+                    headerMap2.set(headerName, i);
+                }
+            }
+
+            // 创建文件1的列名映射（从第四列开始，索引3）
+            const headerMap1 = new Map();
+            for (let i = 3; i < headers1.length; i++) {
+                const headerName = String(headers1[i] || '').trim();
+                if (headerName !== '') {
+                    headerMap1.set(headerName, i);
+                }
+            }
+
+            // 合并表头
+            const mergedHeaders = [];
+            const mergedFixedRows = [[], [], [], []];
+
+            // 前三列保持文件1的表头
+            mergedHeaders.push(headers1[0] || '');
+            mergedHeaders.push(headers1[1] || '');
+            mergedHeaders.push(headers1[2] || '');
+
+            // 前四行的前三列数据
+            for (let r = 0; r < 4; r++) {
+                mergedFixedRows[r].push(fixedRows1[r][0] || '');
+                mergedFixedRows[r].push(fixedRows1[r][1] || '');
+                mergedFixedRows[r].push(fixedRows1[r][2] || '');
+            }
+
+            // 从第四列开始，先添加文件1的列，再添加文件2的新列
+            const headerSet = new Set();
+
+            // 添加文件1的列（从第四列开始）
+            for (let i = 3; i < headers1.length; i++) {
+                const headerName = String(headers1[i] || '').trim();
+                if (headerName !== '' && !headerSet.has(headerName)) {
+                    mergedHeaders.push(headerName);
+                    headerSet.add(headerName);
+                    // 前四行的对应列数据
+                    for (let r = 0; r < 4; r++) {
+                        mergedFixedRows[r].push(fixedRows1[r][i] || '');
+                    }
+                }
+            }
+
+            // 添加文件2的新列
+            for (let i = 3; i < headers2.length; i++) {
+                const headerName = String(headers2[i] || '').trim();
+                if (headerName !== '' && !headerSet.has(headerName)) {
+                    mergedHeaders.push(headerName);
+                    headerSet.add(headerName);
+                    // 前四行的对应列数据
+                    for (let r = 0; r < 4; r++) {
+                        mergedFixedRows[r].push(fixedRows2[r][i] || '');
+                    }
+                }
+            }
+
+            // 使用对象存储合并的数据（以首列值为key）
+            const mergedData = new Map();
+
+            // 处理第一个文件的数据行
+            for (let i = 0; i < dataRows1.length; i++) {
+                const row = dataRows1[i];
+                const key = String(row[0] || '').trim();
+
+                if (key === '') continue;
+
+                // 创建 rowData 对象
+                const rowData = {};
+
+                // 前三列按位置存储
+                rowData['__col0'] = row[0];
+                rowData['__col1'] = row[1];
+                rowData['__col2'] = row[2];
+
+                // 从第四列开始，通过列名存储
+                headerMap1.forEach((colIndex, colName) => {
+                    rowData[colName] = row[colIndex];
+                });
+
+                mergedData.set(key, rowData);
+            }
+
+            // 处理第二个文件的数据行 - VLOOKUP合并
+            for (let i = 0; i < dataRows2.length; i++) {
+                const row = dataRows2[i];
+                const key = String(row[0] || '').trim();
+
+                if (key === '') continue;
+
+                const existing = mergedData.get(key);
+
+                if (existing) {
+                    // 已存在：进行VLOOKUP合并（从第四列开始）
+                    headerMap2.forEach((colIndex, colName) => {
+                        const newValue = row[colIndex];
+                        const oldValue = existing[colName];
+
+                        if (oldValue === undefined || oldValue === '' || oldValue === null) {
+                            // 空单元格直接填充
+                            existing[colName] = newValue;
+                        } else if (newValue !== undefined && newValue !== '' && newValue !== null && String(oldValue) !== String(newValue)) {
+                            // 有值且不同，用分号连接（与VBS一致）
+                            existing[colName] = `${oldValue};${newValue}`;
+                        }
+                    });
+                } else {
+                    // 不存在：新增行
+                    const rowData = {};
+
+                    // 前三列按位置存储
+                    rowData['__col0'] = row[0];
+                    rowData['__col1'] = row[1];
+                    rowData['__col2'] = row[2];
+
+                    // 从第四列开始，通过列名存储
+                    headerMap2.forEach((colIndex, colName) => {
+                        rowData[colName] = row[colIndex];
+                    });
+
+                    mergedData.set(key, rowData);
+                }
+            }
+
+            // 构建合并后的完整数据
+            const mergedRows = [];
+
+            // 添加前四行固定行
+            mergedFixedRows.forEach(row => mergedRows.push(row));
+
+            // 添加合并后的数据行
+            mergedData.forEach((rowData) => {
+                const row = [];
+
+                // 前三列按位置输出
+                row.push(rowData['__col0'] !== undefined ? rowData['__col0'] : '');
+                row.push(rowData['__col1'] !== undefined ? rowData['__col1'] : '');
+                row.push(rowData['__col2'] !== undefined ? rowData['__col2'] : '');
+
+                // 从第四列开始，通过列名输出（按合并后的表头顺序）
+                for (let i = 3; i < mergedHeaders.length; i++) {
+                    const headerName = String(mergedHeaders[i] || '').trim();
+                    row.push(rowData[headerName] !== undefined ? rowData[headerName] : '');
+                }
+
+                mergedRows.push(row);
+            });
+
+            const newSheet = XLSX.utils.aoa_to_sheet(mergedRows);
+
+            // 设置行高：第四行是其他行的四倍
+            if (!newSheet['!rows']) newSheet['!rows'] = [];
+            const normalHeight = 15; // 标准行高
+            const fourthRowHeight = normalHeight * 4; // 第四行行高 = 60
+
+            // 设置所有行的行高
+            const range = XLSX.utils.decode_range(newSheet['!ref']);
+            for (let r = range.s.r; r <= range.e.r; r++) {
+                if (r === 3) {
+                    // 第四行（索引3）设置为四倍行高
+                    newSheet['!rows'][r] = { hpx: fourthRowHeight, hpt: fourthRowHeight };
+                } else {
+                    // 其他行设置为标准行高
+                    newSheet['!rows'][r] = { hpx: normalHeight, hpt: normalHeight };
+                }
+            }
+
+            // 设置前四行自动换行
+            // 遍历前四行的所有单元格
+            for (let r = 0; r < 4; r++) {
+                for (let c = range.s.c; c <= range.e.c; c++) {
+                    const cellAddress = XLSX.utils.encode_cell({ r: r, c: c });
+                    if (!newSheet[cellAddress]) continue;
+
+                    // 设置单元格样式
+                    if (!newSheet[cellAddress].s) {
+                        newSheet[cellAddress].s = {};
+                    }
+
+                    // 设置对齐方式：自动换行、垂直居上、水平居左
+                    newSheet[cellAddress].s.alignment = {
+                        wrapText: true,
+                        vertical: 'top',
+                        horizontal: 'left'
+                    };
+                }
+            }
+
+            const newWorkbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(newWorkbook, newSheet, '合并结果');
+
+            return newWorkbook;
+        }
+
+        function showPreview(workbook) {
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+            const preview = document.getElementById('preview');
+            const previewTable = document.getElementById('previewTable');
+
+            let html = '<table><thead><tr>';
+            // 显示所有列
+            if (rows[0]) {
+                for (let i = 0; i < rows[0].length; i++) {
+                    html += `<th>${rows[0][i] || ''}</th>`;
+                }
+            }
+            html += '</tr></thead><tbody>';
+
+            // 显示所有行
+            for (let i = 1; i < rows.length; i++) {
+                // 前三行数据添加特殊类名
+                const rowClass = i <= 3 ? ` class="fixed-row-${i}"` : '';
+                html += `<tr${rowClass}>`;
+                for (let j = 0; j < rows[i].length; j++) {
+                    html += `<td>${rows[i][j] !== undefined ? rows[i][j] : ''}</td>`;
+                }
+                html += '</tr>';
+            }
+
+            html += '</tbody></table>';
+            previewTable.innerHTML = html;
+            preview.style.display = 'block';
+
+            // 显示滚动指示器
+            document.getElementById('scrollIndicator').style.display = 'flex';
+        }
+
+        function showError(message) {
+            const error = document.getElementById('error');
+            error.textContent = message;
+            error.classList.add('active');
+        }
+
+        // 下载功能
+        document.getElementById('downloadBtn').addEventListener('click', () => {
+            if (mergedWorkbook) {
+                XLSX.writeFile(mergedWorkbook, '合并配置表.xlsx');
+            }
+        });
+
+        // 滚动指示器点击事件
+        document.getElementById('scrollIndicator').addEventListener('click', () => {
+            const previewTable = document.getElementById('previewTable');
+            previewTable.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+
+        // 初始化文件上传
+        setupFileUpload('uploadBox1', 'file1', 'fileInfo1', 'fileName1', 'file1Data');
+        setupFileUpload('uploadBox2', 'file2', 'fileInfo2', 'fileName2', 'file2Data');
+    </script>
+</body>
+</html>

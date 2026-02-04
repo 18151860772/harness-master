@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>外购件清单生成器</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            width: 95vw;
+            max-width: 1400px;
+            max-height: 95vh;
+            margin: 20px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            overflow-y: auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 14px;
+        }
+
+        .upload-section {
+            margin-bottom: 30px;
+        }
+
+        .upload-box {
+            border: 3px dashed #ddd;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s;
+            background: #f9f9f9;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .upload-box:hover {
+            border-color: #667eea;
+            background: #f0f0ff;
+        }
+
+        .upload-box.dragover {
+            border-color: #667eea;
+            background: #e8e8ff;
+            transform: scale(1.02);
+        }
+
+        .upload-box.has-file {
+            border-color: #4caf50;
+            background: #f0fff0;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+
+        .upload-box.has-file .upload-icon {
+            color: #4caf50;
+        }
+
+        .upload-text {
+            color: #666;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        .upload-box input[type="file"] {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .file-name {
+            color: #4caf50;
+            font-weight: bold;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        button {
+            flex: 1;
+            padding: 15px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .progress-section {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #f0f0f0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .status-text {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .result-section {
+            margin-top: 20px;
+            display: none;
+            background: #f9f9f9;
+            border-radius: 10px;
+            padding: 20px;
+            flex: 1;
+            display: none;
+            flex-direction: column;
+        }
+
+        .result-section.show {
+            display: flex;
+        }
+
+        .result-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .result-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .preview-table {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            font-size: 12px;
+        }
+
+        .preview-table th,
+        .preview-table td {
+            padding: 10px 8px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+            word-wrap: break-word;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .preview-table th:nth-child(1),
+        .preview-table td:nth-child(1) { width: 8%; } /* Wire ID */
+        .preview-table th:nth-child(2),
+        .preview-table td:nth-child(2) { width: 8%; } /* Multicore ID */
+        .preview-table th:nth-child(3),
+        .preview-table td:nth-child(3) { width: 15%; } /* Option */
+        .preview-table th:nth-child(4),
+        .preview-table td:nth-child(4) { width: 6%; } /* Color */
+        .preview-table th:nth-child(5),
+        .preview-table td:nth-child(5) { width: 7%; } /* Size */
+        .preview-table th:nth-child(6),
+        .preview-table td:nth-child(6) { width: 7%; } /* Material */
+        .preview-table th:nth-child(7),
+        .preview-table td:nth-child(7) { width: 7%; } /* Ident Tag */
+        .preview-table th:nth-child(8),
+        .preview-table td:nth-child(8) { width: 10%; } /* From Code */
+        .preview-table th:nth-child(9),
+        .preview-table td:nth-child(9) { width: 6%; } /* From Pin */
+        .preview-table th:nth-child(10),
+        .preview-table td:nth-child(10) { width: 15%; } /* From中文描述 */
+        .preview-table th:nth-child(11),
+        .preview-table td:nth-child(11) { width: 10%; } /* To Code */
+        .preview-table th:nth-child(12),
+        .preview-table td:nth-child(12) { width: 6%; } /* To Pin */
+        .preview-table th:nth-child(13),
+        .preview-table td:nth-child(13) { width: 15%; } /* To中文描述 */
+
+        .preview-table th {
+            background: #667eea;
+            color: white;
+            font-weight: bold;
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .preview-table tr:hover {
+            background: #f5f5f5;
+        }
+
+        .preview-table-container {
+            overflow-y: auto;
+            overflow-x: hidden;
+            flex: 1;
+            min-height: 300px;
+            max-height: calc(60vh - 150px);
+            border-radius: 10px;
+            border: 1px solid #e0e0e0;
+            margin-top: 10px;
+        }
+
+        .success-icon {
+            text-align: center;
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 外购件清单生成器</h1>
+        <p class="subtitle">上传Wire List和ConnList文件，自动生成外购件清单</p>
+
+        <div class="upload-section">
+            <div class="upload-box" id="wirelistBox">
+                <input type="file" id="wirelistFile" accept=".xlsx,.xls,.csv" />
+                <div class="upload-icon">📋</div>
+                <div class="upload-text">点击或拖拽上传 Wire List 文件</div>
+                <div class="file-name" id="wirelistName"></div>
+            </div>
+        </div>
+
+        <div class="upload-section">
+            <div class="upload-box" id="connlistBox">
+                <input type="file" id="connlistFile" accept=".xlsx,.xls,.csv" />
+                <div class="upload-icon">📝</div>
+                <div class="upload-text">点击或拖拽上传 ConnList 文件</div>
+                <div class="file-name" id="connlistName"></div>
+            </div>
+        </div>
+
+        <div class="button-group">
+            <button class="btn-primary" id="generateBtn" disabled>
+                生成外购件清单
+            </button>
+            <button class="btn-secondary" id="resetBtn">
+                重置
+            </button>
+        </div>
+
+        <div class="progress-section" id="progressSection">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill">0%</div>
+            </div>
+            <div class="status-text" id="statusText">准备中...</div>
+        </div>
+
+        <div class="result-section" id="resultSection">
+            <div class="success-icon">✅</div>
+            <h3>生成成功！</h3>
+            <div class="result-stats">
+                <div class="stat-card">
+                    <div class="stat-value" id="statTotal">0</div>
+                    <div class="stat-label">外购件总数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statC">0</div>
+                    <div class="stat-label">C开头外购件</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statS">0</div>
+                    <div class="stat-label">S开头外购件</div>
+                </div>
+            </div>
+            <button class="btn-primary" id="downloadBtn" style="width: 100%;">
+                📥 下载外购件清单 (Excel)
+            </button>
+            <h4 style="margin-top: 20px; color: #333;">完整数据预览</h4>
+            <div class="preview-table-container">
+                <table class="preview-table" id="previewTable"></table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let wirelistData = null;
+        let connlistData = null;
+        let generatedData = null;
+
+        const wirelistBox = document.getElementById('wirelistBox');
+        const connlistBox = document.getElementById('connlistBox');
+        const wirelistFile = document.getElementById('wirelistFile');
+        const connlistFile = document.getElementById('connlistFile');
+        const wirelistName = document.getElementById('wirelistName');
+        const connlistName = document.getElementById('connlistName');
+        const generateBtn = document.getElementById('generateBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const progressSection = document.getElementById('progressSection');
+        const progressFill = document.getElementById('progressFill');
+        const statusText = document.getElementById('statusText');
+        const resultSection = document.getElementById('resultSection');
+        const downloadBtn = document.getElementById('downloadBtn');
+
+        // 拖拽效果
+        function setupDragDrop(box, fileInput, nameDisplay) {
+            box.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                box.classList.add('dragover');
+            });
+
+            box.addEventListener('dragleave', () => {
+                box.classList.remove('dragover');
+            });
+
+            box.addEventListener('drop', (e) => {
+                e.preventDefault();
+                box.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    fileInput.files = files;
+                    handleFileSelect(fileInput, nameDisplay, box);
+                }
+            });
+
+            fileInput.addEventListener('change', () => {
+                handleFileSelect(fileInput, nameDisplay, box);
+            });
+        }
+
+        function handleFileSelect(input, nameDisplay, box) {
+            const file = input.files[0];
+            if (file) {
+                nameDisplay.textContent = file.name;
+                box.classList.add('has-file');
+                checkFilesReady();
+            }
+        }
+
+        setupDragDrop(wirelistBox, wirelistFile, wirelistName);
+        setupDragDrop(connlistBox, connlistFile, connlistName);
+
+        function checkFilesReady() {
+            const wirelistReady = wirelistFile.files.length > 0;
+            const connlistReady = connlistFile.files.length > 0;
+            generateBtn.disabled = !(wirelistReady && connlistReady);
+        }
+
+        // 读取Excel文件
+        function readExcelFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                        const sheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[sheetName];
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                        resolve(jsonData);
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        // 生成外购件清单
+        generateBtn.addEventListener('click', async () => {
+            try {
+                progressSection.style.display = 'block';
+                resultSection.style.display = 'none';
+                generateBtn.disabled = true;
+
+                updateProgress(10, '正在读取Wire List文件...');
+                wirelistData = await readExcelFile(wirelistFile.files[0]);
+
+                updateProgress(40, '正在读取ConnList文件...');
+                connlistData = await readExcelFile(connlistFile.files[0]);
+
+                updateProgress(60, '正在处理数据...');
+
+                // 处理数据
+                const result = processWireList(wirelistData, connlistData);
+                generatedData = result;
+
+                updateProgress(100, '生成完成！');
+
+                // 显示结果
+                displayResults(result);
+
+                setTimeout(() => {
+                    progressSection.style.display = 'none';
+                    resultSection.classList.add('show');
+                    resultSection.style.display = 'flex';
+                    generateBtn.disabled = false;
+                }, 500);
+
+            } catch (error) {
+                alert('错误：' + error.message);
+                progressSection.style.display = 'none';
+                generateBtn.disabled = false;
+            }
+        });
+
+        function updateProgress(percent, text) {
+            progressFill.style.width = percent + '%';
+            progressFill.textContent = percent + '%';
+            statusText.textContent = text;
+        }
+
+        function processWireList(wirelist, connlist) {
+            // 解析Wire List
+            const wirelistHeader = wirelist[0];
+            const colMapping = {};
+            wirelistHeader.forEach((header, index) => {
+                colMapping[header] = index;
+            });
+
+            const multicoreIdCol = colMapping['Multicore ID'];
+            const optionCol = colMapping['Option'];
+            const wireIdCol = colMapping['Wire ID'];
+            const colorCol = colMapping['Color'];
+            const sizeCol = colMapping['Size / Gauge'];
+            const materialCol = colMapping['Material'];
+            const identTagCol = colMapping['Ident Tag'];
+            const fromCodeCol = colMapping['From Code'];
+            const fromPinCol = colMapping['From Pin'];
+            const toCodeCol = colMapping['To Code'];
+            const toPinCol = colMapping['To Pin'];
+
+            // 解析ConnList创建代码到中文的映射
+            const connMap = {};
+            if (connlist && connlist.length > 1) {
+                // ConnList结构：
+                // Row 1: A=British anti-theft alarm, B=短号, C=中文描述, ...
+                // Row 2+: B列=代码(如FTIV), C列=中文描述(如1.5T FTIV阀)
+
+                // 跳过第一行表头，从第二行开始读取
+                // B列(索引1)是代码，C列(索引2)是中文描述
+                for (let i = 1; i < connlist.length; i++) {
+                    const row = connlist[i];
+                    if (row.length >= 3) {
+                        const code = row[1]; // B列
+                        const desc = row[2]; // C列
+
+                        if (code && code !== 'undefined' && code !== 'null' && desc && desc !== 'undefined' && desc !== 'null') {
+                            const codeStr = String(code).trim();
+                            const descStr = String(desc).trim();
+
+                            if (codeStr && descStr) {
+                                connMap[codeStr] = descStr;
+                            }
+                        }
+                    }
+                }
+
+                console.log('ConnList映射建立完成，共', Object.keys(connMap).length, '条');
+                console.log('前10个映射示例:', Object.entries(connMap).slice(0, 10));
+            }
+
+            // 筛选外购件回路（每根回路单独一行）
+            const wireList = [];
+            let cCount = 0;
+            let sCount = 0;
+
+            for (let i = 1; i < wirelist.length; i++) {
+                const row = wirelist[i];
+                const multicoreId = row[multicoreIdCol];
+
+                if (multicoreId && (multicoreId.startsWith('C') || multicoreId.startsWith('S'))) {
+                    const wireData = {
+                        wireId: row[wireIdCol] || '',
+                        multicoreId: multicoreId,
+                        option: row[optionCol] || '',
+                        color: row[colorCol] || '',
+                        size: row[sizeCol] || '',
+                        material: row[materialCol] || '',
+                        identTag: row[identTagCol] || '',
+                        fromCode: row[fromCodeCol] || '',
+                        fromPin: row[fromPinCol] || '',
+                        toCode: row[toCodeCol] || '',
+                        toPin: row[toPinCol] || ''
+                    };
+
+                    wireList.push(wireData);
+
+                    if (multicoreId.startsWith('C')) cCount++;
+                    if (multicoreId.startsWith('S')) sCount++;
+                }
+            }
+
+            // 生成输出数据（每根回路一行）
+            const output = [];
+            output.push([
+                'Wire ID',
+                'Multicore ID',
+                'Option',
+                'Color',
+                'Size / Gauge',
+                'Material',
+                'Ident Tag',
+                'From Code',
+                'From Pin',
+                'From中文描述',
+                'To Code',
+                'To Pin',
+                'To中文描述'
+            ]);
+
+            // 按Multicore ID和Wire ID排序
+            wireList.sort((a, b) => {
+                if (a.multicoreId !== b.multicoreId) {
+                    return a.multicoreId.localeCompare(b.multicoreId);
+                }
+                return (a.wireId || '').localeCompare(b.wireId || '');
+            });
+
+            wireList.forEach(wire => {
+                const fromDesc = findChineseDescription(wire.fromCode, connMap);
+                const toDesc = findChineseDescription(wire.toCode, connMap);
+
+                output.push([
+                    wire.wireId,
+                    wire.multicoreId,
+                    wire.option,
+                    wire.color,
+                    wire.size,
+                    wire.material,
+                    wire.identTag,
+                    wire.fromCode,
+                    wire.fromPin,
+                    fromDesc,
+                    wire.toCode,
+                    wire.toPin,
+                    toDesc
+                ]);
+            });
+
+            return {
+                data: output,
+                total: wireList.length,
+                cCount: cCount,
+                sCount: sCount
+            };
+        }
+
+        function findChineseDescription(code, connMap) {
+            if (!code || !connMap || Object.keys(connMap).length === 0) return '';
+
+            let trimmedCode = code.trim();
+
+            // 尝试直接匹配
+            if (connMap[trimmedCode]) {
+                return connMap[trimmedCode];
+            }
+            // 尝试去除空格匹配
+            else if (connMap[trimmedCode.replace(/\s/g, '')]) {
+                return connMap[trimmedCode.replace(/\s/g, '')];
+            }
+            // 尝试大小写不敏感匹配
+            else {
+                const upperCode = trimmedCode.toUpperCase();
+                for (const [key, value] of Object.entries(connMap)) {
+                    if (key.toUpperCase() === upperCode) {
+                        return value;
+                    }
+                }
+            }
+
+            // 如果没找到，返回空字符串
+            return '';
+        }
+
+        function displayResults(result) {
+            document.getElementById('statTotal').textContent = result.total;
+            document.getElementById('statC').textContent = result.cCount;
+            document.getElementById('statS').textContent = result.sCount;
+
+            // 更新统计标签
+            document.querySelector('.stat-card:nth-child(1) .stat-label').textContent = '外购件回路总数';
+            document.querySelector('.stat-card:nth-child(2) .stat-label').textContent = 'C开头回路数';
+            document.querySelector('.stat-card:nth-child(3) .stat-label').textContent = 'S开头回路数';
+
+            // 显示完整预览表格
+            const table = document.getElementById('previewTable');
+            table.innerHTML = '';
+
+            // 表头
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            result.data[0].forEach(header => {
+                const th = document.createElement('th');
+                th.textContent = header;
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            // 所有数据行
+            const tbody = document.createElement('tbody');
+            const allRows = result.data.slice(1); // 跳过表头，显示所有数据
+
+            allRows.forEach((row, index) => {
+                const tr = document.createElement('tr');
+                // 交替行背景色
+                if (index % 2 === 0) {
+                    tr.style.backgroundColor = '#f9f9f9';
+                }
+
+                row.forEach(cell => {
+                    const td = document.createElement('td');
+                    td.textContent = cell || '';
+                    // 根据列索引设置对齐方式
+                    const colIndex = row.indexOf(cell);
+                    if ([0, 1, 3].includes(colIndex)) { // Wire ID, Multicore ID, Color
+                        td.style.textAlign = 'center';
+                    } else if ([8, 11].includes(colIndex)) { // Pin列
+                        td.style.textAlign = 'center';
+                    } else {
+                        td.style.textAlign = 'left';
+                    }
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+            table.appendChild(tbody);
+        }
+
+        // 下载Excel文件
+        downloadBtn.addEventListener('click', () => {
+            if (!generatedData) return;
+
+            // 创建工作表
+            const ws = XLSX.utils.aoa_to_sheet(generatedData.data);
+
+            // 设置列宽
+            const colWidths = [
+                { wch: 16 }, // Wire ID
+                { wch: 16 }, // Multicore ID
+                { wch: 28 }, // Option
+                { wch: 12 }, // Color
+                { wch: 14 }, // Size / Gauge
+                { wch: 14 }, // Material
+                { wch: 14 }, // Ident Tag
+                { wch: 22 }, // From Code
+                { wch: 14 }, // From Pin
+                { wch: 35 }, // From中文描述
+                { wch: 22 }, // To Code
+                { wch: 14 }, // To Pin
+                { wch: 35 }  // To中文描述
+            ];
+            ws['!cols'] = colWidths;
+
+            // 设置行高
+            ws['!rows'] = [{ hpx: 30 }, { hpx: 25 }]; // 表头30px，数据行25px
+
+            // 获取数据范围
+            const range = XLSX.utils.decode_range(ws['!ref']);
+
+            // 为每个单元格添加样式
+            for (let R = range.s.r; R <= range.e.r; ++R) {
+                for (let C = range.s.c; C <= range.e.c; ++C) {
+                    const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+                    const cell = ws[cellAddress];
+
+                    if (!cell) continue;
+
+                    // 表头行样式
+                    if (R === 0) {
+                        cell.s = {
+                            font: {
+                                name: '微软雅黑',
+                                sz: 12,
+                                bold: true,
+                                color: { rgb: "FFFFFF" }
+                            },
+                            fill: {
+                                fgColor: { rgb: "4472C4" }
+                            },
+                            alignment: {
+                                horizontal: "center",
+                                vertical: "center",
+                                wrapText: true
+                            },
+                            border: {
+                                top: { style: "thin", color: { auto: 1 } },
+                                right: { style: "thin", color: { auto: 1 } },
+                                bottom: { style: "thin", color: { auto: 1 } },
+                                left: { style: "thin", color: { auto: 1 } }
+                            }
+                        };
+                    }
+                    // 数据行样式
+                    else {
+                        const isEvenRow = (R % 2 === 0);
+
+                        cell.s = {
+                            font: {
+                                name: '微软雅黑',
+                                sz: 10
+                            },
+                            fill: {
+                                fgColor: { rgb: isEvenRow ? "F2F2F2" : "FFFFFF" }
+                            },
+                            alignment: {
+                                vertical: "center",
+                                wrapText: false
+                            },
+                            border: {
+                                top: { style: "thin", color: { auto: 1 } },
+                                right: { style: "thin", color: { auto: 1 } },
+                                bottom: { style: "thin", color: { auto: 1 } },
+                                left: { style: "thin", color: { auto: 1 } }
+                            }
+                        };
+
+                        // 特定列的对齐方式
+                        // Wire ID, Multicore ID, Color - 居中
+                        if ([0, 1, 3].includes(C)) {
+                            cell.s.alignment.horizontal = "center";
+                        }
+                        // Option, From Code, To Code, 中文描述 - 左对齐
+                        else if ([2, 7, 9, 10, 12].includes(C)) {
+                            cell.s.alignment.horizontal = "left";
+                        }
+                        // Pin列 - 居中
+                        else if ([8, 11].includes(C)) {
+                            cell.s.alignment.horizontal = "center";
+                        }
+                        // 其他列 - 左对齐
+                        else {
+                            cell.s.alignment.horizontal = "left";
+                        }
+                    }
+                }
+            }
+
+            // 创建工作簿
+            const wb = XLSX.utils.book_new();
+
+            // 设置工作簿属性
+            wb.Props = {
+                Title: "外购件清单",
+                Subject: "自动生成的外购件回路清单",
+                Author: "外购件清单生成器",
+                CreatedDate: new Date()
+            };
+
+            XLSX.utils.book_append_sheet(wb, ws, '外购件清单');
+
+            // 生成Excel文件
+            const date = new Date().toISOString().slice(0, 10);
+            XLSX.writeFile(wb, `外购件清单_${date}.xlsx`);
+        });
+
+        // 重置
+        resetBtn.addEventListener('click', () => {
+            wirelistFile.value = '';
+            connlistFile.value = '';
+            wirelistName.textContent = '';
+            connlistName.textContent = '';
+            wirelistBox.classList.remove('has-file');
+            connlistBox.classList.remove('has-file');
+            generateBtn.disabled = true;
+            progressSection.style.display = 'none';
+            resultSection.style.display = 'none';
+            wirelistData = null;
+            connlistData = null;
+            generatedData = null;
+        });
+    </script>
+</body>
+</html>

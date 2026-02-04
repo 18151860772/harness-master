@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Bash(pip install:*)",
+      "Bash(ls:*)",
+      "Bash(powershell:*)",
+      "Bash(wmic:*)",
+      "Bash(reg query:*)",
+      "Bash(cleanmgr:*)",
+      "Bash(powercfg:*)",
+      "Bash(cat:*)",
+      "Bash(head:*)",
+      "Bash(wc:*)",
+      "Bash(tail:*)",
+      "mcp__plugin_playwright_playwright__browser_navigate",
+      "mcp__plugin_playwright_playwright__browser_install"
+    ]
+  }
+}

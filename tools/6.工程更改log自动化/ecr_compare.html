@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ECR文件比对工具</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --primary-color: #0d6efd;
+            --success-color: #198754;
+            --danger-color: #dc3545;
+            --warning-color: #ffc107;
+            --info-color: #0dcaf0;
+        }
+
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .upload-section {
+            background: white;
+            border-radius: 10px;
+            padding: 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+
+        .upload-area {
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background-color: #f8f9fa;
+        }
+
+        .upload-area:hover, .upload-area.dragover {
+            border-color: var(--primary-color);
+            background-color: #e9ecef;
+        }
+
+        .upload-area i {
+            font-size: 3rem;
+            color: #6c757d;
+            margin-bottom: 1rem;
+        }
+
+        .file-info {
+            margin-top: 1rem;
+            padding: 0.5rem;
+            background-color: #d1e7dd;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .file-info.show {
+            display: block;
+        }
+
+        .stats-section {
+            background: white;
+            border-radius: 10px;
+            padding: 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+            display: none;
+        }
+
+        .stats-section.show {
+            display: block;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+            margin-bottom: 1rem;
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-card.success {
+            background: linear-gradient(135deg, #198754 0%, #20c997 100%);
+        }
+
+        .stat-card.danger {
+            background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
+        }
+
+        .stat-card.warning {
+            background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+        }
+
+        .stat-card.info {
+            background: linear-gradient(135deg, #0dcaf0 0%, #0d6efd 100%);
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .results-section {
+            background: white;
+            border-radius: 10px;
+            padding: 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: none;
+        }
+
+        .results-section.show {
+            display: block;
+        }
+
+        .nav-tabs .nav-link {
+            color: #495057;
+            font-weight: 500;
+        }
+
+        .nav-tabs .nav-link.active {
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        .table-container {
+            max-height: 600px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+        }
+
+        .table {
+            margin-bottom: 0;
+        }
+
+        .table thead th {
+            position: sticky;
+            top: 0;
+            background-color: #f8f9fa;
+            z-index: 10;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        .table-row-new {
+            background-color: #d1e7dd !important;
+        }
+
+        .table-row-deleted {
+            background-color: #f8d7da !important;
+        }
+
+        .table-row-modified {
+            background-color: #fff3cd !important;
+        }
+
+        .cell-diff {
+            border: 2px solid #fd7e14 !important;
+            font-weight: bold;
+            padding: 0.5rem !important;
+        }
+
+        .filter-section {
+            background-color: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .loading-overlay.show {
+            display: flex;
+        }
+
+        .loading-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+
+        .progress {
+            height: 20px;
+            margin-top: 1rem;
+        }
+
+        .alert-custom {
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .btn-export {
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .sheet-info {
+            background-color: #e9ecef;
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #6c757d;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .stat-card {
+                padding: 1rem;
+            }
+
+            .stat-number {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="container">
+            <h1 class="text-center mb-0">
+                <i class="bi bi-file-earmark-spreadsheet"></i>
+                ECR文件比对工具
+            </h1>
+            <p class="text-center mb-0 mt-2">比较两个ECR文件的第8个sheet（Masterlist）差异</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Upload Section -->
+        <div class="upload-section">
+            <h3 class="mb-4">
+                <i class="bi bi-cloud-upload"></i>
+                文件上传
+            </h3>
+            <div class="row">
+                <!-- Old File Upload -->
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-bold">旧版ECR文件</label>
+                    <div class="upload-area" id="oldFileUpload">
+                        <i class="bi bi-file-earmark-excel"></i>
+                        <p>点击或拖拽上传旧版ECR文件</p>
+                        <p class="text-muted small">支持.xlsx格式</p>
+                        <input type="file" id="oldFileInput" accept=".xlsx,.xls" style="display: none;">
+                    </div>
+                    <div class="file-info" id="oldFileInfo">
+                        <i class="bi bi-check-circle-fill text-success"></i>
+                        <span id="oldFileName"></span>
+                        <br>
+                        <small class="text-muted" id="oldFileSize"></small>
+                        <div class="sheet-info" id="oldSheetInfo"></div>
+                    </div>
+                </div>
+
+                <!-- New File Upload -->
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-bold">新版ECR文件</label>
+                    <div class="upload-area" id="newFileUpload">
+                        <i class="bi bi-file-earmark-excel"></i>
+                        <p>点击或拖拽上传新版ECR文件</p>
+                        <p class="text-muted small">支持.xlsx格式</p>
+                        <input type="file" id="newFileInput" accept=".xlsx,.xls" style="display: none;">
+                    </div>
+                    <div class="file-info" id="newFileInfo">
+                        <i class="bi bi-check-circle-fill text-success"></i>
+                        <span id="newFileName"></span>
+                        <br>
+                        <small class="text-muted" id="newFileSize"></small>
+                        <div class="sheet-info" id="newSheetInfo"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center mt-4">
+                <button class="btn btn-primary btn-lg" id="compareBtn" disabled>
+                    <i class="bi bi-arrow-left-right"></i>
+                    开始比对
+                </button>
+                <button class="btn btn-secondary btn-lg ms-2" id="resetBtn">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                    重置
+                </button>
+            </div>
+        </div>
+
+        <!-- Alert Container -->
+        <div id="alertContainer"></div>
+
+        <!-- Stats Section -->
+        <div class="stats-section" id="statsSection">
+            <h3 class="mb-4">
+                <i class="bi bi-bar-chart"></i>
+                比对结果概览
+            </h3>
+            <div class="row">
+                <div class="col-md-4 col-sm-6">
+                    <div class="stat-card">
+                        <div class="stat-number" id="oldTotalCount">0</div>
+                        <div class="stat-label">旧文件总零件数</div>
+                    </div>
+                </div>
+                <div class="col-md-4 col-sm-6">
+                    <div class="stat-card">
+                        <div class="stat-number" id="newTotalCount">0</div>
+                        <div class="stat-label">新文件总零件数</div>
+                    </div>
+                </div>
+                <div class="col-md-4 col-sm-6">
+                    <div class="stat-card success">
+                        <div class="stat-number" id="addedCount">0</div>
+                        <div class="stat-label">新增零件数</div>
+                    </div>
+                </div>
+                <div class="col-md-4 col-sm-6">
+                    <div class="stat-card danger">
+                        <div class="stat-number" id="deletedCount">0</div>
+                        <div class="stat-label">删除零件数</div>
+                    </div>
+                </div>
+                <div class="col-md-4 col-sm-6">
+                    <div class="stat-card warning">
+                        <div class="stat-number" id="modifiedCount">0</div>
+                        <div class="stat-label">修改零件数</div>
+                    </div>
+                </div>
+                <div class="col-md-4 col-sm-6">
+                    <div class="stat-card info">
+                        <div class="stat-number" id="unchangedCount">0</div>
+                        <div class="stat-label">无变化零件数</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div class="results-section" id="resultsSection">
+            <h3 class="mb-4">
+                <i class="bi bi-table"></i>
+                差异详情
+            </h3>
+
+            <!-- Filter Section -->
+            <div class="filter-section">
+                <div class="row">
+                    <div class="col-md-4">
+                        <label class="form-label">搜索零件号</label>
+                        <input type="text" class="form-control" id="searchInput" placeholder="输入零件号搜索...">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">差异类型</label>
+                        <select class="form-select" id="diffTypeFilter">
+                            <option value="all">全部</option>
+                            <option value="added">新增</option>
+                            <option value="deleted">删除</option>
+                            <option value="modified">修改</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">列名过滤</label>
+                        <select class="form-select" id="columnFilter">
+                            <option value="all">全部列</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Export Buttons -->
+            <div class="mb-3">
+                <button class="btn btn-success btn-export" id="exportCsvBtn">
+                    <i class="bi bi-file-earmark-spreadsheet"></i>
+                    导出CSV
+                </button>
+                <button class="btn btn-primary btn-export" id="exportExcelBtn">
+                    <i class="bi bi-file-earmark-excel"></i>
+                    导出Excel
+                </button>
+            </div>
+
+            <!-- Tabs -->
+            <ul class="nav nav-tabs mb-3" id="diffTabs">
+                <li class="nav-item">
+                    <button class="nav-link active" data-tab="added">
+                        <i class="bi bi-plus-circle text-success"></i>
+                        新增零件 (<span id="addedTabCount">0</span>)
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-tab="deleted">
+                        <i class="bi bi-dash-circle text-danger"></i>
+                        删除零件 (<span id="deletedTabCount">0</span>)
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-tab="modified">
+                        <i class="bi bi-exclamation-circle text-warning"></i>
+                        修改零件 (<span id="modifiedTabCount">0</span>)
+                    </button>
+                </li>
+            </ul>
+
+            <!-- Table Container -->
+            <div class="table-container" id="tableContainer">
+                <!-- Tables will be dynamically generated -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">加载中...</span>
+            </div>
+            <h5 class="mt-3" id="loadingText">正在处理...</h5>
+            <div class="progress">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                     id="progressBar" 
+                     role="progressbar" 
+                     style="width: 0%"></div>
+            </div>
+            <p class="mt-2 text-muted" id="progressText">0%</p>
+        </div>
+    </div>
+
+    <!-- SheetJS Library -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // Global variables
+        let oldFileData = null;
+        let newFileData = null;
+        let oldWorkbook = null;
+        let newWorkbook = null;
+        let oldSheetData = null;
+        let newSheetData = null;
+        let comparisonResult = null;
+
+        // DOM Elements
+        const oldFileUpload = document.getElementById('oldFileUpload');
+        const newFileUpload = document.getElementById('newFileUpload');
+        const oldFileInput = document.getElementById('oldFileInput');
+        const newFileInput = document.getElementById('newFileInput');
+        const oldFileInfo = document.getElementById('oldFileInfo');
+        const newFileInfo = document.getElementById('newFileInfo');
+        const oldFileName = document.getElementById('oldFileName');
+        const newFileName = document.getElementById('newFileName');
+        const oldFileSize = document.getElementById('oldFileSize');
+        const newFileSize = document.getElementById('newFileSize');
+        const oldSheetInfo = document.getElementById('oldSheetInfo');
+        const newSheetInfo = document.getElementById('newSheetInfo');
+        const compareBtn = document.getElementById('compareBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const loadingText = document.getElementById('loadingText');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        const alertContainer = document.getElementById('alertContainer');
+        const statsSection = document.getElementById('statsSection');
+        const resultsSection = document.getElementById('resultsSection');
+        const searchInput = document.getElementById('searchInput');
+        const diffTypeFilter = document.getElementById('diffTypeFilter');
+        const columnFilter = document.getElementById('columnFilter');
+        const tableContainer = document.getElementById('tableContainer');
+        const exportCsvBtn = document.getElementById('exportCsvBtn');
+        const exportExcelBtn = document.getElementById('exportExcelBtn');
+        const diffTabs = document.getElementById('diffTabs');
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            setupFileUpload(oldFileUpload, oldFileInput, 'old');
+            setupFileUpload(newFileUpload, newFileInput, 'new');
+            setupEventListeners();
+        });
+
+        // Setup file upload
+        function setupFileUpload(uploadArea, input, type) {
+            uploadArea.addEventListener('click', () => input.click());
+            
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleFile(files[0], type);
+                }
+            });
+
+            input.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handleFile(e.target.files[0], type);
+                }
+            });
+        }
+
+        // Handle file upload
+        async function handleFile(file, type) {
+            try {
+                showLoading(`正在解析${type === 'old' ? '旧版' : '新版'}文件...`, 10);
+
+                // Read file
+                const data = await file.arrayBuffer();
+                const workbook = XLSX.read(data, { type: 'array' });
+
+                // Check if workbook has at least 8 sheets
+                if (workbook.SheetNames.length < 8) {
+                    throw new Error(`文件只有${workbook.SheetNames.length}个sheet，无法提取第8个sheet`);
+                }
+
+                // Get the 8th sheet (index 7)
+                const sheetName = workbook.SheetNames[7];
+                const sheet = workbook.Sheets[sheetName];
+
+                // Convert sheet to JSON
+                const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+                if (jsonData.length < 2) {
+                    throw new Error('第8个sheet数据不足，无法解析');
+                }
+
+                // Store data
+                if (type === 'old') {
+                    oldFileData = file;
+                    oldWorkbook = workbook;
+                    oldSheetData = jsonData;
+                    oldFileName.textContent = file.name;
+                    oldFileSize.textContent = formatFileSize(file.size);
+                    oldSheetInfo.innerHTML = `<i class="bi bi-table"></i> 第8个sheet: <strong>${sheetName}</strong> (${jsonData.length}行, ${jsonData[0].length}列)`;
+                    oldFileInfo.classList.add('show');
+                } else {
+                    newFileData = file;
+                    newWorkbook = workbook;
+                    newSheetData = jsonData;
+                    newFileName.textContent = file.name;
+                    newFileSize.textContent = formatFileSize(file.size);
+                    newSheetInfo.innerHTML = `<i class="bi bi-table"></i> 第8个sheet: <strong>${sheetName}</strong> (${jsonData.length}行, ${jsonData[0].length}列)`;
+                    newFileInfo.classList.add('show');
+                }
+
+                // Enable compare button if both files are uploaded
+                if (oldSheetData && newSheetData) {
+                    compareBtn.disabled = false;
+                }
+
+                hideLoading();
+                showAlert('success', `${type === 'old' ? '旧版' : '新版'}文件解析成功！`);
+            } catch (error) {
+                hideLoading();
+                showAlert('danger', `文件解析失败: ${error.message}`);
+                console.error(error);
+            }
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            compareBtn.addEventListener('click', startComparison);
+            resetBtn.addEventListener('click', resetAll);
+            searchInput.addEventListener('input', filterResults);
+            diffTypeFilter.addEventListener('change', filterResults);
+            columnFilter.addEventListener('change', filterResults);
+            exportCsvBtn.addEventListener('click', exportToCsv);
+            exportExcelBtn.addEventListener('click', exportToExcel);
+
+            // Tab switching
+            diffTabs.querySelectorAll('.nav-link').forEach(tab => {
+                tab.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    diffTabs.querySelectorAll('.nav-link').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    const tabType = tab.dataset.tab;
+                    displayResults(tabType);
+                });
+            });
+        }
+
+        // Start comparison
+        async function startComparison() {
+            try {
+                showLoading('正在比对数据...', 20);
+
+                // Parse sheet data
+                const oldData = parseSheetData(oldSheetData);
+                const newData = parseSheetData(newSheetData);
+
+                updateProgress(40);
+
+                // Compare data
+                comparisonResult = compareData(oldData, newData);
+
+                updateProgress(80);
+
+                // Display results
+                displayStats();
+                displayResults('added');
+                populateColumnFilter();
+
+                updateProgress(100);
+
+                setTimeout(() => {
+                    hideLoading();
+                    statsSection.classList.add('show');
+                    resultsSection.classList.add('show');
+                    showAlert('success', '比对完成！');
+                }, 500);
+            } catch (error) {
+                hideLoading();
+                showAlert('danger', `比对失败: ${error.message}`);
+                console.error(error);
+            }
+        }
+
+        // Parse sheet data
+        function parseSheetData(sheetData) {
+            const headers = sheetData[0];
+            const data = {};
+
+            // Skip header row (index 0) and start from index 1
+            for (let i = 1; i < sheetData.length; i++) {
+                const row = sheetData[i];
+                const partNumber = row[0]; // First column is part number
+
+                if (partNumber) {
+                    data[partNumber] = {
+                        partNumber: partNumber,
+                        rowData: row,
+                        data: {}
+                    };
+
+                    // Map data to column names
+                    headers.forEach((header, index) => {
+                        data[partNumber].data[header] = row[index];
+                    });
+                }
+            }
+
+            return {
+                headers: headers,
+                data: data
+            };
+        }
+
+        // Compare data
+        function compareData(oldData, newData) {
+            const result = {
+                added: [],
+                deleted: [],
+                modified: [],
+                unchanged: []
+            };
+
+            const oldPartNumbers = Object.keys(oldData.data);
+            const newPartNumbers = Object.keys(newData.data);
+
+            // Find added parts (in new but not in old)
+            newPartNumbers.forEach(partNumber => {
+                if (!oldData.data[partNumber]) {
+                    result.added.push({
+                        partNumber: partNumber,
+                        data: newData.data[partNumber]
+                    });
+                }
+            });
+
+            // Find deleted parts (in old but not in new)
+            oldPartNumbers.forEach(partNumber => {
+                if (!newData.data[partNumber]) {
+                    result.deleted.push({
+                        partNumber: partNumber,
+                        data: oldData.data[partNumber]
+                    });
+                }
+            });
+
+            // Find modified and unchanged parts
+            oldPartNumbers.forEach(partNumber => {
+                if (newData.data[partNumber]) {
+                    const oldPart = oldData.data[partNumber];
+                    const newPart = newData.data[partNumber];
+                    const differences = findDifferences(oldPart, newPart);
+
+                    if (differences.length > 0) {
+                        result.modified.push({
+                            partNumber: partNumber,
+                            data: newPart.data,
+                            differences: differences
+                        });
+                    } else {
+                        result.unchanged.push({
+                            partNumber: partNumber,
+                            data: newPart.data
+                        });
+                    }
+                }
+            });
+
+            return result;
+        }
+
+        // Find differences between two parts
+        function findDifferences(oldPart, newPart) {
+            const differences = [];
+            const oldData = oldPart.data;
+            const newData = newPart.data;
+
+            // Compare all columns except part number
+            Object.keys(oldData).forEach(key => {
+                if (key !== '零件号') {
+                    const oldValue = normalizeValue(oldData[key]);
+                    const newValue = normalizeValue(newData[key]);
+
+                    if (oldValue !== newValue) {
+                        differences.push({
+                            column: key,
+                            oldValue: oldValue,
+                            newValue: newValue
+                        });
+                    }
+                }
+            });
+
+            return differences;
+        }
+
+        // Normalize value for comparison
+        function normalizeValue(value) {
+            if (value === undefined || value === null) {
+                return '';
+            }
+            if (typeof value === 'string') {
+                return value.trim();
+            }
+            return String(value);
+        }
+
+        // Display statistics
+        function displayStats() {
+            document.getElementById('oldTotalCount').textContent = Object.keys(oldSheetData ? parseSheetData(oldSheetData).data : {}).length;
+            document.getElementById('newTotalCount').textContent = Object.keys(newSheetData ? parseSheetData(newSheetData).data : {}).length;
+            document.getElementById('addedCount').textContent = comparisonResult.added.length;
+            document.getElementById('deletedCount').textContent = comparisonResult.deleted.length;
+            document.getElementById('modifiedCount').textContent = comparisonResult.modified.length;
+            document.getElementById('unchangedCount').textContent = comparisonResult.unchanged.length;
+
+            // Update tab counts
+            document.getElementById('addedTabCount').textContent = comparisonResult.added.length;
+            document.getElementById('deletedTabCount').textContent = comparisonResult.deleted.length;
+            document.getElementById('modifiedTabCount').textContent = comparisonResult.modified.length;
+        }
+
+        // Display results
+        function displayResults(tabType) {
+            let data = [];
+            let columns = [];
+            let rowClass = '';
+
+            switch (tabType) {
+                case 'added':
+                    data = comparisonResult.added;
+                    columns = ['零件号', '零件名称', '用量', '功能', '下发时间', '备注-供应商', '备注-版型特征'];
+                    rowClass = 'table-row-new';
+                    break;
+                case 'deleted':
+                    data = comparisonResult.deleted;
+                    columns = ['零件号', '零件名称', '用量', '功能', '下发时间', '备注-供应商', '备注-版型特征'];
+                    rowClass = 'table-row-deleted';
+                    break;
+                case 'modified':
+                    data = comparisonResult.modified;
+                    columns = ['零件号', '差异列名', '旧值', '新值'];
+                    rowClass = 'table-row-modified';
+                    break;
+            }
+
+            // Apply filters
+            const searchTerm = searchInput.value.toLowerCase();
+            const diffType = diffTypeFilter.value;
+            const column = columnFilter.value;
+
+            let filteredData = data;
+
+            if (searchTerm) {
+                filteredData = filteredData.filter(item => 
+                    item.partNumber.toLowerCase().includes(searchTerm)
+                );
+            }
+
+            if (tabType === 'modified' && column !== 'all') {
+                filteredData = filteredData.filter(item =>
+                    item.differences.some(diff => diff.column === column)
+                );
+            }
+
+            // Generate table HTML
+            let tableHtml = '';
+
+            if (filteredData.length === 0) {
+                tableHtml = `
+                    <div class="empty-state">
+                        <i class="bi bi-inbox"></i>
+                        <h5>暂无数据</h5>
+                        <p>没有找到符合条件的记录</p>
+                    </div>
+                `;
+            } else {
+                tableHtml = `
+                    <table class="table table-hover table-striped">
+                        <thead>
+                            <tr>
+                                ${columns.map(col => `<th>${col}</th>`).join('')}
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                if (tabType === 'modified') {
+                    // For modified parts, each part may have multiple rows (one per difference)
+                    filteredData.forEach(item => {
+                        const relevantDiffs = column === 'all' 
+                            ? item.differences 
+                            : item.differences.filter(diff => diff.column === column);
+
+                        relevantDiffs.forEach(diff => {
+                            tableHtml += `
+                                <tr class="${rowClass}">
+                                    <td>${item.partNumber}</td>
+                                    <td class="cell-diff">${diff.column}</td>
+                                    <td>${diff.oldValue || '<em class="text-muted">空</em>'}</td>
+                                    <td>${diff.newValue || '<em class="text-muted">空</em>'}</td>
+                                </tr>
+                            `;
+                        });
+                    });
+                } else {
+                    // For added and deleted parts
+                    filteredData.forEach(item => {
+                        const rowData = item.data.data;
+                        tableHtml += `
+                            <tr class="${rowClass}">
+                                <td><strong>${item.partNumber}</strong></td>
+                                ${columns.slice(1).map(col => `<td>${rowData[col] || '<em class="text-muted">-</em>'}</td>`).join('')}
+                            </tr>
+                        `;
+                    });
+                }
+
+                tableHtml += `
+                        </tbody>
+                    </table>
+                `;
+            }
+
+            tableContainer.innerHTML = tableHtml;
+        }
+
+        // Populate column filter
+        function populateColumnFilter() {
+            const columns = new Set();
+            
+            comparisonResult.modified.forEach(item => {
+                item.differences.forEach(diff => {
+                    columns.add(diff.column);
+                });
+            });
+
+            const sortedColumns = Array.from(columns).sort();
+            
+            columnFilter.innerHTML = '<option value="all">全部列</option>';
+            sortedColumns.forEach(col => {
+                columnFilter.innerHTML += `<option value="${col}">${col}</option>`;
+            });
+        }
+
+        // Filter results
+        function filterResults() {
+            const activeTab = diffTabs.querySelector('.nav-link.active');
+            const tabType = activeTab.dataset.tab;
+            displayResults(tabType);
+        }
+
+        // Export to CSV
+        function exportToCsv() {
+            try {
+                let csvContent = '\uFEFF'; // BOM for UTF-8
+
+                // Export added parts
+                if (comparisonResult.added.length > 0) {
+                    csvContent += '=== 新增零件 ===\n';
+                    csvContent += '零件号,零件名称,用量,功能,下发时间,备注-供应商,备注-版型特征\n';
+                    comparisonResult.added.forEach(item => {
+                        const data = item.data.data;
+                        csvContent += `"${item.partNumber}","${data['零件名称'] || ''}","${data['用量'] || ''}","${data['功能'] || ''}","${data['下发时间'] || ''}","${data['备注-供应商'] || ''}","${data['备注-版型特征'] || ''}"\n`;
+                    });
+                    csvContent += '\n';
+                }
+
+                // Export deleted parts
+                if (comparisonResult.deleted.length > 0) {
+                    csvContent += '=== 删除零件 ===\n';
+                    csvContent += '零件号,零件名称,用量,功能,下发时间,备注-供应商,备注-版型特征\n';
+                    comparisonResult.deleted.forEach(item => {
+                        const data = item.data.data;
+                        csvContent += `"${item.partNumber}","${data['零件名称'] || ''}","${data['用量'] || ''}","${data['功能'] || ''}","${data['下发时间'] || ''}","${data['备注-供应商'] || ''}","${data['备注-版型特征'] || ''}"\n`;
+                    });
+                    csvContent += '\n';
+                }
+
+                // Export modified parts
+                if (comparisonResult.modified.length > 0) {
+                    csvContent += '=== 修改零件 ===\n';
+                    csvContent += '零件号,差异列名,旧值,新值\n';
+                    comparisonResult.modified.forEach(item => {
+                        item.differences.forEach(diff => {
+                            csvContent += `"${item.partNumber}","${diff.column}","${diff.oldValue || ''}","${diff.newValue || ''}"\n`;
+                        });
+                    });
+                }
+
+                // Download file
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', `ECR比对结果_${new Date().toISOString().slice(0,10)}.csv`);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                showAlert('success', 'CSV文件导出成功！');
+            } catch (error) {
+                showAlert('danger', `导出失败: ${error.message}`);
+                console.error(error);
+            }
+        }
+
+        // Export to Excel
+        function exportToExcel() {
+            try {
+                const wb = XLSX.utils.book_new();
+
+                // Added parts sheet
+                if (comparisonResult.added.length > 0) {
+                    const addedData = comparisonResult.added.map(item => {
+                        const data = item.data.data;
+                        return {
+                            '零件号': item.partNumber,
+                            '零件名称': data['零件名称'] || '',
+                            '用量': data['用量'] || '',
+                            '功能': data['功能'] || '',
+                            '下发时间': data['下发时间'] || '',
+                            '备注-供应商': data['备注-供应商'] || '',
+                            '备注-版型特征': data['备注-版型特征'] || ''
+                        };
+                    });
+                    const addedWs = XLSX.utils.json_to_sheet(addedData);
+                    XLSX.utils.book_append_sheet(wb, addedWs, '新增零件');
+                }
+
+                // Deleted parts sheet
+                if (comparisonResult.deleted.length > 0) {
+                    const deletedData = comparisonResult.deleted.map(item => {
+                        const data = item.data.data;
+                        return {
+                            '零件号': item.partNumber,
+                            '零件名称': data['零件名称'] || '',
+                            '用量': data['用量'] || '',
+                            '功能': data['功能'] || '',
+                            '下发时间': data['下发时间'] || '',
+                            '备注-供应商': data['备注-供应商'] || '',
+                            '备注-版型特征': data['备注-版型特征'] || ''
+                        };
+                    });
+                    const deletedWs = XLSX.utils.json_to_sheet(deletedData);
+                    XLSX.utils.book_append_sheet(wb, deletedWs, '删除零件');
+                }
+
+                // Modified parts sheet
+                if (comparisonResult.modified.length > 0) {
+                    const modifiedData = [];
+                    comparisonResult.modified.forEach(item => {
+                        item.differences.forEach(diff => {
+                            modifiedData.push({
+                                '零件号': item.partNumber,
+                                '差异列名': diff.column,
+                                '旧值': diff.oldValue || '',
+                                '新值': diff.newValue || ''
+                            });
+                        });
+                    });
+                    const modifiedWs = XLSX.utils.json_to_sheet(modifiedData);
+                    XLSX.utils.book_append_sheet(wb, modifiedWs, '修改零件');
+                }
+
+                // Download file
+                XLSX.writeFile(wb, `ECR比对结果_${new Date().toISOString().slice(0,10)}.xlsx`);
+
+                showAlert('success', 'Excel文件导出成功！');
+            } catch (error) {
+                showAlert('danger', `导出失败: ${error.message}`);
+                console.error(error);
+            }
+        }
+
+        // Reset all
+        function resetAll() {
+            oldFileData = null;
+            newFileData = null;
+            oldWorkbook = null;
+            newWorkbook = null;
+            oldSheetData = null;
+            newSheetData = null;
+            comparisonResult = null;
+
+            oldFileInfo.classList.remove('show');
+            newFileInfo.classList.remove('show');
+            oldFileInput.value = '';
+            newFileInput.value = '';
+
+            compareBtn.disabled = true;
+            statsSection.classList.remove('show');
+            resultsSection.classList.remove('show');
+            searchInput.value = '';
+            diffTypeFilter.value = 'all';
+            columnFilter.innerHTML = '<option value="all">全部列</option>';
+
+            showAlert('info', '已重置所有数据');
+        }
+
+        // Utility functions
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function showLoading(text, progress) {
+            loadingText.textContent = text;
+            progressBar.style.width = progress + '%';
+            progressText.textContent = progress + '%';
+            loadingOverlay.classList.add('show');
+        }
+
+        function updateProgress(progress) {
+            progressBar.style.width = progress + '%';
+            progressText.textContent = progress + '%';
+        }
+
+        function hideLoading() {
+            loadingOverlay.classList.remove('show');
+        }
+
+        function showAlert(type, message) {
+            const alertHtml = `
+                <div class="alert alert-${type} alert-custom alert-dismissible fade show" role="alert">
+                    <i class="bi bi-${type === 'success' ? 'check-circle' : type === 'danger' ? 'x-circle' : 'info-circle'}"></i>
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            `;
+            alertContainer.innerHTML = alertHtml;
+
+            // Auto-dismiss after 5 seconds
+            setTimeout(() => {
+                const alert = alertContainer.querySelector('.alert');
+                if (alert) {
+                    alert.classList.remove('show');
+                    setTimeout(() => {
+                        alert.remove();
+                    }, 150);
+                }
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

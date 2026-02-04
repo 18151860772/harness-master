@@ -1,0 +1,1800 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel文件比对工具 - Beyond Compare风格</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', Arial, sans-serif;
+            background: #1e1e1e;
+            min-height: 100vh;
+            padding: 10px;
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            background: #2d2d30;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #ffffff;
+            margin-bottom: 20px;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .upload-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .upload-box {
+            border: 2px dashed #007acc;
+            border-radius: 6px;
+            padding: 25px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #1e1e1e;
+        }
+
+        .upload-box:hover {
+            border-color: #4fc3f7;
+            background: #252526;
+            transform: translateY(-2px);
+        }
+
+        .upload-box.dragover {
+            border-color: #4fc3f7;
+            background: #2d2d30;
+        }
+
+        .upload-box h3 {
+            color: #007acc;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .upload-box p {
+            color: #cccccc;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-info {
+            margin-top: 10px;
+            padding: 8px;
+            background: #264f78;
+            border-radius: 4px;
+            color: #ffffff;
+            font-size: 12px;
+        }
+
+        .compare-btn {
+            display: block;
+            width: 180px;
+            margin: 0 auto 20px;
+            padding: 12px 25px;
+            background: linear-gradient(135deg, #007acc 0%, #005a9e 100%);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .compare-btn:hover {
+            background: linear-gradient(135deg, #1e90ff 0%, #007acc 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 122, 204, 0.4);
+        }
+
+        .compare-btn:disabled {
+            background: #3e3e42;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .result-section {
+            display: none;
+        }
+
+        .result-section.active {
+            display: block;
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #3e3e42;
+            border-radius: 4px;
+        }
+
+        .result-header h2 {
+            color: #ffffff;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .export-btn {
+            padding: 8px 20px;
+            background: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .export-btn:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+
+        .html-btn {
+            background: #007acc;
+        }
+
+        .html-btn:hover {
+            background: #005a9e;
+        }
+
+        .legend {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            padding: 12px;
+            background: #3e3e42;
+            border-radius: 4px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .legend-color {
+            width: 24px;
+            height: 24px;
+            border-radius: 3px;
+            border: 1px solid #555;
+        }
+
+        .legend-color.added {
+            background: #2e7d32;
+        }
+
+        .legend-color.deleted {
+            background: #c62828;
+        }
+
+        .legend-color.modified {
+            background: #fbc02d;
+        }
+
+        .legend-color.unchanged {
+            background: #1e1e1e;
+        }
+
+        .legend-color.diff {
+            background: #ff6f00;
+        }
+
+        .legend-color.column-added {
+            background: #2e7d32;
+        }
+
+        .legend-color.column-deleted {
+            background: #c62828;
+        }
+
+        .legend-item span {
+            color: #cccccc;
+            font-size: 12px;
+        }
+
+        .filter-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+            padding: 12px;
+            background: #3e3e42;
+            border-radius: 4px;
+        }
+
+        .filter-label {
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .filter-options {
+            display: flex;
+            gap: 20px;
+        }
+
+        .filter-option {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .filter-option input[type="radio"] {
+            cursor: pointer;
+            accent-color: #007acc;
+        }
+
+        .filter-option span {
+            color: #cccccc;
+            font-size: 13px;
+        }
+
+        .filter-option:hover span {
+            color: #ffffff;
+        }
+
+        .column-added {
+            background: #2e7d32 !important;
+            border-left: 3px solid #4caf50;
+        }
+
+        .column-deleted {
+            background: #c62828 !important;
+            border-left: 3px solid #ef5350;
+        }
+
+        .column-unchanged {
+            background: #2d2d30 !important;
+        }
+
+        .comparison-container {
+            display: flex;
+            gap: 0;
+            border: 1px solid #3e3e42;
+            border-radius: 4px;
+            overflow: hidden;
+            background: #1e1e1e;
+        }
+
+        .file-pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #3e3e42;
+        }
+
+        .file-pane:last-child {
+            border-right: none;
+        }
+
+        .pane-header {
+            background: #007acc;
+            color: white;
+            padding: 10px 15px;
+            font-weight: 600;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .pane-header.file1 {
+            background: linear-gradient(135deg, #007acc 0%, #005a9e 100%);
+        }
+
+        .pane-header.file2 {
+            background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);
+        }
+
+        .table-wrapper {
+            flex: 1;
+            overflow: auto;
+            max-height: 600px;
+            position: relative;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            background: #1e1e1e;
+        }
+
+        th {
+            background: #2d2d30;
+            color: #ffffff;
+            padding: 8px 10px;
+            text-align: left;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            white-space: nowrap;
+            border: 1px solid #3e3e42;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        td {
+            padding: 6px 10px;
+            border: 1px solid #3e3e42;
+            min-width: 80px;
+            color: #cccccc;
+        }
+
+        .line-number {
+            width: 50px;
+            text-align: center;
+            background: #252526;
+            color: #858585;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 11px;
+            user-select: none;
+        }
+
+        tr:nth-child(even) {
+            background: #1e1e1e;
+        }
+
+        tr:hover {
+            background: #2d2d30;
+        }
+
+        .row-added {
+            background: #1b5e20 !important;
+        }
+
+        .row-deleted {
+            background: #b71c1c !important;
+        }
+
+        .row-modified {
+            background: #2d2d30 !important;
+        }
+
+        .cell-diff {
+            background: #fbc02d !important;
+            font-weight: bold;
+            color: #ffffff;
+        }
+
+        .cell-empty {
+            background: #252526 !important;
+            color: #858585;
+            font-style: italic;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .status-added {
+            background: #2e7d32;
+            color: white;
+        }
+
+        .status-deleted {
+            background: #c62828;
+            color: white;
+        }
+
+        .status-modified {
+            background: #f57f17;
+            color: white;
+        }
+
+        .status-unchanged {
+            background: #3e3e42;
+            color: #cccccc;
+        }
+
+        .summary {
+            margin-top: 15px;
+            padding: 15px;
+            background: #3e3e42;
+            border-radius: 4px;
+        }
+
+        .summary h3 {
+            color: #ffffff;
+            margin-bottom: 12px;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 12px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 12px;
+            background: #2d2d30;
+            border-radius: 4px;
+            border: 1px solid #3e3e42;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007acc;
+        }
+
+        .stat-label {
+            color: #cccccc;
+            margin-top: 5px;
+            font-size: 12px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid #3e3e42;
+            border-top: 3px solid #007acc;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            display: none;
+            background: #5a1d1d;
+            color: #ff6b6b;
+            padding: 12px;
+            border-radius: 4px;
+            margin: 15px 0;
+            border-left: 4px solid #c62828;
+            font-size: 13px;
+        }
+
+        .error-message.active {
+            display: block;
+        }
+
+        .sync-scroll {
+            display: flex;
+            gap: 0;
+        }
+
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1e1e1e;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #424242;
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Excel文件比对工具 - Beyond Compare风格</h1>
+        
+        <div class="upload-section">
+            <div class="upload-box" id="uploadBox1" onclick="document.getElementById('fileInput1').click()">
+                <h3>📁 文件1（左侧 - 原始文件）</h3>
+                <p>点击或拖拽上传Excel文件</p>
+                <input type="file" id="fileInput1" class="file-input" accept=".xlsx,.xls">
+                <div class="file-info" id="fileInfo1" style="display: none;"></div>
+            </div>
+            
+            <div class="upload-box" id="uploadBox2" onclick="document.getElementById('fileInput2').click()">
+                <h3>📁 文件2（右侧 - 新文件）</h3>
+                <p>点击或拖拽上传Excel文件</p>
+                <input type="file" id="fileInput2" class="file-input" accept=".xlsx,.xls">
+                <div class="file-info" id="fileInfo2" style="display: none;"></div>
+            </div>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+        
+        <div class="info-message" id="infoMessage" style="display: none; background: #264f78; color: #ffffff; padding: 12px; border-radius: 4px; margin: 15px 0; border-left: 4px solid #007acc;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span id="infoText">文件已更新，建议重新比对</span>
+                <button onclick="closeInfoMessage()" style="background: #007acc; color: white; border: none; padding: 6px 12px; border-radius: 3px; cursor: pointer; font-size: 12px;">关闭</button>
+            </div>
+        </div>
+
+        <button class="compare-btn" id="compareBtn" disabled onclick="compareFiles()">
+            🔍 开始比对
+        </button>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p style="color: #cccccc;">正在处理文件...</p>
+        </div>
+
+        <div class="result-section" id="resultSection">
+            <div class="result-header">
+                <h2>比对结果</h2>
+                <div class="header-buttons">
+                    <button class="export-btn" onclick="exportResult()">📥 导出Excel</button>
+                    <button class="export-btn html-btn" onclick="exportHTML()">📋 复制HTML</button>
+                </div>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color added"></div>
+                    <span>新增行</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color deleted"></div>
+                    <span>删除行</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color modified"></div>
+                    <span>修改行</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color unchanged"></div>
+                    <span>未改变</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color diff"></div>
+                    <span>差异单元格</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color column-added"></div>
+                    <span>新增列</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color column-deleted"></div>
+                    <span>删除列</span>
+                </div>
+            </div>
+
+            <div class="filter-section">
+                <div class="filter-label">显示筛选：</div>
+                <div class="filter-options">
+                    <label class="filter-option">
+                        <input type="radio" name="filter" value="all" checked onchange="applyFilter()">
+                        <span>全部行</span>
+                    </label>
+                    <label class="filter-option">
+                        <input type="radio" name="filter" value="changed" onchange="applyFilter()">
+                        <span>差异行</span>
+                    </label>
+                    <label class="filter-option">
+                        <input type="radio" name="filter" value="unchanged" onchange="applyFilter()">
+                        <span>未改变行</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="comparison-container">
+                <div class="file-pane">
+                    <div class="pane-header file1">
+                        <span>📄 文件1 - 原始文件</span>
+                    </div>
+                    <div class="table-wrapper" id="tableWrapper1">
+                        <table id="resultTable1">
+                            <thead>
+                                <tr id="tableHeader1"></tr>
+                            </thead>
+                            <tbody id="tableBody1"></tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="file-pane">
+                    <div class="pane-header file2">
+                        <span>📄 文件2 - 新文件</span>
+                    </div>
+                    <div class="table-wrapper" id="tableWrapper2">
+                        <table id="resultTable2">
+                            <thead>
+                                <tr id="tableHeader2"></tr>
+                            </thead>
+                            <tbody id="tableBody2"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="summary">
+                <h3>📈 统计摘要</h3>
+                <div class="summary-stats">
+                    <div class="stat-item">
+                        <div class="stat-value" id="totalRows">0</div>
+                        <div class="stat-label">总行数</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="addedRows">0</div>
+                        <div class="stat-label">新增行</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="deletedRows">0</div>
+                        <div class="stat-label">删除行</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="modifiedRows">0</div>
+                        <div class="stat-label">修改行</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="unchangedRows">0</div>
+                        <div class="stat-label">未改变</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="columnsAdded">0</div>
+                        <div class="stat-label">新增列</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="columnsDeleted">0</div>
+                        <div class="stat-label">删除列</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let file1Data = null;
+        let file2Data = null;
+        let comparisonResult = null;
+        let file1Hash = null;
+        let file2Hash = null;
+        let currentFilter = 'all'; // 当前筛选状态: 'all', 'changed', 'unchanged'
+
+        // 文件上传处理
+        function setupFileUpload(inputId, boxId, infoId, dataVariable) {
+            const input = document.getElementById(inputId);
+            const box = document.getElementById(boxId);
+            const info = document.getElementById(infoId);
+
+            input.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    handleFile(file, infoId, dataVariable);
+                }
+            });
+
+            // 拖拽上传
+            box.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                box.classList.add('dragover');
+            });
+
+            box.addEventListener('dragleave', () => {
+                box.classList.remove('dragover');
+            });
+
+            box.addEventListener('drop', (e) => {
+                e.preventDefault();
+                box.classList.remove('dragover');
+                const file = e.dataTransfer.files[0];
+                if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
+                    handleFile(file, infoId, dataVariable);
+                } else {
+                    showError('请上传有效的Excel文件（.xlsx 或 .xls）');
+                }
+            });
+        }
+
+        function handleFile(file, infoId, dataVariable) {
+            const info = document.getElementById(infoId);
+            info.style.display = 'block';
+            info.textContent = `已选择: ${file.name}`;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                    if (dataVariable === 'file1Data') {
+                        file1Data = jsonData;
+                    } else {
+                        file2Data = jsonData;
+                    }
+
+                    checkBothFilesLoaded();
+                    hideError();
+                    
+                    // 检查文件是否变化
+                    const fileId = dataVariable === 'file1Data' ? 'fileInput1' : 'fileInput2';
+                    checkFileChanges(fileId, dataVariable, dataVariable === 'file1Data' ? 'file1Hash' : 'file2Hash');
+                } catch (error) {
+                    showError('读取文件失败: ' + error.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function checkBothFilesLoaded() {
+            const compareBtn = document.getElementById('compareBtn');
+            if (file1Data && file2Data) {
+                compareBtn.disabled = false;
+            }
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.classList.add('active');
+        }
+
+        function hideError() {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.classList.remove('active');
+        }
+
+        // 计算文件内容的简单哈希值
+        function calculateFileHash(data) {
+            if (!data || data.length === 0) return null;
+            
+            // 将数据转换为字符串并计算简单的哈希
+            const str = JSON.stringify(data);
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                const char = str.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash;
+            }
+            return hash.toString();
+        }
+
+        // 显示信息提示
+        function showInfoMessage(message) {
+            const infoDiv = document.getElementById('infoMessage');
+            const infoText = document.getElementById('infoText');
+            infoText.textContent = message;
+            infoDiv.style.display = 'block';
+        }
+
+        // 关闭信息提示
+        function closeInfoMessage() {
+            const infoDiv = document.getElementById('infoMessage');
+            infoDiv.style.display = 'none';
+        }
+
+        // 检查文件是否变化
+        function checkFileChanges(fileId, dataVariable, hashVariable) {
+            if (window[hashVariable] !== null) {
+                const newHash = calculateFileHash(window[dataVariable]);
+                if (newHash !== window[hashVariable]) {
+                    const fileName = fileId === 'fileInput1' ? '文件1' : '文件2';
+                    showInfoMessage(`${fileName}内容已变化，建议重新比对`);
+                }
+            }
+            window[hashVariable] = calculateFileHash(window[dataVariable]);
+        }
+
+        function showLoading() {
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('resultSection').classList.remove('active');
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').classList.remove('active');
+        }
+
+        // 比对文件 - Beyond Compare风格
+        function compareFiles() {
+            showLoading();
+            
+            setTimeout(() => {
+                try {
+                    if (!file1Data || !file2Data) {
+                        throw new Error('请先上传两个Excel文件');
+                    }
+
+                    if (file1Data.length < 2 || file2Data.length < 2) {
+                        throw new Error('Excel文件数据不足，至少需要包含表头和一行数据');
+                    }
+
+                    const headers1 = file1Data[0];
+                    const headers2 = file2Data[0];
+
+                    const data1 = file1Data.slice(1).map((row, index) => {
+                        const obj = { _lineNumber: index + 1 };
+                        headers1.forEach((header, colIndex) => {
+                            obj[header] = row[colIndex] !== undefined ? row[colIndex] : '';
+                        });
+                        return obj;
+                    });
+
+                    const data2 = file2Data.slice(1).map((row, index) => {
+                        const obj = { _lineNumber: index + 1 };
+                        headers2.forEach((header, colIndex) => {
+                            obj[header] = row[colIndex] !== undefined ? row[colIndex] : '';
+                        });
+                        return obj;
+                    });
+
+                    const keyColumn = headers1[0];
+
+                    // 创建索引
+                    const map1 = new Map();
+                    data1.forEach((row, index) => {
+                        const keyValue = row[keyColumn];
+                        if (keyValue !== undefined && keyValue !== '') {
+                            map1.set(String(keyValue), { ...row, _index: index });
+                        }
+                    });
+
+                    const map2 = new Map();
+                    data2.forEach((row, index) => {
+                        const keyValue = row[keyColumn];
+                        if (keyValue !== undefined && keyValue !== '') {
+                            map2.set(String(keyValue), { ...row, _index: index });
+                        }
+                    });
+
+                    // 比对列的变化
+                    const columnsOnlyIn1 = headers1.filter(h => !headers2.includes(h));
+                    const columnsOnlyIn2 = headers2.filter(h => !headers1.includes(h));
+                    const commonColumns = headers1.filter(h => headers2.includes(h));
+
+                    // 比对结果 - Beyond Compare风格
+                    comparisonResult = {
+                        headers1: headers1,
+                        headers2: headers2,
+                        allHeaders: [...new Set([...headers1, ...headers2])],
+                        columnChanges: {
+                            added: columnsOnlyIn2,
+                            deleted: columnsOnlyIn1,
+                            common: commonColumns
+                        },
+                        rows: [],
+                        stats: {
+                            total: 0,
+                            added: 0,
+                            deleted: 0,
+                            modified: 0,
+                            unchanged: 0,
+                            columnsAdded: columnsOnlyIn2.length,
+                            columnsDeleted: columnsOnlyIn1.length
+                        }
+                    };
+
+                    // 找出所有唯一的键值
+                    const allKeys = new Set([...map1.keys(), ...map2.keys()]);
+
+                    allKeys.forEach(key => {
+                        const row1 = map1.get(key);
+                        const row2 = map2.get(key);
+
+                        if (!row1 && row2) {
+                            // 新增行
+                            comparisonResult.rows.push({
+                                key: key,
+                                status: 'added',
+                                data1: null,
+                                data2: row2,
+                                line1: null,
+                                line2: row2._lineNumber,
+                                diffCells: []
+                            });
+                            comparisonResult.stats.added++;
+                        } else if (row1 && !row2) {
+                            // 删除行
+                            comparisonResult.rows.push({
+                                key: key,
+                                status: 'deleted',
+                                data1: row1,
+                                data2: null,
+                                line1: row1._lineNumber,
+                                line2: null,
+                                diffCells: []
+                            });
+                            comparisonResult.stats.deleted++;
+                        } else {
+                            // 检查是否有修改 - 比对从第2列开始的所有列
+                            const diffCells = [];
+                            
+                            // 获取所有需要比对的列（排除第一列作为键值列）
+                            const columnsToCompare = comparisonResult.allHeaders.filter(h => h !== keyColumn);
+                            
+                            // 遍历所有列进行比对
+                            columnsToCompare.forEach(header => {
+                                const val1 = row1[header] !== undefined ? String(row1[header]).trim() : '';
+                                const val2 = row2[header] !== undefined ? String(row2[header]).trim() : '';
+                                
+                                // 比对两个值
+                                if (val1 !== val2) {
+                                    diffCells.push(header);
+                                }
+                            });
+
+                            if (diffCells.length > 0) {
+                                // 修改行
+                                comparisonResult.rows.push({
+                                    key: key,
+                                    status: 'modified',
+                                    data1: row1,
+                                    data2: row2,
+                                    line1: row1._lineNumber,
+                                    line2: row2._lineNumber,
+                                    diffCells: diffCells
+                                });
+                                comparisonResult.stats.modified++;
+                            } else {
+                                // 未改变
+                                comparisonResult.rows.push({
+                                    key: key,
+                                    status: 'unchanged',
+                                    data1: row1,
+                                    data2: row2,
+                                    line1: row1._lineNumber,
+                                    line2: row2._lineNumber,
+                                    diffCells: []
+                                });
+                                comparisonResult.stats.unchanged++;
+                            }
+                        }
+                        comparisonResult.stats.total++;
+                    });
+
+                    // 按状态排序：新增 -> 修改 -> 未改变 -> 删除
+                    const statusOrder = { 'added': 1, 'modified': 2, 'unchanged': 3, 'deleted': 4 };
+                    comparisonResult.rows.sort((a, b) => statusOrder[a.status] - statusOrder[b.status]);
+
+                    displayResult();
+                    hideLoading();
+                } catch (error) {
+                    hideLoading();
+                    showError('比对失败: ' + error.message);
+                }
+            }, 100);
+        }
+
+        // 应用筛选
+        function applyFilter() {
+            // 获取选中的筛选选项
+            const filterOptions = document.getElementsByName('filter');
+            for (const option of filterOptions) {
+                if (option.checked) {
+                    currentFilter = option.value;
+                    break;
+                }
+            }
+            
+            // 重新显示结果
+            displayResult();
+        }
+
+        // 获取筛选后的行数据
+        function getFilteredRows() {
+            if (currentFilter === 'all') {
+                return comparisonResult.rows;
+            } else if (currentFilter === 'changed') {
+                // 差异行：新增、删除、修改
+                return comparisonResult.rows.filter(row =>
+                    row.status === 'added' || row.status === 'deleted' || row.status === 'modified'
+                );
+            } else if (currentFilter === 'unchanged') {
+                // 未改变行
+                return comparisonResult.rows.filter(row => row.status === 'unchanged');
+            }
+            return comparisonResult.rows;
+        }
+
+        // 计算筛选后的统计数据
+        function calculateFilteredStats(rows) {
+            const stats = {
+                total: rows.length,
+                added: 0,
+                deleted: 0,
+                modified: 0,
+                unchanged: 0
+            };
+
+            rows.forEach(row => {
+                if (row.status === 'added') stats.added++;
+                else if (row.status === 'deleted') stats.deleted++;
+                else if (row.status === 'modified') stats.modified++;
+                else if (row.status === 'unchanged') stats.unchanged++;
+            });
+
+            return stats;
+        }
+
+        function displayResult() {
+            const resultSection = document.getElementById('resultSection');
+            const tableHeader1 = document.getElementById('tableHeader1');
+            const tableHeader2 = document.getElementById('tableHeader2');
+            const tableBody1 = document.getElementById('tableBody1');
+            const tableBody2 = document.getElementById('tableBody2');
+
+            // 清空表格
+            tableHeader1.innerHTML = '';
+            tableHeader2.innerHTML = '';
+            tableBody1.innerHTML = '';
+            tableBody2.innerHTML = '';
+
+            // 添加表头 - 文件1
+            const lineHeader1 = document.createElement('th');
+            lineHeader1.textContent = '行号';
+            lineHeader1.className = 'line-number';
+            lineHeader1.style.width = '50px';
+            tableHeader1.appendChild(lineHeader1);
+
+            const statusHeader1 = document.createElement('th');
+            statusHeader1.textContent = '状态';
+            statusHeader1.style.minWidth = '60px';
+            tableHeader1.appendChild(statusHeader1);
+
+            comparisonResult.headers1.forEach(header => {
+                const th = document.createElement('th');
+                th.textContent = header;
+                
+                // 标记列的状态
+                if (comparisonResult.columnChanges.deleted.includes(header)) {
+                    th.className = 'column-deleted';
+                    th.title = '此列在文件2中已删除';
+                } else {
+                    th.className = 'column-unchanged';
+                }
+                
+                tableHeader1.appendChild(th);
+            });
+
+            // 添加表头 - 文件2
+            const lineHeader2 = document.createElement('th');
+            lineHeader2.textContent = '行号';
+            lineHeader2.className = 'line-number';
+            lineHeader2.style.width = '50px';
+            tableHeader2.appendChild(lineHeader2);
+
+            const statusHeader2 = document.createElement('th');
+            statusHeader2.textContent = '状态';
+            statusHeader2.style.minWidth = '60px';
+            tableHeader2.appendChild(statusHeader2);
+
+            comparisonResult.headers2.forEach(header => {
+                const th = document.createElement('th');
+                th.textContent = header;
+                
+                // 标记列的状态
+                if (comparisonResult.columnChanges.added.includes(header)) {
+                    th.className = 'column-added';
+                    th.title = '此列在文件1中不存在，为新增列';
+                } else {
+                    th.className = 'column-unchanged';
+                }
+                
+                tableHeader2.appendChild(th);
+            });
+
+            // 获取筛选后的行数据
+            const filteredRows = getFilteredRows();
+
+            // 添加数据行
+            filteredRows.forEach(row => {
+                // 文件1的行
+                const tr1 = document.createElement('tr');
+                tr1.className = `row-${row.status}`;
+
+                // 行号列 - 文件1
+                const lineTd1 = document.createElement('td');
+                lineTd1.className = 'line-number';
+                lineTd1.textContent = row.line1 !== null ? row.line1 : '-';
+                tr1.appendChild(lineTd1);
+
+                // 状态列 - 文件1
+                const statusTd1 = document.createElement('td');
+                if (row.status === 'deleted' || row.status === 'modified' || row.status === 'unchanged') {
+                    const statusBadge = document.createElement('span');
+                    statusBadge.className = `status-badge status-${row.status}`;
+                    const statusText = {
+                        'added': '新增',
+                        'deleted': '删除',
+                        'modified': '修改',
+                        'unchanged': '未改变'
+                    };
+                    statusBadge.textContent = statusText[row.status];
+                    statusTd1.appendChild(statusBadge);
+                } else {
+                    statusTd1.className = 'cell-empty';
+                    statusTd1.textContent = '-';
+                }
+                tr1.appendChild(statusTd1);
+
+                // 数据列 - 文件1
+                comparisonResult.headers1.forEach(header => {
+                    const td = document.createElement('td');
+                    if (row.data1) {
+                        const value = row.data1[header] !== undefined ? row.data1[header] : '';
+                        td.textContent = value;
+                        
+                        // 标记差异单元格
+                        if (row.status === 'modified' && row.diffCells.includes(header)) {
+                            td.className = 'cell-diff';
+                        }
+                        
+                        // 标记删除列
+                        if (comparisonResult.columnChanges.deleted.includes(header)) {
+                            td.className = 'column-deleted';
+                        }
+                    } else {
+                        td.className = 'cell-empty';
+                        td.textContent = '-';
+                    }
+                    tr1.appendChild(td);
+                });
+
+                tableBody1.appendChild(tr1);
+
+                // 文件2的行
+                const tr2 = document.createElement('tr');
+                tr2.className = `row-${row.status}`;
+
+                // 行号列 - 文件2
+                const lineTd2 = document.createElement('td');
+                lineTd2.className = 'line-number';
+                lineTd2.textContent = row.line2 !== null ? row.line2 : '-';
+                tr2.appendChild(lineTd2);
+
+                // 状态列 - 文件2
+                const statusTd2 = document.createElement('td');
+                if (row.status === 'added' || row.status === 'modified' || row.status === 'unchanged') {
+                    const statusBadge = document.createElement('span');
+                    statusBadge.className = `status-badge status-${row.status}`;
+                    const statusText = {
+                        'added': '新增',
+                        'deleted': '删除',
+                        'modified': '修改',
+                        'unchanged': '未改变'
+                    };
+                    statusBadge.textContent = statusText[row.status];
+                    statusTd2.appendChild(statusBadge);
+                } else {
+                    statusTd2.className = 'cell-empty';
+                    statusTd2.textContent = '-';
+                }
+                tr2.appendChild(statusTd2);
+
+                // 数据列 - 文件2
+                comparisonResult.headers2.forEach(header => {
+                    const td = document.createElement('td');
+                    if (row.data2) {
+                        const value = row.data2[header] !== undefined ? row.data2[header] : '';
+                        td.textContent = value;
+                        
+                        // 标记差异单元格
+                        if (row.status === 'modified' && row.diffCells.includes(header)) {
+                            td.className = 'cell-diff';
+                        }
+                        
+                        // 标记新增列
+                        if (comparisonResult.columnChanges.added.includes(header)) {
+                            td.className = 'column-added';
+                        }
+                    } else {
+                        td.className = 'cell-empty';
+                        td.textContent = '-';
+                    }
+                    tr2.appendChild(td);
+                });
+
+                tableBody2.appendChild(tr2);
+            });
+
+            // 同步滚动
+            setupSyncScroll();
+
+            // 更新统计（显示筛选后的行数）
+            const filteredStats = calculateFilteredStats(filteredRows);
+            document.getElementById('totalRows').textContent = filteredStats.total;
+            document.getElementById('addedRows').textContent = filteredStats.added;
+            document.getElementById('deletedRows').textContent = filteredStats.deleted;
+            document.getElementById('modifiedRows').textContent = filteredStats.modified;
+            document.getElementById('unchangedRows').textContent = filteredStats.unchanged;
+            document.getElementById('columnsAdded').textContent = comparisonResult.stats.columnsAdded;
+            document.getElementById('columnsDeleted').textContent = comparisonResult.stats.columnsDeleted;
+
+            resultSection.classList.add('active');
+        }
+
+        // 设置同步滚动
+        function setupSyncScroll() {
+            const wrapper1 = document.getElementById('tableWrapper1');
+            const wrapper2 = document.getElementById('tableWrapper2');
+
+            let isScrolling1 = false;
+            let isScrolling2 = false;
+
+            wrapper1.addEventListener('scroll', function() {
+                if (!isScrolling2) {
+                    isScrolling1 = true;
+                    wrapper2.scrollTop = this.scrollTop;
+                    wrapper2.scrollLeft = this.scrollLeft;
+                    setTimeout(() => { isScrolling1 = false; }, 50);
+                }
+            });
+
+            wrapper2.addEventListener('scroll', function() {
+                if (!isScrolling1) {
+                    isScrolling2 = true;
+                    wrapper1.scrollTop = this.scrollTop;
+                    wrapper1.scrollLeft = this.scrollLeft;
+                    setTimeout(() => { isScrolling2 = false; }, 50);
+                }
+            });
+        }
+
+        // 导出结果
+        function exportResult() {
+            if (!comparisonResult) {
+                showError('没有可导出的结果');
+                return;
+            }
+
+            try {
+                const workbook = XLSX.utils.book_new();
+
+                // 准备数据
+                const exportData = [];
+
+                // 添加表头
+                const headers = ['状态', '文件1行号', ...comparisonResult.headers1.map(h => `文件1-${h}${comparisonResult.columnChanges.deleted.includes(h) ? ' [已删除]' : ''}`), '文件2行号', ...comparisonResult.headers2.map(h => `文件2-${h}${comparisonResult.columnChanges.added.includes(h) ? ' [新增]' : ''}`)];
+                exportData.push(headers);
+
+                // 添加数据行
+                comparisonResult.rows.forEach(row => {
+                    const rowData = [row.status, row.line1 !== null ? row.line1 : '-'];
+                    
+                    // 文件1的数据
+                    comparisonResult.headers1.forEach(header => {
+                        if (row.data1) {
+                            const value = row.data1[header] !== undefined ? row.data1[header] : '';
+                            rowData.push(value);
+                        } else {
+                            rowData.push('-');
+                        }
+                    });
+                    
+                    // 文件2的行号和数据
+                    rowData.push(row.line2 !== null ? row.line2 : '-');
+                    comparisonResult.headers2.forEach(header => {
+                        if (row.data2) {
+                            const value = row.data2[header] !== undefined ? row.data2[header] : '';
+                            rowData.push(value);
+                        } else {
+                            rowData.push('-');
+                        }
+                    });
+                    
+                    exportData.push(rowData);
+                });
+
+                // 创建工作表
+                const worksheet = XLSX.utils.aoa_to_sheet(exportData);
+
+                // 设置列宽
+                const colWidths = headers.map(() => ({ wch: 15 }));
+                worksheet['!cols'] = colWidths;
+
+                // 标记列的颜色
+                for (let C = 2; C < 2 + comparisonResult.headers1.length; C++) {
+                    const headerName = comparisonResult.headers1[C - 2];
+                    if (comparisonResult.columnChanges.deleted.includes(headerName)) {
+                        const cellAddress = XLSX.utils.encode_cell({ r: 0, c: C });
+                        const cell = worksheet[cellAddress];
+                        if (cell) {
+                            cell.s = { fill: { fgColor: { rgb: "C62828" } }, font: { color: { rgb: "FFFFFF" } } };
+                        }
+                    }
+                }
+ 
+                for (let C = 2 + comparisonResult.headers1.length + 1; C < headers.length; C++) {
+                    const headerName = comparisonResult.headers2[C - (2 + comparisonResult.headers1.length + 1)];
+                    if (comparisonResult.columnChanges.added.includes(headerName)) {
+                        const cellAddress = XLSX.utils.encode_cell({ r: 0, c: C });
+                        const cell = worksheet[cellAddress];
+                        if (cell) {
+                            cell.s = { fill: { fgColor: { rgb: "2E7D32" } }, font: { color: { rgb: "FFFFFF" } } };
+                        }
+                    }
+                }
+
+                // 添加颜色标记
+                const range = XLSX.utils.decode_range(worksheet['!ref']);
+                for (let R = 1; R <= range.e.r; R++) {
+                    const status = exportData[R][0];
+                    const cellAddress = XLSX.utils.encode_cell({ r: R, c: 0 });
+                    const cell = worksheet[cellAddress];
+
+                    if (cell) {
+                        if (status === 'added') {
+                            cell.s = { fill: { fgColor: { rgb: "2E7D32" } }, font: { color: { rgb: "FFFFFF" } } };
+                        } else if (status === 'deleted') {
+                            cell.s = { fill: { fgColor: { rgb: "C62828" } }, font: { color: { rgb: "FFFFFF" } } };
+                        } else if (status === 'modified') {
+                            // 修改行不整行标记颜色，只标记差异单元格
+                            cell.s = { fill: { fgColor: { rgb: "2D2D30" } }, font: { color: { rgb: "FFFFFF" } } };
+                        }
+                    }
+
+                    // 标记差异单元格
+                    const row = comparisonResult.rows[R - 1];
+                    if (row.status === 'modified') {
+                        // 文件1的差异单元格
+                        row.diffCells.forEach(diffHeader => {
+                            const colIndex1 = 2 + comparisonResult.headers1.indexOf(diffHeader);
+                            const cellAddress1 = XLSX.utils.encode_cell({ r: R, c: colIndex1 });
+                            const cell1 = worksheet[cellAddress1];
+                            if (cell1) {
+                                cell1.s = { fill: { fgColor: { rgb: "FBC02D" } }, font: { bold: true, color: { rgb: "FFFFFF" } } };
+                            }
+                        });
+                        
+                        // 文件2的差异单元格
+                        row.diffCells.forEach(diffHeader => {
+                            const colIndex2 = 2 + comparisonResult.headers1.length + 1 + comparisonResult.headers2.indexOf(diffHeader);
+                            const cellAddress2 = XLSX.utils.encode_cell({ r: R, c: colIndex2 });
+                            const cell2 = worksheet[cellAddress2];
+                            if (cell2) {
+                                cell2.s = { fill: { fgColor: { rgb: "FBC02D" } }, font: { bold: true, color: { rgb: "FFFFFF" } } };
+                            }
+                        });
+                    }
+                    
+                    // 标记删除列（文件1整列）
+                    comparisonResult.columnChanges.deleted.forEach(deletedHeader => {
+                        const colIndex = 2 + comparisonResult.headers1.indexOf(deletedHeader);
+                        const cellAddress = XLSX.utils.encode_cell({ r: R, c: colIndex });
+                        const cell = worksheet[cellAddress];
+                        if (cell && row.data1) {
+                            cell.s = { fill: { fgColor: { rgb: "C62828" } }, font: { color: { rgb: "FFFFFF" } } };
+                        }
+                    });
+                    
+                    // 标记新增列（文件2整列）
+                    comparisonResult.columnChanges.added.forEach(addedHeader => {
+                        const colIndex = 2 + comparisonResult.headers1.length + 1 + comparisonResult.headers2.indexOf(addedHeader);
+                        const cellAddress = XLSX.utils.encode_cell({ r: R, c: colIndex });
+                        const cell = worksheet[cellAddress];
+                        if (cell && row.data2) {
+                            cell.s = { fill: { fgColor: { rgb: "2E7D32" } }, font: { color: { rgb: "FFFFFF" } } };
+                        }
+                    });
+                }
+
+                XLSX.utils.book_append_sheet(workbook, worksheet, '比对结果');
+
+                // 导出文件
+                const date = new Date().toISOString().slice(0, 10);
+                XLSX.writeFile(workbook, `Excel比对结果_${date}.xlsx`);
+
+            } catch (error) {
+                showError('导出失败: ' + error.message);
+            }
+        }
+
+        // 导出HTML并复制到剪贴板
+        function exportHTML() {
+            if (!comparisonResult) {
+                showError('没有可导出的结果');
+                return;
+            }
+
+            try {
+                // 生成HTML内容 - 只包含表格，左右并排展示
+                let htmlContent = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel文件比对结果</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .comparison-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: flex-start;
+        }
+        
+        .table-wrapper {
+            overflow-x: auto;
+            overflow-y: auto;
+            max-height: 800px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        
+        th {
+            background: #f0f0f0;
+            color: #333;
+            padding: 10px;
+            text-align: left;
+            border: 1px solid #ddd;
+            font-weight: 600;
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        td {
+            padding: 8px 10px;
+            border: 1px solid #ddd;
+            min-width: 80px;
+            color: #333;
+        }
+        
+        .line-number {
+            width: 60px;
+            text-align: center;
+            background: #f5f5f5;
+            color: #666;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 11px;
+        }
+        
+        tr:nth-child(even) {
+            background: #fafafa;
+        }
+        
+        tr:hover {
+            background: #f0f0f0;
+        }
+        
+        .row-added {
+            /* 移除整行背景色，只在单元格上显示颜色 */
+        }
+        
+        .row-deleted {
+            /* 移除整行背景色，只在单元格上显示颜色 */
+        }
+        
+        .row-modified {
+            /* 移除整行背景色，只在单元格上显示颜色 */
+        }
+        
+        .cell-diff {
+            background: #ffeb3b !important;
+            font-weight: bold;
+            color: #d84315;
+        }
+        
+        .cell-empty {
+            background: #f5f5f5 !important;
+            color: #999;
+            font-style: italic;
+        }
+        
+        .column-added {
+            background: #a5d6a7 !important;
+            border-left: 3px solid #2e7d32;
+        }
+        
+        .column-deleted {
+            background: #ef9a9a !important;
+            border-left: 3px solid #c62828;
+        }
+        
+        .column-unchanged {
+            background: white !important;
+        }
+        
+        /* 内联样式用于Excel兼容 */
+        td[style*="background-color"] {
+            /* 确保内联样式优先 */
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        
+        .status-added {
+            background: #2e7d32;
+            color: white;
+        }
+        
+        .status-deleted {
+            background: #c62828;
+            color: white;
+        }
+        
+        .status-modified {
+            background: #f57f17;
+            color: white;
+        }
+        
+        .status-unchanged {
+            background: #9e9e9e;
+            color: white;
+        }
+        
+        .file1-cell {
+            border-right: 2px solid #007acc;
+        }
+        
+        .file2-cell {
+            border-left: 2px solid #4caf50;
+        }
+        
+        .section-header {
+            background: #007acc;
+            color: white;
+            padding: 8px 12px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .section-header.file2 {
+            background: #4caf50;
+        }
+    </style>
+</head>
+<body>
+    <div class="comparison-container">
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th class="line-number">行号1</th>
+                        <th>状态1</th>`;
+
+                // 添加文件1的表头
+                comparisonResult.headers1.forEach(header => {
+                    const headerClass = comparisonResult.columnChanges.deleted.includes(header) ? 'column-deleted' : 'column-unchanged';
+                    const titleAttr = comparisonResult.columnChanges.deleted.includes(header) ? ' title="此列在文件2中已删除"' : '';
+                    htmlContent += `
+                        <th class="${headerClass} file1-cell"${titleAttr}>${header}</th>`;
+                });
+
+                htmlContent += `
+                        <th class="line-number">行号2</th>
+                        <th>状态2</th>`;
+
+                // 添加文件2的表头
+                comparisonResult.headers2.forEach(header => {
+                    const headerClass = comparisonResult.columnChanges.added.includes(header) ? 'column-added' : 'column-unchanged';
+                    const titleAttr = comparisonResult.columnChanges.added.includes(header) ? ' title="此列在文件1中不存在，为新增列"' : '';
+                    htmlContent += `
+                        <th class="${headerClass} file2-cell"${titleAttr}>${header}</th>`;
+                });
+
+                htmlContent += `
+                    </tr>
+                </thead>
+                <tbody>`;
+
+                // 获取筛选后的行数据
+                const filteredRows = getFilteredRows();
+
+                // 计算筛选后的统计数据
+                const filteredStats = calculateFilteredStats(filteredRows);
+
+                // 添加合并的数据行
+                filteredRows.forEach(row => {
+                    // 判断行背景色
+                    let rowStyle = '';
+                    if (row.status === 'added') {
+                        rowStyle = 'background-color: #c8e6c9;';
+                    } else if (row.status === 'deleted') {
+                        rowStyle = 'background-color: #ef9a9a;';
+                    }
+                    
+                    htmlContent += `
+                    <tr style="${rowStyle}">
+                        <td class="line-number" style="${rowStyle}">${row.line1 !== null ? row.line1 : '-'}</td>
+                        <td style="${rowStyle}">`;
+
+                    // 文件1的状态列
+                    if (row.status === 'deleted' || row.status === 'modified' || row.status === 'unchanged') {
+                        const statusText = {
+                            'added': '新增',
+                            'deleted': '删除',
+                            'modified': '修改',
+                            'unchanged': '未改变'
+                        };
+                        htmlContent += `<span class="status-badge status-${row.status}">${statusText[row.status]}</span>`;
+                    } else {
+                        htmlContent += `<span class="cell-empty">-</span>`;
+                    }
+
+                    htmlContent += `</td>`;
+
+                    // 文件1的数据列
+                    comparisonResult.headers1.forEach(header => {
+                        htmlContent += `
+                        <td`;
+                        if (row.data1) {
+                            const value = row.data1[header] !== undefined ? row.data1[header] : '';
+                            
+                            // 新增行整行绿色
+                            if (row.status === 'added') {
+                                htmlContent += ` style="background-color: #c8e6c9;"`;
+                            }
+                            // 删除行整行红色
+                            else if (row.status === 'deleted') {
+                                htmlContent += ` style="background-color: #ef9a9a;"`;
+                            }
+                            // 标记差异单元格
+                            else if (row.status === 'modified' && row.diffCells.includes(header)) {
+                                htmlContent += ` style="background-color: #fdd835; font-weight: bold; color: #d84315;"`;
+                            }
+                            // 标记删除列
+                            else if (comparisonResult.columnChanges.deleted.includes(header)) {
+                                htmlContent += ` style="background-color: #e57373; border-left: 3px solid #c62828;"`;
+                            }
+                            
+                            htmlContent += `>${value}</td>`;
+                        } else {
+                            htmlContent += ` style="background-color: #f5f5f5; color: #999; font-style: italic;"><span class="cell-empty">-</span></td>`;
+                        }
+                    });
+
+                    // 文件2的行号列
+                    htmlContent += `
+                        <td class="line-number" style="${rowStyle}">${row.line2 !== null ? row.line2 : '-'}</td>
+                        <td style="${rowStyle}">`;
+
+                    // 文件2的状态列
+                    if (row.status === 'added' || row.status === 'modified' || row.status === 'unchanged' || row.status === 'deleted') {
+                        const statusText = {
+                            'added': '新增',
+                            'deleted': '删除',
+                            'modified': '修改',
+                            'unchanged': '未改变'
+                        };
+                        htmlContent += `<span class="status-badge status-${row.status}">${statusText[row.status]}</span>`;
+                    } else {
+                        htmlContent += `<span class="cell-empty">-</span>`;
+                    }
+
+                    htmlContent += `</td>`;
+
+                    // 文件2的数据列
+                    comparisonResult.headers2.forEach(header => {
+                        htmlContent += `
+                        <td`;
+                        if (row.data2) {
+                            const value = row.data2[header] !== undefined ? row.data2[header] : '';
+                            
+                            // 新增行整行绿色
+                            if (row.status === 'added') {
+                                htmlContent += ` style="background-color: #c8e6c9;"`;
+                            }
+                            // 删除行整行红色
+                            else if (row.status === 'deleted') {
+                                htmlContent += ` style="background-color: #ef9a9a;"`;
+                            }
+                            // 标记差异单元格
+                            else if (row.status === 'modified' && row.diffCells.includes(header)) {
+                                htmlContent += ` style="background-color: #fdd835; font-weight: bold; color: #d84315;"`;
+                            }
+                            // 标记新增列
+                            else if (comparisonResult.columnChanges.added.includes(header)) {
+                                htmlContent += ` style="background-color: #81c784; border-left: 3px solid #2e7d32;"`;
+                            }
+                            
+                            htmlContent += `>${value}</td>`;
+                        } else {
+                            htmlContent += ` style="background-color: #f5f5f5; color: #999; font-style: italic;"><span class="cell-empty">-</span></td>`;
+                        }
+                    });
+
+                    htmlContent += `
+                    </tr>`;
+                });
+
+                htmlContent += `
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>`;
+
+                // 复制到剪贴板
+                navigator.clipboard.writeText(htmlContent).then(() => {
+                    // 显示成功消息
+                    const infoDiv = document.getElementById('infoMessage');
+                    const infoText = document.getElementById('infoText');
+                    infoText.textContent = '✅ HTML内容已复制到剪贴板！可以直接粘贴到任何支持HTML的编辑器中';
+                    infoDiv.style.display = 'block';
+                    
+                    // 5秒后自动关闭
+                    setTimeout(() => {
+                        closeInfoMessage();
+                    }, 5000);
+                }).catch(err => {
+                    showError('复制失败: ' + err.message);
+                });
+
+            } catch (error) {
+                showError('导出HTML失败: ' + error.message);
+            }
+        }
+
+        // 初始化文件上传
+        setupFileUpload('fileInput1', 'uploadBox1', 'fileInfo1', 'file1Data');
+        setupFileUpload('fileInput2', 'uploadBox2', 'fileInfo2', 'file2Data');
+    </script>
+</body>
+</html>

@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>零件号功能差异比对工具</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', 'SimHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 14px;
+        }
+
+        .upload-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .upload-box {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            background: #f8f9ff;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .upload-box:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+            transform: translateY(-2px);
+        }
+
+        .upload-box.dragover {
+            border-color: #764ba2;
+            background: #e8ebff;
+            transform: scale(1.02);
+        }
+
+        .upload-box.has-file {
+            border-color: #4caf50;
+            background: #f1f8e9;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+
+        .upload-box.has-file .upload-icon {
+            color: #4caf50;
+        }
+
+        .upload-text {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .file-name {
+            color: #333;
+            font-weight: bold;
+            font-size: 16px;
+            word-break: break-all;
+        }
+
+        .file-info {
+            color: #888;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        input[type="file"] {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 15px 40px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-compare {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-compare:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .btn-compare:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .btn-export {
+            background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+        }
+
+        .btn-export:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.6);
+        }
+
+        .btn-export:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .btn-html {
+            background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(255, 152, 0, 0.4);
+        }
+
+        .btn-html:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 152, 0, 0.6);
+        }
+
+        .btn-html:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .results-section {
+            margin-top: 30px;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .results-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .results-stats {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .results-table thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .results-table th {
+            padding: 15px;
+            text-align: left;
+            font-weight: bold;
+            font-size: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .results-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 13px;
+            vertical-align: top;
+        }
+
+        .results-table tbody tr:hover {
+            background: #f8f9ff;
+        }
+
+        .added-features {
+            color: #2e7d32;
+            background: #e8f5e9;
+            padding: 8px;
+            border-radius: 5px;
+            font-weight: 500;
+            line-height: 1.8;
+            word-break: break-all;
+        }
+
+        .cancelled-features {
+            color: #c62828;
+            background: #ffebee;
+            padding: 8px;
+            border-radius: 5px;
+            font-weight: 500;
+            line-height: 1.8;
+            word-break: break-all;
+        }
+
+        .no-features {
+            color: #999;
+            font-style: italic;
+        }
+
+        .status-message {
+            text-align: center;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
+        .status-success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border: 2px solid #4caf50;
+        }
+
+        .status-error {
+            background: #ffebee;
+            color: #c62828;
+            border: 2px solid #f44336;
+        }
+
+        .status-info {
+            background: #e3f2fd;
+            color: #1565c0;
+            border: 2px solid #2196f3;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 零件号功能差异比对工具</h1>
+        <div class="subtitle">基于●标记比对零件号之间的功能差异</div>
+
+        <div class="upload-section">
+            <div class="upload-box" id="masterUploadBox">
+                <input type="file" id="masterFile" accept=".xlsx,.xls">
+                <div class="upload-icon">📋</div>
+                <div class="upload-text">点击或拖拽上传 Master List 文件</div>
+                <div class="file-name" id="masterFileName">未选择文件</div>
+                <div class="file-info" id="masterFileInfo"></div>
+            </div>
+
+            <div class="upload-box" id="diffUploadBox">
+                <input type="file" id="diffFile" accept=".xlsx,.xls">
+                <div class="upload-icon">📊</div>
+                <div class="upload-text">点击或拖拽上传 技术差异输入 文件</div>
+                <div class="file-name" id="diffFileName">未选择文件</div>
+                <div class="file-info" id="diffFileInfo"></div>
+            </div>
+        </div>
+
+        <div class="action-buttons">
+            <button class="btn-compare" id="compareBtn" disabled>开始比对</button>
+            <button class="btn-export" id="exportBtn" disabled>导出Excel</button>
+            <button class="btn-html" id="exportHtmlBtn" disabled>导出HTML到剪贴板</button>
+        </div>
+
+        <div id="statusMessage"></div>
+
+        <div class="results-section" id="resultsSection" style="display: none;">
+            <div class="results-header">
+                <div class="results-title">📊 比对结果</div>
+                <div class="results-stats" id="resultsStats"></div>
+            </div>
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        <th style="width: 15%">零件号</th>
+                        <th style="width: 15%">零件名称(中文）</th>
+                        <th style="width: 15%">对比零件号</th>
+                        <th style="width: 27%">新增功能</th>
+                        <th style="width: 28%">取消功能</th>
+                    </tr>
+                </thead>
+                <tbody id="resultsBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let masterListData = null;
+        let diffInputData = null;
+        let comparisonResults = null;
+
+        // 文件上传处理
+        document.getElementById('masterFile').addEventListener('change', function(e) {
+            handleFileUpload(e.target.files[0], 'master');
+        });
+
+        document.getElementById('diffFile').addEventListener('change', function(e) {
+            handleFileUpload(e.target.files[0], 'diff');
+        });
+
+        // 拖拽上传
+        const masterUploadBox = document.getElementById('masterUploadBox');
+        const diffUploadBox = document.getElementById('diffUploadBox');
+
+        setupDragAndDrop(masterUploadBox, 'master');
+        setupDragAndDrop(diffUploadBox, 'diff');
+
+        function setupDragAndDrop(element, type) {
+            element.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                element.classList.add('dragover');
+            });
+
+            element.addEventListener('dragleave', () => {
+                element.classList.remove('dragover');
+            });
+
+            element.addEventListener('drop', (e) => {
+                e.preventDefault();
+                element.classList.remove('dragover');
+                const file = e.dataTransfer.files[0];
+                if (file) {
+                    handleFileUpload(file, type);
+                }
+            });
+        }
+
+        function handleFileUpload(file, type) {
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const sheet = workbook.Sheets[sheetName];
+                const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+                if (type === 'master') {
+                    masterListData = jsonData;
+                    document.getElementById('masterFileName').textContent = file.name;
+                    document.getElementById('masterFileInfo').textContent = `${jsonData.length} 行 × ${jsonData[0] ? jsonData[0].length : 0} 列`;
+                    masterUploadBox.classList.add('has-file');
+                } else {
+                    diffInputData = jsonData;
+                    document.getElementById('diffFileName').textContent = file.name;
+                    document.getElementById('diffFileInfo').textContent = `${jsonData.length} 行 × ${jsonData[0] ? jsonData[0].length : 0} 列`;
+                    diffUploadBox.classList.add('has-file');
+                }
+
+                updateCompareButton();
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function updateCompareButton() {
+            const compareBtn = document.getElementById('compareBtn');
+            compareBtn.disabled = !(masterListData && diffInputData);
+        }
+
+        // 开始比对
+        document.getElementById('compareBtn').addEventListener('click', function() {
+            if (!masterListData || !diffInputData) {
+                showStatus('请先上传两个文件', 'error');
+                return;
+            }
+
+            try {
+                comparisonResults = comparePartNumbers(masterListData, diffInputData);
+                displayResults(comparisonResults);
+                document.getElementById('exportBtn').disabled = false;
+                document.getElementById('exportHtmlBtn').disabled = false;
+                showStatus(`比对完成！共比对 ${comparisonResults.length} 组零件号`, 'success');
+            } catch (error) {
+                showStatus('比对失败：' + error.message, 'error');
+                console.error(error);
+            }
+        });
+
+        function comparePartNumbers(masterList, diffInput) {
+            // 查找"标配"单元格的位置
+            let standardColumnIndex = -1;
+            let standardRowIndex = -1;
+
+            for (let i = 0; i < masterList.length; i++) {
+                const row = masterList[i];
+                for (let j = 0; j < row.length; j++) {
+                    const cell = row[j];
+                    if (cell !== undefined && cell !== null && String(cell).includes('标配')) {
+                        standardRowIndex = i;
+                        standardColumnIndex = j;
+                        break;
+                    }
+                }
+                if (standardRowIndex !== -1) break;
+            }
+
+            if (standardRowIndex === -1) {
+                throw new Error('未找到"标配"单元格');
+            }
+
+            // 获取功能列（从"标配"列之后开始）
+            const featureColumns = [];
+            for (let i = standardColumnIndex + 1; i < masterList[0].length; i++) {
+                featureColumns.push(i);
+            }
+
+            // 获取功能列的值（从"标配"行获取）
+            const featureValues = {};
+            const standardRow = masterList[standardRowIndex];
+            for (let col of featureColumns) {
+                const value = standardRow[col];
+                if (value !== undefined && value !== null) {
+                    // 将换行符替换为空格
+                    featureValues[col] = String(value).trim().replace(/\n/g, ' ');
+                }
+            }
+
+            // 解析Master List数据，建立零件号到功能的映射
+            const partMap = new Map();
+            for (let i = 1; i < masterList.length; i++) {
+                const row = masterList[i];
+                const partNumber = String(row[0] || '').trim();
+                if (partNumber && partNumber !== 'undefined' && partNumber !== 'null') {
+                    const features = new Set();
+                    for (let col of featureColumns) {
+                        const value = row[col];
+                        if (value !== undefined && value !== null && String(value).includes('●')) {
+                            // 使用功能值而不是列名
+                            if (featureValues[col]) {
+                                features.add(featureValues[col]);
+                            }
+                        }
+                    }
+                    partMap.set(partNumber, {
+                        partNumber: partNumber,
+                        partName: String(row[1] || '').trim(),
+                        status: String(row[2] || '').trim(),
+                        quantity: String(row[3] || '').trim(),
+                        description: String(row[4] || '').trim(),
+                        features: features
+                    });
+                }
+            }
+
+            // 处理技术差异输入文件
+            const results = [];
+            for (let i = 1; i < diffInput.length; i++) {
+                const row = diffInput[i];
+                const partNumber1 = String(row[0] || '').trim();
+                const partName1 = String(row[1] || '').trim();
+                const partNumber2 = String(row[2] || '').trim();
+
+                if (!partNumber1 || partNumber1 === 'undefined' || partNumber1 === 'null') {
+                    continue;
+                }
+
+                const part1 = partMap.get(partNumber1);
+                const part2 = partMap.get(partNumber2);
+
+                if (!part1) {
+                    console.warn(`零件号 ${partNumber1} 在Master List中未找到`);
+                    continue;
+                }
+
+                const features1 = part1.features;
+                const features2 = part2 ? part2.features : new Set();
+
+                // 识别差异
+                const addedFeatures = new Set([...features1].filter(x => !features2.has(x)));
+                const cancelledFeatures = new Set([...features2].filter(x => !features1.has(x)));
+
+                // 将功能列表转换为字符串（用分号分隔）
+                const addedFeaturesStr = Array.from(addedFeatures).sort().join(';');
+                const cancelledFeaturesStr = Array.from(cancelledFeatures).sort().join(';');
+
+                results.push({
+                    partNumber: partNumber1,
+                    partName: part1.partName,
+                    comparePartNumber: partNumber2,
+                    addedFeatures: addedFeaturesStr,
+                    cancelledFeatures: cancelledFeaturesStr
+                });
+            }
+
+            return results;
+        }
+
+        function displayResults(results) {
+            const resultsSection = document.getElementById('resultsSection');
+            const resultsBody = document.getElementById('resultsBody');
+            const resultsStats = document.getElementById('resultsStats');
+
+            resultsBody.innerHTML = '';
+            resultsStats.textContent = `共 ${results.length} 条记录`;
+
+            results.forEach(result => {
+                const row = document.createElement('tr');
+
+                const addedFeaturesHtml = result.addedFeatures
+                    ? `<div class="added-features">${result.addedFeatures}</div>`
+                    : '<span class="no-features">无</span>';
+
+                const cancelledFeaturesHtml = result.cancelledFeatures
+                    ? `<div class="cancelled-features">${result.cancelledFeatures}</div>`
+                    : '<span class="no-features">无</span>';
+
+                row.innerHTML = `
+                    <td><strong>${result.partNumber}</strong></td>
+                    <td>${result.partName}</td>
+                    <td>${result.comparePartNumber}</td>
+                    <td>${addedFeaturesHtml}</td>
+                    <td>${cancelledFeaturesHtml}</td>
+                `;
+
+                resultsBody.appendChild(row);
+            });
+
+            resultsSection.style.display = 'block';
+        }
+
+        // 导出Excel
+        document.getElementById('exportBtn').addEventListener('click', function() {
+            if (!comparisonResults || comparisonResults.length === 0) {
+                showStatus('没有可导出的数据', 'error');
+                return;
+            }
+
+            try {
+                // 准备导出数据
+                const exportData = [
+                    ['零件号', '零件名称(中文）', '对比零件号', '新增功能', '取消功能']
+                ];
+
+                comparisonResults.forEach(result => {
+                    exportData.push([
+                        result.partNumber,
+                        result.partName,
+                        result.comparePartNumber,
+                        result.addedFeatures,
+                        result.cancelledFeatures
+                    ]);
+                });
+
+                // 创建工作簿
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.aoa_to_sheet(exportData);
+
+                // 设置列宽
+                ws['!cols'] = [
+                    { wch: 20 },
+                    { wch: 25 },
+                    { wch: 20 },
+                    { wch: 80 },
+                    { wch: 80 }
+                ];
+
+                XLSX.utils.book_append_sheet(wb, ws, '零件号功能差异');
+
+                // 导出文件
+                XLSX.writeFile(wb, '零件号功能差异输出.xlsx');
+
+                showStatus('Excel文件已导出', 'success');
+            } catch (error) {
+                showStatus('导出失败：' + error.message, 'error');
+                console.error(error);
+            }
+        });
+
+        // 导出HTML到剪贴板
+        document.getElementById('exportHtmlBtn').addEventListener('click', function() {
+            if (!comparisonResults || comparisonResults.length === 0) {
+                showStatus('没有可导出的数据', 'error');
+                return;
+            }
+
+            try {
+                // 生成HTML表格
+                let html = '<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width: 100%;">\n';
+                html += '<thead>\n<tr>\n';
+                html += '<th style="background-color: #0055AA; color: white; font-weight: bold; font-size: 14px; padding: 10px;">零件号</th>\n';
+                html += '<th style="background-color: #0055AA; color: white; font-weight: bold; font-size: 14px; padding: 10px;">零件名称(中文）</th>\n';
+                html += '<th style="background-color: #0055AA; color: white; font-weight: bold; font-size: 14px; padding: 10px;">对比零件号</th>\n';
+                html += '<th style="background-color: #0055AA; color: white; font-weight: bold; font-size: 14px; padding: 10px;">新增功能</th>\n';
+                html += '<th style="background-color: #0055AA; color: white; font-weight: bold; font-size: 14px; padding: 10px;">取消功能</th>\n';
+                html += '</tr>\n</thead>\n';
+                html += '<tbody>\n';
+
+                comparisonResults.forEach(result => {
+                    html += '<tr>\n';
+                    html += `<td style="padding: 8px; border: 1px solid #ccc;"><strong>${result.partNumber}</strong></td>\n`;
+                    html += `<td style="padding: 8px; border: 1px solid #ccc;">${result.partName}</td>\n`;
+                    html += `<td style="padding: 8px; border: 1px solid #ccc;">${result.comparePartNumber}</td>\n`;
+                    
+                    if (result.addedFeatures) {
+                        html += `<td style="padding: 8px; border: 1px solid #ccc; background-color: #90EE90; color: #006400; font-weight: bold;">${result.addedFeatures}</td>\n`;
+                    } else {
+                        html += '<td style="padding: 8px; border: 1px solid #ccc; color: #999; font-style: italic;">无</td>\n';
+                    }
+                    
+                    if (result.cancelledFeatures) {
+                        html += `<td style="padding: 8px; border: 1px solid #ccc; background-color: #FFB6C1; color: #8B0000; font-weight: bold;">${result.cancelledFeatures}</td>\n`;
+                    } else {
+                        html += '<td style="padding: 8px; border: 1px solid #ccc; color: #999; font-style: italic;">无</td>\n';
+                    }
+                    
+                    html += '</tr>\n';
+                });
+
+                html += '</tbody>\n</table>';
+
+                // 复制到剪贴板
+                navigator.clipboard.writeText(html).then(() => {
+                    showStatus('HTML已复制到剪贴板！可以直接粘贴到Word或邮件中', 'success');
+                }).catch(err => {
+                    showStatus('复制失败：' + err.message, 'error');
+                    console.error(err);
+                });
+            } catch (error) {
+                showStatus('导出失败：' + error.message, 'error');
+                console.error(error);
+            }
+        });
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('statusMessage');
+            statusDiv.className = 'status-message status-' + type;
+            statusDiv.textContent = message;
+            statusDiv.style.display = 'block';
+
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

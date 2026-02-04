@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel处理工具 v3.3 - 完整样式版</title>
+    <!-- 使用ExcelJS，支持完整样式包括边框 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 50px;
+            text-align: center;
+            background: #f8f9ff;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 30px;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #764ba2;
+            background: #e8ebff;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+
+        .upload-text {
+            font-size: 1.2em;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .upload-hint {
+            font-size: 0.9em;
+            color: #999;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .file-info {
+            display: none;
+            background: #f0f2ff;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .file-info.show {
+            display: block;
+        }
+
+        .file-name {
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .file-size {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            font-size: 1.1em;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            display: none;
+        }
+
+        .btn-success.show {
+            display: block;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(56, 239, 125, 0.4);
+        }
+
+        .btn-copy {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            display: none;
+        }
+
+        .btn-copy.show {
+            display: block;
+        }
+
+        .btn-copy:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(245, 87, 108, 0.4);
+        }
+
+        .progress {
+            display: none;
+            margin-bottom: 20px;
+        }
+
+        .progress.show {
+            display: block;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .progress-text {
+            text-align: center;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .status {
+            display: none;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .status.show {
+            display: block;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .features {
+            background: #f8f9ff;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 30px;
+        }
+
+        .features h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .features ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .features li {
+            padding: 8px 0;
+            color: #666;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .features li:last-child {
+            border-bottom: none;
+        }
+
+        .features li:before {
+            content: "✓ ";
+            color: #38ef7d;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+
+        .steps {
+            display: none;
+            background: #fff9e6;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid #ffc107;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .steps.show {
+            display: block;
+        }
+
+        .step-item {
+            padding: 5px 0;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .step-item.done {
+            color: #28a745;
+        }
+
+        .step-item.done:before {
+            content: "✓ ";
+        }
+
+        .step-item.current {
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .step-item.current:before {
+            content: "→ ";
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Excel处理工具 v3.3 - 完整样式版</h1>
+            <p>支持完整Excel样式（边框、字体、颜色等）</p>
+        </div>
+
+        <div class="content">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📁</div>
+                <div class="upload-text">点击或拖拽上传Excel文件</div>
+                <div class="upload-hint">支持 .xlsx 格式（完整样式支持）</div>
+            </div>
+            <input type="file" id="fileInput" accept=".xlsx">
+
+            <div class="file-info" id="fileInfo">
+                <div class="file-name" id="fileName"></div>
+                <div class="file-size" id="fileSize"></div>
+            </div>
+
+            <div class="steps" id="steps"></div>
+
+            <button class="btn btn-primary" id="processBtn" disabled>
+                🚀 开始处理
+            </button>
+
+            <div class="progress" id="progress">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill">0%</div>
+                </div>
+                <div class="progress-text" id="progressText">准备中...</div>
+            </div>
+
+            <div class="status" id="status"></div>
+
+            <button class="btn btn-success" id="downloadBtn" style="display: none;">
+                ⬇️ 下载处理后的文件
+            </button>
+
+            <div class="features">
+                <h3>✨ 处理功能</h3>
+                <ul>
+                    <li>移除所有特殊空白字符（不间断空格、换行符、制表符等）</li>
+                    <li>移除所有问号 (?)</li>
+                    <li>去除首尾空格，清空纯空字符串</li>
+                    <li>删除前9行数据</li>
+                    <li>清除A列（取消合并单元格）</li>
+                    <li>删除指定列（V, U, T, Q, P, M, K, J, G, F）</li>
+                    <li>删除sheet2和sheet3工作表</li>
+                    <li>完整保留源文件格式，自动添加黑色边框</li>
+                    <li>最终清理确保所有特殊字符被移除</li>
+                    <li>重命名工作表为"new"</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedFile = null;
+        let processedWorkbook = null;
+
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const processBtn = document.getElementById('processBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const progress = document.getElementById('progress');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        const status = document.getElementById('status');
+        const steps = document.getElementById('steps');
+
+        // 数据清理函数
+        function cleanWhitespace(text) {
+            if (typeof text !== 'string') return text;
+            if (!text) return text;
+
+            text = text.replace(/\xa0/g, '');
+            text = text.replace(/\n/g, '');
+            text = text.replace(/\r/g, '');
+            text = text.replace(/\t/g, '');
+            text = text.replace(/\v/g, '');
+            text = text.replace(/\f/g, '');
+            text = text.replace(/\?/g, '');
+            text = text.trim();
+
+            return text === '' ? null : text;
+        }
+
+        // 文件上传处理
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            if (!file.name.toLowerCase().endsWith('.xlsx')) {
+                showStatus('请上传 .xlsx 格式的Excel文件', 'error');
+                return;
+            }
+
+            selectedFile = file;
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            fileInfo.classList.add('show');
+            processBtn.disabled = false;
+            status.classList.remove('show');
+            downloadBtn.classList.remove('show');
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        function updateProgress(percent, text) {
+            progressFill.style.width = percent + '%';
+            progressFill.textContent = percent + '%';
+            progressText.textContent = text;
+        }
+
+        function showStatus(message, type) {
+            status.innerHTML = message;
+            status.className = `status ${type} show`;
+        }
+
+        function addStep(text, stepStatus) {
+            const stepDiv = document.createElement('div');
+            stepDiv.className = `step-item ${stepStatus}`;
+            stepDiv.textContent = text;
+            steps.appendChild(stepDiv);
+            steps.scrollTop = steps.scrollHeight;
+        }
+
+        // 处理按钮
+        processBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            processBtn.disabled = true;
+            progress.classList.add('show');
+            steps.classList.add('show');
+            steps.innerHTML = '';
+            status.classList.remove('show');
+
+            try {
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    const buffer = e.target.result;
+                    const workbook = new ExcelJS.Workbook();
+                    await workbook.xlsx.load(buffer);
+
+                    addStep('开始处理工作表...', 'current');
+
+                    const sheet = workbook.worksheets[0];
+                    const sheetName = sheet.name;
+
+                    // Step 0/1: 数据清理
+                    addStep('Step 0/1: 数据清理...', 'current');
+                    updateProgress(10, '清理数据...');
+
+                    sheet.eachRow((row, rowNumber) => {
+                        row.eachCell((cell) => {
+                            if (cell.value) {
+                                const cleaned = cleanWhitespace(cell.value);
+                                if (cleaned === null || cleaned === '') {
+                                    cell.value = null;
+                                } else {
+                                    cell.value = cleaned;
+                                }
+                            }
+                        });
+                    });
+                    addStep('Step 0/1: 数据清理 ✓', 'done');
+
+                    // Step 2: 删除前9行
+                    addStep('Step 2: 删除前9行...', 'current');
+                    updateProgress(20, '删除前9行...');
+                    sheet.spliceRows(1, 9);
+                    addStep('Step 2: 删除前9行 ✓', 'done');
+
+                    // Step 3: 清除A列
+                    addStep('Step 3: 清除A列...', 'current');
+                    updateProgress(30, '清除A列...');
+                    sheet.eachRow((row, rowNumber) => {
+                        if (rowNumber > 3) {
+                            const cell = row.getCell(1);
+                            cell.value = null;
+                        }
+                    });
+                    addStep('Step 3: 清除A列 ✓', 'done');
+
+                    // Step 4: 删除指定列
+                    addStep('Step 4: 删除指定列...', 'current');
+                    updateProgress(40, '删除指定列...');
+                    const colsToDelete = [22, 21, 20, 17, 16, 13, 11, 10, 7, 6];
+                    colsToDelete.sort((a, b) => b - a);
+                    colsToDelete.forEach(col => {
+                        sheet.spliceColumns(col, 1);
+                    });
+                    addStep('Step 4: 删除指定列 ✓', 'done');
+
+                    // Step 5: 删除工作表
+                    addStep('Step 5: 删除sheet2和sheet3...', 'current');
+                    updateProgress(50, '删除工作表...');
+                    const sheetsToDelete = [];
+                    workbook.worksheets.forEach(ws => {
+                        const nameLower = ws.name.toLowerCase();
+                        if (nameLower === 'sheet2' || nameLower === 'sheet3') {
+                            sheetsToDelete.push(ws.name);
+                        }
+                    });
+                    sheetsToDelete.forEach(name => workbook.removeWorksheet(name));
+                    addStep('Step 5: 删除sheet2和sheet3 ✓', 'done');
+
+                    // Step 6: 添加边框
+                    addStep('Step 6: 添加表格边框...', 'current');
+                    updateProgress(60, '添加边框...');
+
+                    const borderStyle = {
+                        style: 'thin',
+                        color: { argb: 'FF000000' }
+                    };
+
+                    sheet.eachRow((row) => {
+                        row.eachCell((cell) => {
+                            cell.border = {
+                                top: borderStyle,
+                                left: borderStyle,
+                                bottom: borderStyle,
+                                right: borderStyle
+                            };
+                        });
+                    });
+                    addStep('Step 6: 添加表格边框 ✓', 'done');
+
+                    // Step 7: 最终清理
+                    addStep('Step 7: 最终数据清理...', 'current');
+                    updateProgress(70, '最终清理...');
+                    sheet.eachRow((row) => {
+                        row.eachCell((cell) => {
+                            if (cell.value) {
+                                const cleaned = cleanWhitespace(cell.value);
+                                if (cleaned === null || cleaned === '') {
+                                    cell.value = null;
+                                } else {
+                                    cell.value = cleaned;
+                                }
+                            }
+                        });
+                    });
+                    addStep('Step 7: 最终数据清理 ✓', 'done');
+
+                    // Step 7.4: 合并单元格 (A1:L1 区域横向合并)
+                    addStep('Step 7.4: 合并标题行单元格...', 'current');
+                    updateProgress(75, '合并A1:L1单元格...');
+
+                    // 合并 A1:L1 (行1, 列1-12)
+                    sheet.mergeCells(1, 1, 1, 12);
+
+                    addStep('Step 7.4: 合并标题行单元格 ✓', 'done');
+
+                    // Step 7.5: 合并单元格 (A2:H3 区域上下两两合并)
+                    addStep('Step 7.5: 合并表头单元格...', 'current');
+                    updateProgress(80, '合并单元格...');
+
+                    // 合并 A2:A3, B2:B3, C2:C3, D2:D3, E2:E3, F2:F3, G2:G3, H2:H3
+                    const mergeRanges = [
+                        [2, 3, 1, 1], // A2:A3 (行2-3, 列1)
+                        [2, 3, 2, 2], // B2:B3 (行2-3, 列2)
+                        [2, 3, 3, 3], // C2:C3 (行2-3, 列3)
+                        [2, 3, 4, 4], // D2:D3 (行2-3, 列4)
+                        [2, 3, 5, 5], // E2:E3 (行2-3, 列5)
+                        [2, 3, 6, 6], // F2:F3 (行2-3, 列6)
+                        [2, 3, 7, 7], // G2:G3 (行2-3, 列7)
+                        [2, 3, 8, 8]  // H2:H3 (行2-3, 列8)
+                    ];
+
+                    mergeRanges.forEach(range => {
+                        const [startRow, endRow, startCol, endCol] = range;
+                        sheet.mergeCells(startRow, startCol, endRow, endCol);
+                    });
+
+                    addStep('Step 7.5: 合并表头单元格 ✓', 'done');
+
+                    // Step 8: 重命名工作表
+                    addStep('Step 8: 重命名工作表...', 'current');
+                    updateProgress(90, '重命名工作表...');
+                    sheet.name = 'new';
+                    addStep('Step 8: 重命名为"new" ✓', 'done');
+
+                    updateProgress(100, '处理完成！');
+
+                    processedWorkbook = workbook;
+
+                    // 自动下载文件
+                    await downloadFile();
+
+                };
+                reader.readAsArrayBuffer(selectedFile);
+
+            } catch (error) {
+                console.error('处理错误:', error);
+                showStatus('✗ 处理失败：' + error.message, 'error');
+            }
+
+            processBtn.disabled = false;
+        });
+
+        // 下载函数
+        async function downloadFile() {
+            if (!processedWorkbook) return;
+
+            const originalName = selectedFile.name.replace(/\.[^/.]+$/, '');
+            const newName = `${originalName}_processed.xlsx`;
+
+            const buffer = await processedWorkbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            saveAs(blob, newName);
+
+            showStatus(`✓ 文件已自动下载：${newName}<br><strong>已自动添加黑色边框并完成所有格式优化！</strong><br><br>A1:L1合并 ✓<br>A2:H3垂直合并 ✓`, 'success');
+        }
+
+        // 下载按钮（保留但不可见）
+        downloadBtn.addEventListener('click', downloadFile);
+    </script>
+</body>
+</html>

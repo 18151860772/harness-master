@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(python3:*)",
+      "Bash(powershell -command:*)",
+      "Bash(powershell:*)",
+      "Bash(cmd /c:*)",
+      "Bash(npm install xlsx)",
+      "Bash(node:*)"
+    ]
+  }
+}

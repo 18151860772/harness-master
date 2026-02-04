@@ -1,0 +1,1441 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>插件回路查询工具 V4 - 短样清单分析</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: white;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .header h1 {
+            font-size: 22px;
+            margin-bottom: 3px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 12px;
+        }
+
+        .upload-section {
+            padding: 12px 30px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+            flex-shrink: 0;
+        }
+
+        .upload-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .upload-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 0;
+        }
+
+        .upload-box {
+            flex: 1;
+            border: 2px dashed #667eea;
+            border-radius: 6px;
+            padding: 10px 12px;
+            text-align: center;
+            background: white;
+            transition: all 0.3s;
+        }
+
+        .upload-box:hover {
+            border-color: #764ba2;
+            background: #f8f9fa;
+        }
+
+        .upload-box.has-file {
+            border-color: #28a745;
+            background: #d4edda;
+        }
+
+        .upload-box label:first-child {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: bold;
+            color: #333;
+            font-size: 12px;
+        }
+
+        .upload-box input[type="file"] {
+            display: none;
+        }
+
+        .upload-box .file-btn {
+            display: inline-block;
+            padding: 4px 12px;
+            background: #667eea;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .upload-box .file-name {
+            margin-top: 6px;
+            font-size: 11px;
+            color: #666;
+            word-break: break-all;
+        }
+
+        .query-section {
+            padding: 12px 30px;
+            flex-shrink: 0;
+        }
+
+        .query-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 7px 30px 7px 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 12px;
+            background: white;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .search-box .search-icon {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+            font-size: 13px;
+        }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            max-height: 250px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: none;
+        }
+
+        .search-results.show {
+            display: block;
+        }
+
+        .search-result-item {
+            padding: 6px 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 12px;
+        }
+
+        .search-result-item:hover {
+            background: #f8f9fa;
+        }
+
+        .query-controls select {
+            flex: 1;
+            min-width: 250px;
+            padding: 7px 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 12px;
+            background: white;
+        }
+
+        .query-controls select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .query-controls button {
+            padding: 7px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .query-controls button#clearBtn {
+            background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+        }
+
+        .query-controls button:hover {
+            transform: translateY(-1px);
+        }
+
+        .query-controls button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results-section {
+            display: none;
+            flex: 1;
+            overflow: hidden;
+            flex-direction: column;
+            padding: 0 25px 12px;
+        }
+
+        .results-section.show {
+            display: flex;
+        }
+
+        .results-header {
+            background: #f8f9fa;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            flex-shrink: 0;
+        }
+
+        .results-header h2 {
+            color: #333;
+            font-size: 16px;
+            margin: 0;
+        }
+
+        .results-header p {
+            margin: 3px 0 0;
+            font-size: 12px;
+        }
+
+        .results-header .count {
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .table-wrapper {
+            flex: 1;
+            overflow: auto;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border: 1px solid #e0e0e0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            display: table;
+        }
+
+        thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        th, td {
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+            border-right: 1px solid #f0f0f0;
+            font-size: 13px;
+            white-space: nowrap;
+            min-width: 80px;
+        }
+
+        th {
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            background: inherit;
+            z-index: 10;
+        }
+
+        tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        tbody tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+
+        tbody tr:nth-child(even):hover {
+            background: #f8f9fa;
+        }
+
+        .info-message {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            border-radius: 8px;
+            padding: 20px;
+            color: #0c5460;
+            text-align: center;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 20px;
+            font-size: 14px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .status-connected {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .export-btn {
+            padding: 5px 10px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 8px;
+        }
+
+        .export-btn:hover {
+            background: #218838;
+        }
+
+        .status-bar {
+            padding: 6px 30px;
+            background: #f8f9fa;
+            border-top: 1px solid #e0e0e0;
+            font-size: 11px;
+            color: #666;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .stats-info {
+            display: flex;
+            gap: 15px;
+            font-size: 11px;
+            color: #666;
+        }
+
+        .stats-info span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>插件回路查询工具 V4 - 短样清单分析</h1>
+            <p>分析回路连接关系，识别同一回路的插件</p>
+        </div>
+
+        <div class="upload-section">
+            <div class="upload-title">📁 文件上传</div>
+            <div class="upload-row">
+                <div class="upload-box" id="upload1">
+                    <label>1. 连接列表 (T28-Connlist)</label>
+                    <input type="file" id="file1" accept=".xlsx,.xls" onchange="handleFile1(this)">
+                    <label for="file1" class="file-btn">选择文件</label>
+                    <div class="file-name" id="fileName1">未选择</div>
+                </div>
+                <div class="upload-box" id="upload2">
+                    <label>2. 线缆列表 (WIRELIST)</label>
+                    <input type="file" id="file2" accept=".xlsx,.xls" onchange="handleFile2(this)">
+                    <label for="file2" class="file-btn">选择文件</label>
+                    <div class="file-name" id="fileName2">未选择</div>
+                </div>
+                <div class="upload-box" id="upload3">
+                    <label>3. Inline列表 (Inlinelist)</label>
+                    <input type="file" id="file3" accept=".xlsx,.xls" onchange="handleFile3(this)">
+                    <label for="file3" class="file-btn">选择文件</label>
+                    <div class="file-name" id="fileName3">未选择(可选)</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="query-section">
+            <div class="query-controls">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="搜索插件（支持代码、中文、短号）" disabled oninput="handleSearch(this.value)">
+                    <span class="search-icon">🔍</span>
+                    <div class="search-results" id="searchResults"></div>
+                </div>
+                <select id="pluginSelect" disabled>
+                    <option value="">-- 请选择插件 --</option>
+                </select>
+                <button id="queryBtn" onclick="queryCircuits()" disabled>查询回路</button>
+                <button id="clearBtn" onclick="clearFilter()" disabled>清除</button>
+            </div>
+        </div>
+
+        <div class="results-section" id="resultsSection">
+            <div class="results-header">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h2>查询结果 - 插件: <span id="selectedPlugin"></span></h2>
+                        <p>找到 <span class="count" id="circuitCount">0</span> 条相关回路</p>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="export-btn" style="background: #17a2b8;" onclick="copyHtmlToClipboard()">复制HTML</button>
+                        <button class="export-btn" onclick="exportToExcel()">导出Excel</button>
+                    </div>
+                </div>
+            </div>
+            <div class="table-wrapper">
+                <table id="resultsTable">
+                    <thead id="resultsTableHead"></thead>
+                    <tbody id="resultsTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="info-message" id="infoMessage">
+            请上传 Connlist 和 WIRELIST 文件（Inlinelist 可选）开始分析
+        </div>
+    </div>
+
+    <div class="status-bar">
+        <div class="stats-info" id="statsInfo">
+            <span>等待文件上传...</span>
+        </div>
+        <span>V4.0 | 短样清单分析</span>
+    </div>
+
+    <script>
+        let file1Data = null;
+        let file2Data = null;
+        let file3Data = null;
+        let file1Headers = [];
+        let file2Headers = [];
+        let file3Headers = [];
+        let queryResults = [];
+        let pluginInfoMap = new Map();
+        let originalColumns = [];  // WIRELIST原始列名
+        let currentDisplayColumns = [];  // 调换后的显示列名
+
+        // 识别集合
+        let inlinePlugins = new Set();
+        let groundPlugins = new Set();
+
+        // 连接图
+        let wireGraph = new Map();
+        let connectionGraph = new Map();
+        let spliceConnections = new Map();
+        let inlineConnections = new Map();
+
+        // 关键列名
+        let fromCodeColName = 'From Code';
+        let fromPinColName = 'From Pin';
+        let toCodeColName = 'To Code';
+        let toPinColName = 'To Pin';
+
+        // 点击页面其他地方关闭搜索结果
+        document.addEventListener('click', function(e) {
+            const searchBox = document.querySelector('.search-box');
+            if (!searchBox || !searchBox.contains(e.target)) {
+                document.getElementById('searchResults').classList.remove('show');
+            }
+        });
+
+        function updateStatus(message, stats = {}) {
+            const statsInfo = document.getElementById('statsInfo');
+            let html = `<span>${message}</span>`;
+            if (stats.pluginCount) html += ` | <span>插件: ${stats.pluginCount}</span>`;
+            if (stats.wireCount) html += ` | <span>回路: ${stats.wireCount}</span>`;
+            if (stats.inlineCount) html += ` | <span>Inline: ${stats.inlineCount}</span>`;
+            statsInfo.innerHTML = html;
+        }
+
+        function handleFile1(input) {
+            const file = input.files[0];
+            if (file) {
+                document.getElementById('fileName1').textContent = file.name;
+                document.getElementById('upload1').classList.add('has-file');
+                updateStatus('正在读取Connlist...');
+                readExcel(file, 1);
+            }
+        }
+
+        function handleFile2(input) {
+            const file = input.files[0];
+            if (file) {
+                document.getElementById('fileName2').textContent = file.name;
+                document.getElementById('upload2').classList.add('has-file');
+                updateStatus('正在读取WIRELIST...');
+                readExcel(file, 2);
+            }
+        }
+
+        function handleFile3(input) {
+            const file = input.files[0];
+            if (file) {
+                document.getElementById('fileName3').textContent = file.name;
+                document.getElementById('upload3').classList.add('has-file');
+                updateStatus('正在读取Inlinelist...');
+                readExcel(file, 3);
+            }
+        }
+
+        function readExcel(file, fileNum) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+
+                    if (jsonData.length > 0) {
+                        const headers = jsonData[0];
+                        const rows = jsonData.slice(1).filter(row => row.some(cell => cell !== undefined && cell !== ''));
+
+                        if (fileNum === 1) {
+                            file1Headers = headers;
+                            file1Data = rows;
+                            updateStatus('正在解析Connlist...');
+                            processConnlist();
+                        } else if (fileNum === 2) {
+                            file2Headers = headers;
+                            file2Data = rows;
+                            updateStatus('正在解析WIRELIST...');
+                            processWIRELIST();
+                        } else {
+                            file3Headers = headers;
+                            file3Data = rows;
+                            processInlinelist();
+                        }
+                        checkAllFilesLoaded();
+                    }
+                } catch (error) {
+                    alert(`读取文件失败: ${error.message}`);
+                    console.error(error);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // 处理Connlist
+        function processConnlist() {
+            pluginInfoMap.clear();
+
+            // 动态查找关键列索引
+            let shortCodeCol = -1;
+            let nameCol = -1;
+            let pluginCol = -1;
+
+            // 调试：输出所有列名
+            console.log('Connlist 所有列名:', file1Headers.map((h, i) => `${i}:${h}`));
+
+            file1Headers.forEach((header, index) => {
+                const h = String(header || '').trim();
+                const hLower = h.toLowerCase();
+                if (h === '短号' || hLower === 'short code') shortCodeCol = index;
+                // 中文描述可能是"中文描述"或直接是第3列(索引2)
+                if (h === '中文描述' || index === 2) nameCol = index;
+                if (h.includes('插件') || hLower.includes('plug')) pluginCol = index;
+            });
+
+            // 如果没找到插件列，尝试配置列
+            if (pluginCol === -1) {
+                pluginCol = file1Headers.findIndex(h => h === '配置');
+            }
+            // 如果还没找到，尝试第7列
+            if (pluginCol === -1 && file1Headers.length > 6) {
+                pluginCol = 6;
+            }
+
+            console.log('Connlist 列索引:', { shortCodeCol, nameCol, pluginCol });
+
+            // 调试：输出前5行数据的短号和插件代码
+            console.log('Connlist 前5行数据:');
+            file1Data.slice(0, 5).forEach((row, idx) => {
+                console.log(`  Row ${idx}: shortCode="${row[shortCodeCol]}", pluginCode="${row[pluginCol]}"`);
+            });
+
+            file1Data.forEach(row => {
+                const shortCode = shortCodeCol >= 0 ? (row[shortCodeCol] ? String(row[shortCodeCol]).trim() : '') : '';
+                const name = nameCol >= 0 ? (row[nameCol] ? String(row[nameCol]).trim() : '') : '';
+                const pluginCode = pluginCol >= 0 ? (row[pluginCol] ? String(row[pluginCol]).trim() : '') : '';
+
+                if (pluginCode) {
+                    if (!pluginInfoMap.has(pluginCode)) {
+                        pluginInfoMap.set(pluginCode, { name, shortCode });
+                    }
+                }
+            });
+
+            // 识别接地插件
+            groundPlugins.clear();
+            pluginInfoMap.forEach((info, code) => {
+                const text = `${info.shortCode} ${info.name}`.toLowerCase();
+                if (text.includes('ground') || text.includes('接地') || text.includes('gnd')) {
+                    groundPlugins.add(code);
+                }
+            });
+
+            console.log(`Connlist处理完成: ${pluginInfoMap.size}个插件`);
+        }
+
+        // 处理Inlinelist
+        function processInlinelist() {
+            inlinePlugins.clear();
+            if (!file3Data || file3Data.length === 0) return;
+
+            file3Data.forEach(row => {
+                if (row[0]) {
+                    inlinePlugins.add(String(row[0]).trim());
+                }
+            });
+
+            file3Headers.forEach((header, index) => {
+                const h = String(header || '').toLowerCase();
+                if (h.includes('short') || h === '短号') {
+                    file3Data.forEach(row => {
+                        if (row[index]) {
+                            inlinePlugins.add(String(row[index]).trim());
+                        }
+                    });
+                }
+            });
+        }
+
+        // 处理WIRELIST，构建连接图
+        function processWIRELIST() {
+            wireGraph.clear();
+            connectionGraph.clear();
+            spliceConnections.clear();
+            inlineConnections.clear();
+
+            // 查找关键列索引
+            let fromCodeIdx = -1, fromPinIdx = -1, toCodeIdx = -1, toPinIdx = -1;
+
+            // 调试：输出所有列名
+            console.log('WIRELIST 所有列名:', file2Headers.map((h, i) => `${i}:${h}`));
+
+            file2Headers.forEach((header, index) => {
+                const h = String(header || '').trim();
+                const hLower = h.toLowerCase();
+                if (hLower === 'from code') fromCodeIdx = index;
+                if (hLower === 'from pin') fromPinIdx = index;
+                if (hLower === 'to code') toCodeIdx = index;
+                if (hLower === 'to pin') toPinIdx = index;
+            });
+
+            // 如果没找到，使用默认列索引
+            if (fromCodeIdx === -1) fromCodeIdx = 8;
+            if (fromPinIdx === -1) fromPinIdx = 9;
+            if (toCodeIdx === -1) toCodeIdx = 10;
+            if (toPinIdx === -1) toPinIdx = 11;
+
+            console.log('WIRELIST 列索引:', { fromCodeIdx, fromPinIdx, toCodeIdx, toPinIdx });
+
+            // 获取列名
+            fromCodeColName = file2Headers[fromCodeIdx] || 'From Code';
+            fromPinColName = file2Headers[fromPinIdx] || 'From Pin';
+            toCodeColName = file2Headers[toCodeIdx] || 'To Code';
+            toPinColName = file2Headers[toPinIdx] || 'To Pin';
+
+            // 保存原始列名（排除隐藏列）
+            originalColumns = [];
+            file2Headers.forEach((header, index) => {
+                const h = String(header || '').trim();
+                // 跳过一些明显的隐藏列
+                if (h && !h.startsWith('_') && h.toLowerCase() !== 'hidden') {
+                    originalColumns.push(h);
+                }
+            });
+
+            file2Data.forEach((row, index) => {
+                const fromCode = row[fromCodeIdx] ? String(row[fromCodeIdx]).trim() : '';
+                const fromPin = row[fromPinIdx] || '';
+                const toCode = row[toCodeIdx] ? String(row[toCodeIdx]).trim() : '';
+                const toPin = row[toPinIdx] || '';
+
+                if (!fromCode && !toCode) return;
+
+                const wireData = {
+                    _rowData: row,
+                    _colIndexMap: {},  // 列名到索引的映射
+                    fromCode: fromCode,
+                    fromPin: String(fromPin),
+                    toCode: toCode,
+                    toPin: String(toPin)
+                };
+
+                // 构建列名到索引的映射
+                file2Headers.forEach((header, idx) => {
+                    const h = String(header || '').trim();
+                    if (h && !h.startsWith('_') && h.toLowerCase() !== 'hidden') {
+                        wireData._colIndexMap[h] = idx;
+                    }
+                });
+
+                const wireId = row[0] || `WIRE_${index}`;
+                wireGraph.set(wireId, wireData);
+
+                // 调试：输出前10条数据的 From Code 和 To Code
+                if (index < 10) {
+                    console.log(`WIRE ${index}: From=${fromCode}(${fromCodeIdx}) Pin=${fromPin}, To=${toCode}(${toCodeIdx}) Pin=${toPin}`);
+                }
+
+                // 插件到回路的连接
+                if (fromCode) {
+                    const key = `${fromCode}|${fromPin}`;
+                    if (!connectionGraph.has(key)) connectionGraph.set(key, []);
+                    connectionGraph.get(key).push(wireId);
+                }
+                if (toCode) {
+                    const key = `${toCode}|${toPin}`;
+                    if (!connectionGraph.has(key)) connectionGraph.set(key, []);
+                    connectionGraph.get(key).push(wireId);
+                }
+
+                // 焊点连接（Pin为X）
+                if (String(fromPin).toUpperCase() === 'X' && fromCode) {
+                    if (!spliceConnections.has(fromCode)) spliceConnections.set(fromCode, []);
+                    spliceConnections.get(fromCode).push(wireId);
+                }
+                if (String(toPin).toUpperCase() === 'X' && toCode) {
+                    if (!spliceConnections.has(toCode)) spliceConnections.set(toCode, []);
+                    spliceConnections.get(toCode).push(wireId);
+                }
+
+                // Inline脚位连接
+                if (inlinePlugins.has(fromCode)) {
+                    const key = `${fromCode}|${fromPin}`;
+                    if (!inlineConnections.has(key)) inlineConnections.set(key, []);
+                    inlineConnections.get(key).push(wireId);
+                }
+                if (inlinePlugins.has(toCode)) {
+                    const key = `${toCode}|${toPin}`;
+                    if (!inlineConnections.has(key)) inlineConnections.set(key, []);
+                    inlineConnections.get(key).push(wireId);
+                }
+            });
+        }
+
+        function checkAllFilesLoaded() {
+            if (file1Data && file2Data) {
+                document.getElementById('infoMessage').style.display = 'none';
+                populatePluginSelect();
+                document.getElementById('pluginSelect').disabled = false;
+                document.getElementById('queryBtn').disabled = false;
+                document.getElementById('clearBtn').disabled = false;
+                document.getElementById('searchInput').disabled = false;
+
+                const stats = {
+                    pluginCount: pluginInfoMap.size,
+                    wireCount: wireGraph.size,
+                    inlineCount: inlinePlugins.size,
+                    spliceCount: spliceConnections.size
+                };
+                updateStatus('文件加载完成，请选择插件查询', stats);
+            }
+        }
+
+        // V4版本：只显示Connlist中有的短号（位置号），按首字母排序
+        function populatePluginSelect() {
+            const select = document.getElementById('pluginSelect');
+            select.innerHTML = '<option value="">-- 请选择插件 --</option>';
+
+            // 重置映射
+            shortCodeToPluginCodeMap.clear();
+
+            // 动态查找Connlist列索引
+            let shortCodeCol = -1, nameCol = -1, pluginCol = -1;
+            file1Headers.forEach((header, index) => {
+                const h = String(header || '').trim();
+                const hLower = h.toLowerCase();
+                if (h === '短号' || hLower === 'short code') shortCodeCol = index;
+                // 中文描述可能是"中文描述"或直接是第3列(索引2)
+                if (h === '中文描述' || index === 2) nameCol = index;
+                if (h.includes('插件') || hLower.includes('plug')) pluginCol = index;
+            });
+            if (pluginCol === -1) pluginCol = file1Headers.findIndex(h => h === '配置');
+            if (pluginCol === -1 && file1Headers.length > 6) pluginCol = 6;
+
+            // 收集短号和对应的插件代码
+            const pluginList = [];
+            const seenShortCodes = new Set();
+
+            file1Data.forEach(row => {
+                const shortCode = shortCodeCol >= 0 ? (row[shortCodeCol] ? String(row[shortCodeCol]).trim() : '') : '';
+                const pluginCode = pluginCol >= 0 ? (row[pluginCol] ? String(row[pluginCol]).trim() : '') : '';
+
+                // 排除接地插件
+                if (shortCode && pluginCode && !groundPlugins.has(pluginCode) && !inlinePlugins.has(pluginCode)) {
+                    if (!seenShortCodes.has(shortCode)) {
+                        seenShortCodes.add(shortCode);
+                        pluginList.push({ shortCode, code: pluginCode });
+                        shortCodeToPluginCodeMap.set(shortCode, pluginCode);
+                    }
+                }
+            });
+
+            // 按照短号首字母排序
+            pluginList.sort((a, b) => {
+                return String(a.shortCode).localeCompare(String(b.shortCode));
+            });
+
+            // 调试：输出映射表前10条
+            console.log('shortCodeToPluginCodeMap 前10条:');
+            let count = 0;
+            shortCodeToPluginCodeMap.forEach((v, k) => {
+                if (count < 10) {
+                    console.log(`  "${k}" -> "${v}"`);
+                    count++;
+                }
+            });
+            console.log('映射表总数:', shortCodeToPluginCodeMap.size);
+
+            pluginList.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.shortCode;  // 用短号作为查询值
+                option.textContent = item.shortCode;
+                select.appendChild(option);
+            });
+        }
+
+        // 搜索功能 - 与下拉选项一致，只显示Connlist中的短号
+        function handleSearch(query) {
+            const searchResults = document.getElementById('searchResults');
+            const trimmedQuery = query.trim();
+
+            if (!trimmedQuery) {
+                searchResults.classList.remove('show');
+                return;
+            }
+
+            const results = [];
+            const queryLower = trimmedQuery.toLowerCase();
+
+            // 动态查找Connlist列索引
+            let shortCodeCol = -1, nameCol = -1, pluginCol = -1;
+            file1Headers.forEach((header, index) => {
+                const h = String(header || '').trim();
+                const hLower = h.toLowerCase();
+                if (h === '短号' || hLower === 'short code') shortCodeCol = index;
+                // 中文描述可能是"中文描述"或直接是第3列(索引2)
+                if (h === '中文描述' || index === 2) nameCol = index;
+                if (h.includes('插件') || hLower.includes('plug')) pluginCol = index;
+            });
+            if (pluginCol === -1) pluginCol = file1Headers.findIndex(h => h === '配置');
+            if (pluginCol === -1 && file1Headers.length > 6) pluginCol = 6;
+
+            const seenShortCodes = new Set();
+
+            // 直接遍历Connlist数据进行搜索（与下拉选项逻辑一致）
+            file1Data.forEach(row => {
+                const shortCode = shortCodeCol >= 0 ? (row[shortCodeCol] ? String(row[shortCodeCol]).trim() : '') : '';
+                const name = nameCol >= 0 ? (row[nameCol] ? String(row[nameCol]).trim() : '') : '';
+                const pluginCode = pluginCol >= 0 ? (row[pluginCol] ? String(row[pluginCol]).trim() : '') : '';
+
+                // 排除接地和Inline插件
+                if (!pluginCode || groundPlugins.has(pluginCode) || inlinePlugins.has(pluginCode)) {
+                    return;
+                }
+
+                if (seenShortCodes.has(shortCode)) return;
+
+                // 匹配逻辑：短号、中文描述
+                const matchShort = shortCode && shortCode.toLowerCase().includes(queryLower);
+                const matchName = name && name.toLowerCase().includes(queryLower);
+
+                if (matchShort || matchName) {
+                    seenShortCodes.add(shortCode);
+                    results.push({ shortCode: shortCode, name: name, code: pluginCode });
+                }
+            });
+
+            // 按照短号首字母排序
+            results.sort((a, b) => {
+                return String(a.shortCode).localeCompare(String(b.shortCode));
+            });
+
+            if (results.length > 0) {
+                searchResults.innerHTML = results.slice(0, 100).map(item => {
+                    // 显示格式：短号 - 中文描述
+                    let displayHtml = '';
+                    if (item.shortCode && item.name) {
+                        displayHtml = `<span style="color:#667eea;font-weight:600;">${item.shortCode}</span> - <span style="color:#666;">${item.name}</span>`;
+                    } else if (item.shortCode) {
+                        displayHtml = `<span style="color:#667eea;font-weight:600;">${item.shortCode}</span>`;
+                    } else {
+                        displayHtml = `<span style="color:#667eea;font-weight:600;">${item.code}</span>`;
+                    }
+                    return `<div class="search-result-item" onclick="selectPlugin('${item.shortCode}')">${displayHtml}</div>`;
+                }).join('');
+                searchResults.classList.add('show');
+            } else {
+                searchResults.innerHTML = '<div class="search-result-item" style="cursor:default;color:#999;">未找到匹配的插件</div>';
+                searchResults.classList.add('show');
+            }
+        }
+
+        // 存储短号到插件代码的映射
+        let shortCodeToPluginCodeMap = new Map();
+
+        function selectPlugin(shortCode) {
+            // 获取对应的插件代码
+            const actualPluginCode = shortCodeToPluginCodeMap.get(shortCode) || shortCode;
+            // 从pluginInfoMap中获取信息（key是插件代码）
+            const info = pluginInfoMap.get(actualPluginCode) || { shortCode: '', name: '' };
+            let displayText = '';
+            // 优先使用短号+名称显示
+            if (shortCode && info.name) {
+                displayText = `${shortCode} - ${info.name}`;
+            } else if (shortCode) {
+                displayText = shortCode;
+            } else {
+                displayText = info.shortCode || actualPluginCode;
+            }
+            document.getElementById('pluginSelect').value = shortCode;
+            document.getElementById('searchInput').value = displayText;
+            document.getElementById('searchResults').classList.remove('show');
+            queryCircuits();
+        }
+
+        function clearFilter() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('searchResults').classList.remove('show');
+            document.getElementById('pluginSelect').value = '';
+            queryResults = [];
+            document.getElementById('resultsSection').classList.remove('show');
+            document.getElementById('resultsTableHead').innerHTML = '';
+            document.getElementById('resultsTableBody').innerHTML = '';
+            updateStatus('筛选已清除');
+        }
+
+        // 查找与给定wire相连的所有回路（同一回路）
+        function findConnectedWires(wireId, visited = new Set()) {
+            if (visited.has(wireId)) return [];
+            visited.add(wireId);
+
+            const wire = wireGraph.get(wireId);
+            if (!wire) return [wireId];
+
+            const connectedWires = [wireId];
+
+            const checkPin = (code, pin) => {
+                const key = `${code}|${pin}`;
+                const wires = connectionGraph.get(key) || [];
+                wires.forEach(w => {
+                    if (w !== wireId && !visited.has(w)) {
+                        connectedWires.push(...findConnectedWires(w, visited));
+                    }
+                });
+            };
+            checkPin(wire.fromCode, wire.fromPin);
+            checkPin(wire.toCode, wire.toPin);
+
+            // 焊点连接
+            const checkSplice = (code) => {
+                const wires = spliceConnections.get(code) || [];
+                wires.forEach(w => {
+                    if (w !== wireId && !visited.has(w)) {
+                        connectedWires.push(...findConnectedWires(w, visited));
+                    }
+                });
+            };
+            if (String(wire.fromPin).toUpperCase() === 'X') checkSplice(wire.fromCode);
+            if (String(wire.toPin).toUpperCase() === 'X') checkSplice(wire.toCode);
+
+            // Inline连接
+            const checkInline = (code, pin) => {
+                if (inlinePlugins.has(code)) {
+                    const key = `${code}|${pin}`;
+                    const wires = inlineConnections.get(key) || [];
+                    wires.forEach(w => {
+                        if (w !== wireId && !visited.has(w)) {
+                            connectedWires.push(...findConnectedWires(w, visited));
+                        }
+                    });
+                }
+            };
+            checkInline(wire.fromCode, wire.fromPin);
+            checkInline(wire.toCode, wire.toPin);
+
+            return [...new Set(connectedWires)];
+        }
+
+        // 获取同一回路的插件和脚位信息
+        function getConnectedCircuitsInfo(wireId, selectedPlugin) {
+            const connectedWires = findConnectedWires(wireId);
+            const result = [];  // 改为数组，保存插件信息和Option
+
+            connectedWires.forEach(w => {
+                const wire = wireGraph.get(w);
+                if (!wire) return;
+
+                // From端（排除选中的插件，排除焊点：脚位为X）
+                if (wire.fromCode && wire.fromCode !== selectedPlugin) {
+                    if (String(wire.fromPin).toUpperCase() !== 'X') {
+                        const isInline = inlinePlugins.has(wire.fromCode);
+                        const info = pluginInfoMap.get(wire.fromCode);
+                        let label = '';
+                        if (isInline) {
+                            label = `[Inline] ${wire.fromCode}-${wire.fromPin}`;
+                        } else if (info && info.shortCode) {
+                            label = `${info.shortCode} (${wire.fromCode})-${wire.fromPin}`;
+                        } else {
+                            label = `${wire.fromCode}-${wire.fromPin}`;
+                        }
+                        // 获取Option值
+                        const optionIdx = wire._colIndexMap['Option'];
+                        const optionValue = optionIdx !== undefined ? wire._rowData[optionIdx] : '';
+                        result.push({ label: label, option: optionValue || '' });
+                    }
+                }
+
+                // To端（排除选中的插件，排除焊点：脚位为X）
+                if (wire.toCode && wire.toCode !== selectedPlugin) {
+                    if (String(wire.toPin).toUpperCase() !== 'X') {
+                        const isInline = inlinePlugins.has(wire.toCode);
+                        const info = pluginInfoMap.get(wire.toCode);
+                        let label = '';
+                        if (isInline) {
+                            label = `[Inline] ${wire.toCode}-${wire.toPin}`;
+                        } else if (info && info.shortCode) {
+                            label = `${info.shortCode} (${wire.toCode})-${wire.toPin}`;
+                        } else {
+                            label = `${wire.toCode}-${wire.toPin}`;
+                        }
+                        // 获取Option值
+                        const optionIdx = wire._colIndexMap['Option'];
+                        const optionValue = optionIdx !== undefined ? wire._rowData[optionIdx] : '';
+                        result.push({ label: label, option: optionValue || '' });
+                    }
+                }
+            });
+
+            // 去重
+            const uniqueResult = [];
+            const seen = new Set();
+            result.forEach(item => {
+                if (!seen.has(item.label)) {
+                    seen.add(item.label);
+                    uniqueResult.push(item);
+                }
+            });
+
+            return uniqueResult;
+        }
+
+        // 提取Pin号用于排序
+        function extractPinForSort(pinValue) {
+            if (!pinValue) return 999999;
+            const pin = String(pinValue).trim().toUpperCase();
+            if (/^\d+$/.test(pin)) return parseInt(pin, 10);
+            const numMatch = pin.match(/\d+/);
+            if (numMatch) return parseInt(numMatch[0], 10);
+            if (/^[A-Z]$/.test(pin)) return pin.charCodeAt(0) - 64;
+            let value = 0;
+            for (let i = 0; i < pin.length; i++) {
+                value = value * 26 + (pin.charCodeAt(i) - 64);
+            }
+            return value;
+        }
+
+        // 构建显示列顺序 - V1版本：保持原始列顺序
+        function buildDisplayColumns() {
+            // 直接使用原始列顺序，不进行调换
+            return originalColumns.slice();
+        }
+
+        // 获取列标签 - V1版本：保持原始列名，不调换显示名称
+        function getColumnLabel(colName, isFromPlugin) {
+            // V1版本：表头始终显示原始列名
+            return colName;
+        }
+
+        // 获取列值（根据是否调换）
+        function getColumnValue(rowData, colName, isFromPlugin) {
+            const colLower = String(colName).toLowerCase();
+
+            // Wire ID 特殊处理
+            if (colLower === 'wire ID' || colLower === 'wire id' || colLower === 'wireid') {
+                return rowData._rowData[0] || '';
+            }
+
+            if (isFromPlugin) {
+                // 插件在 From：通过列名查找索引获取值
+                const idx = rowData._colIndexMap[colName];
+                return idx !== undefined && rowData._rowData[idx] !== undefined ? rowData._rowData[idx] : '';
+            } else {
+                // 插件在 To：需要调换 From/To
+                if (colLower === 'from code') {
+                    return rowData.toCode;
+                } else if (colLower === 'from pin') {
+                    return rowData.toPin;
+                } else if (colLower === 'to code') {
+                    return rowData.fromCode;
+                } else if (colLower === 'to pin') {
+                    return rowData.fromPin;
+                } else {
+                    // 其他列：通过列名查找索引获取值
+                    const idx = rowData._colIndexMap[colName];
+                    return idx !== undefined && rowData._rowData[idx] !== undefined ? rowData._rowData[idx] : '';
+                }
+            }
+        }
+
+        // 判断某列是否需要高亮 - V1版本：From Code 和 From Pin 这两列始终有颜色
+        function shouldHighlight(colName, isFromPlugin) {
+            const colLower = String(colName).toLowerCase();
+            // V1规则：From Code 和 From Pin 这两列始终有颜色（在显示位置上）
+            return colLower === 'from code' || colLower === 'from pin';
+        }
+
+        function queryCircuits() {
+            const selectedShortCode = document.getElementById('pluginSelect').value;
+            if (!selectedShortCode) {
+                alert('请先选择一个插件');
+                return;
+            }
+
+            // 短号转插件代码
+            const selectedPlugin = shortCodeToPluginCodeMap.get(selectedShortCode) || selectedShortCode;
+
+            console.log('查询插件 - 短号:', selectedShortCode, '插件代码:', selectedPlugin);
+
+            queryResults = [];
+            const results = [];
+
+            // 查找该插件连接的所有回路（同时匹配短号和插件代码）
+            wireGraph.forEach((wire, wireId) => {
+                const isFromPlugin = wire.fromCode === selectedPlugin || wire.fromCode === selectedShortCode;
+                const isToPlugin = wire.toCode === selectedPlugin || wire.toCode === selectedShortCode;
+
+                if (isFromPlugin || isToPlugin) {
+                    const connectedInfo = getConnectedCircuitsInfo(wireId, selectedPlugin);
+
+                    // 计算排序值
+                    const sortPin = isFromPlugin
+                        ? extractPinForSort(wire.fromPin)
+                        : extractPinForSort(wire.toPin);
+
+                    // 排序用的 From Code
+                    const sortFromCode = isFromPlugin ? wire.fromCode : wire.toCode;
+
+                    results.push({
+                        _wireData: wire,
+                        _isFromPlugin: isFromPlugin,
+                        _sortPin: sortPin,
+                        _sortFromCode: sortFromCode,
+                        _connectedInfo: connectedInfo
+                    });
+                }
+            });
+
+            // 输出调试信息
+            console.log('WIRELIST 中的所有唯一插件代码:', [...new Set([...wireGraph.values()].map(w => w.fromCode).filter(x => x))].slice(0, 20));
+            console.log('要匹配的短号:', selectedShortCode);
+            console.log('要匹配的插件代码:', selectedPlugin);
+
+            // 排序：From Code → From Pin
+            results.sort((a, b) => {
+                const codeA = String(a._sortFromCode || '').trim();
+                const codeB = String(b._sortFromCode || '').trim();
+                if (codeA !== codeB) return codeA.localeCompare(codeB);
+                return a._sortPin - b._sortPin;
+            });
+
+            // 构建显示列顺序
+            currentDisplayColumns = buildDisplayColumns();
+
+            queryResults = results;
+            displayResults(selectedShortCode, results);
+            updateStatus(`分析完成: 共有 ${results.length} 条回路`);
+        }
+
+        function displayResults(shortCode, results) {
+            // shortCode 转换为 pluginCode 获取信息
+            const pluginCode = shortCodeToPluginCodeMap.get(shortCode) || shortCode;
+            const info = pluginInfoMap.get(pluginCode);
+            let displayText = '';
+            if (info && info.shortCode && info.name) {
+                displayText = info.shortCode + ' - ' + info.name;
+            } else if (info && info.shortCode) {
+                displayText = info.shortCode;
+            } else if (info && info.name) {
+                displayText = info.name;
+            } else {
+                displayText = shortCode;
+            }
+            document.getElementById('selectedPlugin').textContent = displayText;
+            document.getElementById('circuitCount').textContent = results.length;
+            document.getElementById('resultsSection').classList.add('show');
+
+            const thead = document.getElementById('resultsTableHead');
+            const tbody = document.getElementById('resultsTableBody');
+
+            // 表头 - 需要根据第一条数据的isFromPlugin来确定列标签
+            const firstRow = results[0];
+            const isFromPlugin = firstRow ? firstRow._isFromPlugin : true;
+
+            thead.innerHTML = '<tr>' +
+                currentDisplayColumns.map(col => `<th>${getColumnLabel(col, isFromPlugin)}</th>`).join('') +
+                '<th>同一回路的其他插件和脚位</th>' +
+                '<th>Option</th>' +
+                '</tr>';
+
+            if (results.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="${currentDisplayColumns.length + 2}" style="text-align:center;">未找到相关回路</td></tr>`;
+                return;
+            }
+
+            results.forEach(row => {
+                const tr = document.createElement('tr');
+                let html = '';
+
+                currentDisplayColumns.forEach(col => {
+                    const value = getColumnValue(row._wireData, col, row._isFromPlugin);
+                    const highlight = shouldHighlight(col, row._isFromPlugin);
+
+                    if (highlight) {
+                        html += `<td style="background: #e7f3ff; color: #667eea; font-weight: bold;">${value}</td>`;
+                    } else {
+                        html += `<td>${value}</td>`;
+                    }
+                });
+
+                // 同一回路的其他插件和脚位
+                const labelText = row._connectedInfo && row._connectedInfo.length > 0
+                    ? row._connectedInfo.map(item => item.label).join('\n')
+                    : '';
+                html += `<td style="background: #fffde7; white-space: pre-wrap; min-width: 200px;">${labelText}</td>`;
+
+                // Option列
+                const optionText = row._connectedInfo && row._connectedInfo.length > 0
+                    ? row._connectedInfo.map(item => item.option).join('\n')
+                    : '';
+                html += `<td style="background: #fffde7; white-space: pre-wrap; min-width: 100px;">${optionText}</td>`;
+
+                tr.innerHTML = html;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function exportToExcel() {
+            if (queryResults.length === 0) {
+                alert('没有数据可导出');
+                return;
+            }
+
+            const headers = currentDisplayColumns.map(col => getColumnLabel(col, true));
+            headers.push('同一回路的其他插件和脚位');
+            headers.push('Option');
+
+            const data = [headers];
+
+            queryResults.forEach(row => {
+                const rowData = [];
+                currentDisplayColumns.forEach(col => {
+                    rowData.push(getColumnValue(row._wireData, col, row._isFromPlugin));
+                });
+                const labelText = row._connectedInfo ? row._connectedInfo.map(item => item.label).join('\n') : '';
+                const optionText = row._connectedInfo ? row._connectedInfo.map(item => item.option).join('\n') : '';
+                rowData.push(labelText);
+                rowData.push(optionText);
+                data.push(rowData);
+            });
+
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(data);
+
+            // 设置列宽
+            ws['!cols'] = headers.map((h, i) => {
+                if (h === '同一回路的其他插件和脚位') return { wch: 60 };
+                if (h.includes('Code')) return { wch: 20 };
+                if (h.includes('Pin')) return { wch: 10 };
+                if (h.includes('Wire')) return { wch: 18 };
+                return { wch: 15 };
+            });
+
+            const range = XLSX.utils.decode_range(ws['!ref']);
+
+            // 表头样式
+            for (let C = range.s.c; C <= range.e.c; ++C) {
+                const cellAddress = XLSX.utils.encode_cell({ r: 0, c: C });
+                if (!ws[cellAddress]) continue;
+                ws[cellAddress].s = {
+                    fill: { fgColor: { rgb: "667eea" } },
+                    font: { color: { rgb: "000000" }, bold: true },
+                    alignment: { horizontal: "center", vertical: "center" }
+                };
+            }
+
+            // 数据行样式
+            for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+                for (let C = range.s.c; C <= range.e.c; ++C) {
+                    const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+                    if (!ws[cellAddress]) continue;
+
+                    const colName = currentDisplayColumns[C];
+                    const colLower = String(colName).toLowerCase();
+                    const isFromCol = colLower === 'from code' || colLower === 'from pin';
+
+                    if (isFromCol) {
+                        ws[cellAddress].s = {
+                            fill: { fgColor: { rgb: "E7F3FF" } },
+                            font: { bold: true, color: { rgb: "667EEA" } }
+                        };
+                    } else if (C === range.e.c || C === range.e.c - 1) {
+                        ws[cellAddress].s = {
+                            fill: { fgColor: { rgb: "FFFDE7" } },
+                            alignment: { vertical: "top", wrapText: true }
+                        };
+                    } else {
+                        ws[cellAddress].s = { alignment: { vertical: "center" } };
+                    }
+                }
+            }
+
+            XLSX.utils.book_append_sheet(wb, ws, '回路分析结果');
+            const shortCode = document.getElementById('pluginSelect').value;
+            const pluginCode = shortCodeToPluginCodeMap.get(shortCode) || shortCode;
+            const info = pluginInfoMap.get(pluginCode);
+            const fileName = (info && info.shortCode ? info.shortCode : shortCode) + '_回路分析.xlsx';
+            XLSX.writeFile(wb, fileName);
+            updateStatus('Excel导出完成');
+        }
+
+        async function copyHtmlToClipboard() {
+            if (queryResults.length === 0) {
+                alert('没有数据可复制');
+                return;
+            }
+
+            const headers = currentDisplayColumns.map(col => getColumnLabel(col, true));
+            headers.push('同一回路的其他插件和脚位');
+            headers.push('Option');
+
+            let htmlTable = '<table style="border-collapse: collapse; width: 100%; font-size: 13px;">';
+            htmlTable += '<thead><tr>';
+            headers.forEach(h => {
+                htmlTable += `<th style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #000; padding: 8px 12px; border: 1px solid #e0e0e0; font-weight: 600;">${h}</th>`;
+            });
+            htmlTable += '</tr></thead><tbody>';
+
+            queryResults.forEach(row => {
+                htmlTable += '<tr>';
+                currentDisplayColumns.forEach(col => {
+                    const value = getColumnValue(row._wireData, col, row._isFromPlugin);
+                    const highlight = shouldHighlight(col, row._isFromPlugin);
+
+                    if (highlight) {
+                        htmlTable += `<td style="padding: 8px 12px; border: 1px solid #e0e0e0; background: #E7F3FF; font-weight: bold; color: #667EEA;">${value}</td>`;
+                    } else {
+                        htmlTable += `<td style="padding: 8px 12px; border: 1px solid #e0e0e0;">${value}</td>`;
+                    }
+                });
+
+                const labelText = row._connectedInfo ? row._connectedInfo.map(item => item.label).join('\n') : '';
+                htmlTable += `<td style="padding: 8px 12px; border: 1px solid #e0e0e0; background: #FFFDE7; white-space: pre-wrap;">${labelText}</td>`;
+
+                const optionText = row._connectedInfo ? row._connectedInfo.map(item => item.option).join('\n') : '';
+                htmlTable += `<td style="padding: 8px 12px; border: 1px solid #e0e0e0; background: #FFFDE7; white-space: pre-wrap;">${optionText}</td>`;
+                htmlTable += '</tr>';
+            });
+
+            htmlTable += '</tbody></table>';
+
+            try {
+                const fullHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>table{border-collapse:collapse}th{background:linear-gradient(135deg,#667eea,#764ba2);color:#000;padding:8px 12px;border:1px solid #e0e0e0;font-weight:600}td{padding:8px 12px;border:1px solid #e0e0e0}</style></head><body>${htmlTable}</body></html>`;
+
+                await navigator.clipboard.write([
+                    new ClipboardItem({
+                        'text/html': new Blob([fullHtml], { type: 'text/html' }),
+                        'text/plain': new Blob([htmlTable.replace(/<[^>]+>/g, '\t').replace(/<\/tr>/g, '\n')], { type: 'text/plain' })
+                    })
+                ]);
+                alert('HTML表格已复制到剪切板！');
+                updateStatus('HTML已复制到剪贴板');
+            } catch (err) {
+                alert('复制失败，请手动选择表格后复制（Ctrl+C）');
+            }
+        }
+    </script>
+</body>
+</html>

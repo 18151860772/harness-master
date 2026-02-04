@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__zai-mcp-server__analyze_image",
+      "Bash(node:*)",
+      "Bash(python:*)",
+      "Bash(pip install:*)",
+      "Bash(pip3 install:*)",
+      "Bash(where:*)",
+      "Bash(ls:*)",
+      "Bash(npm install:*)",
+      "mcp__web-reader__webReader",
+      "Bash(curl:*)",
+      "Bash(tar:*)",
+      "Bash(powershell:*)",
+      "Bash(dir:*)",
+      "Bash(cmd:*)",
+      "Bash(claude mcp list:*)",
+      "Bash(claude mcp get:*)",
+      "Bash(uvx minimax-coding-plan-mcp:*)",
+      "Bash(pip show:*)",
+      "Bash(pip3 show:*)",
+      "Bash(\"C:\\\\Users\\\\HP\\\\.local\\\\bin\\\\uv\" --version)",
+      "Bash(py:*)",
+      "mcp__zai-mcp-server__understand_technical_diagram",
+      "WebFetch(domain:en.wikipedia.org)",
+      "mcp__MiniMax__web_search",
+      "mcp__zread__search_doc",
+      "mcp__zread__get_repo_structure",
+      "mcp__web-search-prime__webSearchPrime"
+    ]
+  }
+}

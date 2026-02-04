@@ -1,0 +1,462 @@
+{
+  "sheetnames": [
+    "BDBT BTBD",
+    "BDDHT DHTBD"
+  ],
+  "sheets": {
+    "first_5_rows": [
+      {
+        "row_num": 1,
+        "cells": [
+          {
+            "col": 1,
+            "value": "BDBT    \nT22  插件型号：368537-1\n      ",
+            "font_name": "宋体",
+            "font_size": 16.0,
+            "font_bold": true
+          },
+          {
+            "col": 12,
+            "value": "BTBD    \nT22  插件型号：174661-2 \n     ",
+            "font_name": "宋体",
+            "font_size": 16.0,
+            "font_bold": true
+          }
+        ],
+        "height": 64.5
+      },
+      {
+        "row_num": 2,
+        "cells": [
+          {
+            "col": 1,
+            "value": "室内线束端视图",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": true
+          },
+          {
+            "col": 12,
+            "value": "后驱线束端视图",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": true
+          },
+          {
+            "col": 13,
+            "value": null,
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": true
+          }
+        ],
+        "height": 120.0
+      },
+      {
+        "row_num": 3,
+        "cells": [
+          {
+            "col": 1,
+            "value": "孔位定义",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": true
+          },
+          {
+            "col": 2,
+            "value": "管脚",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": true
+          },
+          {
+            "col": 3,
+            "value": "功能（中文）",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": true
+          },
+          {
+            "col": 4,
+            "value": "电流/A\n（信号电流可以不填）",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": true
+          },
+          {
+            "col": 5,
+            "value": "线径/㎜²",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": true
+          },
+          {
+            "col": 6,
+            "value": "线色",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": true
+          },
+          {
+            "col": 7,
+            "value": "端子型号",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": true
+          },
+          {
+            "col": 8,
+            "value": "密封塞型号",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": true
+          },
+          {
+            "col": 9,
+            "value": "导线类型\n(双绞线/屏\n蔽线)",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": true
+          },
+          {
+            "col": 10,
+            "value": "OPTION",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": true
+          },
+          {
+            "col": 11,
+            "value": "备注",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": true
+          },
+          {
+            "col": 12,
+            "value": "孔位定义",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": true
+          },
+          {
+            "col": 13,
+            "value": "管脚",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": true
+          },
+          {
+            "col": 14,
+            "value": "功能（中文）",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": true
+          },
+          {
+            "col": 15,
+            "value": "电流/A\n（信号电流可以不填）",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": true
+          },
+          {
+            "col": 16,
+            "value": "线径/㎜²",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": true
+          },
+          {
+            "col": 17,
+            "value": "线色",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": true
+          },
+          {
+            "col": 18,
+            "value": "端子型号",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": true
+          },
+          {
+            "col": 19,
+            "value": "密封塞型号",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": true
+          },
+          {
+            "col": 20,
+            "value": "导线类型\n(双绞线/屏\n蔽线)",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": true
+          },
+          {
+            "col": 21,
+            "value": "OPTION",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": true
+          },
+          {
+            "col": 22,
+            "value": "备注",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": true
+          }
+        ],
+        "height": 40.5
+      },
+      {
+        "row_num": 4,
+        "cells": [
+          {
+            "col": 2,
+            "value": "1",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": false
+          },
+          {
+            "col": 3,
+            "value": "后驱电源",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": false
+          },
+          {
+            "col": 5,
+            "value": "0.5",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": false
+          },
+          {
+            "col": 6,
+            "value": "RW",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": false
+          },
+          {
+            "col": 7,
+            "value": "171631-1",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": false
+          },
+          {
+            "col": 8,
+            "value": "1-368889-1",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": false
+          },
+          {
+            "col": 9,
+            "value": "/",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": false
+          },
+          {
+            "col": 13,
+            "value": "1",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": false
+          },
+          {
+            "col": 14,
+            "value": "后驱电源",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": false
+          },
+          {
+            "col": 16,
+            "value": "0.5",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": false
+          },
+          {
+            "col": 17,
+            "value": "RW",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": false
+          },
+          {
+            "col": 18,
+            "value": "171630-1",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": false
+          },
+          {
+            "col": 19,
+            "value": "1-368889-1",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": false
+          },
+          {
+            "col": 20,
+            "value": "/",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": false
+          }
+        ],
+        "height": null
+      },
+      {
+        "row_num": 5,
+        "cells": [
+          {
+            "col": 2,
+            "value": "2",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": false
+          },
+          {
+            "col": 3,
+            "value": "后驱地",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": false
+          },
+          {
+            "col": 5,
+            "value": "0.5",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": false
+          },
+          {
+            "col": 6,
+            "value": "BR",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": false
+          },
+          {
+            "col": 7,
+            "value": "171631-1",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": false
+          },
+          {
+            "col": 8,
+            "value": "1-368889-1",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": false
+          },
+          {
+            "col": 9,
+            "value": "/",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": false
+          },
+          {
+            "col": 13,
+            "value": "2",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": false
+          },
+          {
+            "col": 14,
+            "value": "后驱地",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": false
+          },
+          {
+            "col": 16,
+            "value": "0.5",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": false
+          },
+          {
+            "col": 17,
+            "value": "BR",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": false
+          },
+          {
+            "col": 18,
+            "value": "171630-1",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": false
+          },
+          {
+            "col": 19,
+            "value": "1-368889-1",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": false
+          },
+          {
+            "col": 20,
+            "value": "/",
+            "font_name": "宋体",
+            "font_size": 11.0,
+            "font_bold": false
+          }
+        ],
+        "height": null
+      }
+    ],
+    "merged_cells": [
+      "A3:A17",
+      "L3:L17",
+      "L1:V1",
+      "M2:V2",
+      "B2:K2",
+      "A1:K1"
+    ],
+    "column_widths": {
+      "A": 13.0,
+      "B": 13.0,
+      "C": 15.0,
+      "D": 17.875,
+      "E": 11.25,
+      "F": 13.0,
+      "G": 13.0,
+      "H": 13.25,
+      "I": 13.0,
+      "J": 13.0,
+      "K": 13.0,
+      "L": 13.0,
+      "M": 13.0,
+      "N": 12.625,
+      "O": 19.5,
+      "P": 11.125,
+      "Q": 13.0,
+      "R": 13.0,
+      "S": 12.75,
+      "T": 13.0,
+      "U": 13.0,
+      "V": 13.0
+    }
+  },
+  "first_sheet": {
+    "name": "BDBT BTBD",
+    "max_row": 17,
+    "max_column": 22
+  }
+}

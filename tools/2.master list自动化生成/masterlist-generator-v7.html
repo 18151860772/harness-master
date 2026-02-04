@@ -1,0 +1,1640 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master List 自动化生成工具 - 智能Sheet识别版</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .upload-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .upload-box {
+            border: 3px dashed #667eea;
+            border-radius: 10px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f8f9ff;
+        }
+        
+        .upload-box:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+            transform: translateY(-2px);
+        }
+        
+        .upload-box.dragover {
+            border-color: #764ba2;
+            background: #e8ebff;
+        }
+        
+        .upload-box h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        
+        .upload-box p {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+        
+        .upload-box .file-info {
+            display: none;
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        
+        .upload-box .file-info.show {
+            display: inline-block;
+        }
+        
+        .upload-box .sheet-info {
+            display: none;
+            background: #2196F3;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-size: 12px;
+            margin-top: 8px;
+        }
+        
+        .upload-box .sheet-info.show {
+            display: inline-block;
+        }
+        
+        .upload-box input[type="file"] {
+            display: none;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);
+            color: white;
+        }
+        
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(86, 171, 47, 0.4);
+        }
+        
+        .btn-info {
+            background: linear-gradient(135deg, #00bcd4 0%, #00838f 100%);
+            color: white;
+        }
+        
+        .btn-info:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 188, 212, 0.4);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        
+        .progress-section {
+            display: none;
+            margin-bottom: 30px;
+        }
+        
+        .progress-section.show {
+            display: block;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .progress-status {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .results-section {
+            display: none;
+        }
+        
+        .results-section.show {
+            display: block;
+        }
+        
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .results-header h2 {
+            color: #333;
+            font-size: 24px;
+        }
+        
+        .results-stats {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .stat-card h3 {
+            font-size: 32px;
+            margin-bottom: 5px;
+        }
+        
+        .stat-card p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .results-table-container {
+            overflow-x: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            max-height: 600px;
+        }
+        
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            table-layout: fixed;
+        }
+        
+        .results-table th,
+        .results-table td {
+            word-wrap: break-word;
+            word-break: break-all;
+            white-space: normal;
+            overflow: hidden;
+        }
+        
+        .results-table thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: black;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .results-table th {
+            padding: 8px 4px;
+            text-align: center;
+            font-weight: bold;
+            border: 1px solid rgba(255,255,255, 0.2);
+            min-width: 50px;
+        }
+        
+        .results-table th.version-col {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: black;
+        }
+        
+        .results-table th.option-col {
+            background: linear-gradient(135deg, #2196F3 0%, #0d47a1 100%);
+            color: black;
+        }
+        
+        .results-table th.family-relation-col {
+            background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
+            color: black;
+        }
+        
+        .results-table tbody tr:nth-child(even) {
+            background: #f8f9ff;
+        }
+        
+        .results-table tbody tr:hover {
+            background: #e8ebff;
+        }
+        
+        .results-table td {
+            padding: 6px 4px;
+            border: 1px solid #e0e0e0;
+            text-align: center;
+        }
+        
+        .results-table td.marked {
+            background: #4CAF50;
+            color: black;
+            font-weight: bold;
+        }
+        
+        .results-table td.no-col {
+            background: #e0e0e0;
+            font-weight: bold;
+            position: sticky;
+            left: 0;
+            z-index: 5;
+        }
+        
+        .results-table td.family-col {
+            background: #fff3e0;
+            font-weight: bold;
+            position: sticky;
+            left: 50px;
+            z-index: 5;
+        }
+        
+        .results-table td.partno-col {
+            background: #e3f2fd;
+            font-weight: bold;
+            position: sticky;
+            left: 80px;
+            z-index: 5;
+        }
+        
+        .log-section {
+            background: #f5f5f5;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        
+        .log-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+        
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px 10px;
+            border-left: 3px solid #667eea;
+            background: white;
+        }
+        
+        .log-entry.error {
+            border-left-color: #f44336;
+        }
+        
+        .log-entry.warning {
+            border-left-color: #ff9800;
+        }
+        
+        .log-entry.success {
+            border-left-color: #4CAF50;
+        }
+        
+        .log-entry.info {
+            border-left-color: #2196F3;
+        }
+        
+        .filter-section {
+            background: #f8f9ff;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .filter-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+        
+        .filter-controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .filter-controls label {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .filter-controls select,
+        .filter-controls input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        @media (max-width: 768px) {
+            .upload-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .results-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Master List 自动化生成工具 - 智能Sheet识别版</h1>
+            <p>根据Wire List和配置表自动生成Master List（特征值按ABC字母顺序排列）<br>支持不同sheet名称的智能识别</p>
+        </div>
+        
+        <div class="content">
+            <!-- 文件上传区域 -->
+            <div class="upload-section">
+                <div class="upload-box" id="wirelistBox" onclick="document.getElementById('wirelistFile').click()">
+                    <h3>📁 上传 Wire List</h3>
+                    <p>点击或拖拽上传 .xlsx 文件</p>
+                    <div class="file-info" id="wirelistInfo"></div>
+                    <div class="sheet-info" id="wirelistSheetInfo"></div>
+                    <input type="file" id="wirelistFile" accept=".xlsx,.xls" onchange="handleFileSelect(this, 'wirelist')">
+                </div>
+                
+                <div class="upload-box" id="configBox" onclick="document.getElementById('configFile').click()">
+                    <h3>📊 上传配置表</h3>
+                    <p>点击或拖拽上传 .xlsx 文件</p>
+                    <div class="file-info" id="configInfo"></div>
+                    <div class="sheet-info" id="configSheetInfo"></div>
+                    <input type="file" id="configFile" accept=".xlsx,.xls" onchange="handleFileSelect(this, 'config')">
+                </div>
+            </div>
+            
+            <!-- 模板下载区域 -->
+            <div style="background: #f0f2ff; padding: 20px; border-radius: 10px; margin-bottom: 30px; text-align: center;">
+                <h3 style="color: #333; margin-bottom: 15px;">📥 下载标准模板</h3>
+                <p style="color: #666; margin-bottom: 15px; font-size: 14px;">如果没有模板，可以下载以下标准模板作为参考</p>
+                <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+                    <button class="btn btn-info" onclick="downloadWirelistTemplate()">
+                        📄 下载Wire List模板
+                    </button>
+                    <button class="btn btn-info" onclick="downloadConfigTemplate()">
+                        📊 下载配置表模板
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 操作按钮 -->
+            <div class="action-buttons">
+                <button class="btn btn-primary" id="processBtn" onclick="processFiles()" disabled>
+                    🚀 开始处理
+                </button>
+                <button class="btn btn-info" id="showSheetsBtn" onclick="showAllSheets()" disabled>
+                    📋 查看Sheet列表
+                </button>
+                <button class="btn btn-success" id="exportBtn" onclick="exportResults()" disabled>
+                    📥 导出结果
+                </button>
+                <button class="btn btn-success" id="copyBtn" onclick="copyToClipboard()" disabled>
+                    📋 复制到HTML（保留颜色）
+                </button>
+                <button class="btn btn-success" id="exportFamilyOptionBtn" onclick="exportFamilyOptionRelation()" disabled>
+                    📋 导出Family-Option关系
+                </button>
+                <button class="btn btn-success" id="exportOptionFamilyBtn" onclick="exportOptionFamilyRelation()" disabled>
+                    📊 导出Option-Family关系
+                </button>
+            </div>
+            
+            <!-- 进度条 -->
+            <div class="progress-section" id="progressSection">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill">0%</div>
+                </div>
+                <div class="progress-status" id="progressStatus">准备就绪</div>
+            </div>
+            
+            <!-- 结果展示区域 -->
+            <div class="results-section" id="resultsSection">
+                <div class="results-header">
+                    <h2>处理结果</h2>
+                </div>
+                
+                <div class="results-stats">
+                    <div class="stat-card">
+                        <h3 id="statFamilies">0</h3>
+                        <p>Family总数</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3 id="statVersions">0</h3>
+                        <p>版型总数</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3 id="statOptions">0</h3>
+                        <p>Option总数</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3 id="statMarks">0</h3>
+                        <p>打点总数</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3 id="statRows">0</h3>
+                        <p>总行数</p>
+                    </div>
+                </div>
+                
+                <!-- 筛选区域 -->
+                <div class="filter-section">
+                    <h3>筛选条件</h3>
+                    <div class="filter-controls">
+                        <label>Family:</label>
+                        <input type="text" id="filterFamily" placeholder="输入Family名称" oninput="filterResultsDebounced()">
+                        
+                        <label>版型:</label>
+                        <select id="filterVersion" onchange="filterResultsDebounced()">
+                            <option value="">全部</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="results-table-container">
+                    <table class="results-table" id="resultsTable">
+                        <thead id="resultsTableHead"></thead>
+                        <tbody id="resultsTableBody"></tbody>
+                    </table>
+                </div>
+                
+                <div class="log-section">
+                    <h3>处理日志</h3>
+                    <div id="logContainer"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let wirelistData = null;
+        let configData = null;
+        let wirelistSheetName = '';
+        let configSheetName = '';
+        let processedResults = null;
+        let filterTimeout = null;
+        
+        // Wire List sheet识别关键词
+        const WIRELIST_KEYWORDS = ['wire', 'list', 'wirelist', 'wire-list', '导线', '线束', '接线', '连接线'];
+        // 配置表sheet识别关键词
+        const CONFIG_KEYWORDS = ['master', 'list', 'masterlist', 'master-list', 'config', 'configuration', '配置', '特征值'];
+        
+        // 智能识别Wire List sheet名称
+        function detectWirelistSheet(workbook) {
+            const sheetNames = workbook.SheetNames;
+            addLog('info', `文件包含 ${sheetNames.length} 个sheet: ${sheetNames.join(', ')}`);
+            
+            // 优先级1: 精确匹配
+            const exactMatch = sheetNames.find(name => name.toLowerCase() === 'wire list');
+            if (exactMatch) {
+                addLog('success', `找到精确匹配的Wire List sheet: "${exactMatch}"`);
+                return exactMatch;
+            }
+            
+            // 优先级2: 关键词匹配（包含wire和list）
+            const keywordMatch = sheetNames.find(name => {
+                const lowerName = name.toLowerCase();
+                return lowerName.includes('wire') && lowerName.includes('list');
+            });
+            if (keywordMatch) {
+                addLog('success', `通过关键词匹配找到Wire List sheet: "${keywordMatch}"`);
+                return keywordMatch;
+            }
+            
+            // 优先级3: 包含任一关键词
+            const anyKeywordMatch = sheetNames.find(name => {
+                const lowerName = name.toLowerCase();
+                return WIRELIST_KEYWORDS.some(keyword => lowerName.includes(keyword));
+            });
+            if (anyKeywordMatch) {
+                addLog('success', `通过任一关键词匹配找到Wire List sheet: "${anyKeywordMatch}"`);
+                return anyKeywordMatch;
+            }
+            
+            // 优先级4: 使用第一个sheet
+            addLog('warning', `未找到匹配的Wire List sheet，使用第一个sheet: "${sheetNames[0]}"`);
+            return sheetNames[0];
+        }
+        
+        // 智能识别配置表sheet名称
+        function detectConfigSheet(workbook) {
+            const sheetNames = workbook.SheetNames;
+            addLog('info', `文件包含 ${sheetNames.length} 个sheet: ${sheetNames.join(', ')}`);
+            
+            // 优先级1: 精确匹配
+            const exactMatch = sheetNames.find(name => name.toLowerCase() === 'master list');
+            if (exactMatch) {
+                addLog('success', `找到精确匹配的配置表sheet: "${exactMatch}"`);
+                return exactMatch;
+            }
+            
+            // 优先级2: 关键词匹配（包含master和list）
+            const keywordMatch = sheetNames.find(name => {
+                const lowerName = name.toLowerCase();
+                return lowerName.includes('master') && lowerName.includes('list');
+            });
+            if (keywordMatch) {
+                addLog('success', `通过关键词匹配找到配置表sheet: "${keywordMatch}"`);
+                return keywordMatch;
+            }
+            
+            // 优先级3: 包含任一关键词
+            const anyKeywordMatch = sheetNames.find(name => {
+                const lowerName = name.toLowerCase();
+                return CONFIG_KEYWORDS.some(keyword => lowerName.includes(keyword));
+            });
+            if (anyKeywordMatch) {
+                addLog('success', `通过任一关键词匹配找到配置表sheet: "${anyKeywordMatch}"`);
+                return anyKeywordMatch;
+            }
+            
+            // 优先级4: 使用第一个sheet
+            addLog('warning', `未找到匹配的配置表sheet，使用第一个sheet: "${sheetNames[0]}"`);
+            return sheetNames[0];
+        }
+        
+        // 显示所有sheet信息
+        function showAllSheets() {
+            if (!wirelistData && !configData) {
+                addLog('error', '请先上传文件');
+                return;
+            }
+            
+            addLog('info', '========== Sheet信息汇总 ==========');
+            
+            if (wirelistData) {
+                addLog('info', `Wire List文件的sheet列表:`);
+                wirelistData.SheetNames.forEach((name, index) => {
+                    const isDetected = name === wirelistSheetName;
+                    addLog(isDetected ? 'success' : 'info', `  ${index + 1}. ${name}${isDetected ? ' ✓ (已识别)' : ''}`);
+                });
+            }
+            
+            if (configData) {
+                addLog('info', `配置表文件的sheet列表:`);
+                configData.SheetNames.forEach((name, index) => {
+                    const isDetected = name === configSheetName;
+                    addLog(isDetected ? 'success' : 'info', `  ${index + 1}. ${name}${isDetected ? ' ✓ (已识别)' : ''}`);
+                });
+            }
+            
+            addLog('info', '====================================');
+        }
+        
+        // 拖拽上传处理
+        function setupDragDrop(boxId, fileType) {
+            const box = document.getElementById(boxId);
+            box.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                box.classList.add('dragover');
+            });
+            box.addEventListener('dragleave', () => box.classList.remove('dragover'));
+            box.addEventListener('drop', (e) => {
+                e.preventDefault();
+                box.classList.remove('dragover');
+                const file = e.dataTransfer.files[0];
+                if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
+                    handleFile(file, fileType);
+                }
+            });
+        }
+        
+        setupDragDrop('wirelistBox', 'wirelist');
+        setupDragDrop('configBox', 'config');
+        
+        // 文件选择处理
+        function handleFileSelect(input, fileType) {
+            const file = input.files[0];
+            if (file) handleFile(file, fileType);
+        }
+        
+        // 处理文件
+        function handleFile(file, fileType) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                
+                addLog('info', `开始加载文件: ${file.name}`);
+                
+                if (fileType === 'wirelist') {
+                    wirelistData = workbook;
+                    wirelistSheetName = detectWirelistSheet(workbook);
+                    
+                    document.getElementById('wirelistInfo').textContent = `✓ ${file.name}`;
+                    document.getElementById('wirelistInfo').classList.add('show');
+                    document.getElementById('wirelistSheetInfo').textContent = `Sheet: ${wirelistSheetName}`;
+                    document.getElementById('wirelistSheetInfo').classList.add('show');
+                    
+                    addLog('success', `Wire List 文件加载成功: ${file.name}`);
+                    addLog('success', `已识别sheet: "${wirelistSheetName}"`);
+                } else {
+                    configData = workbook;
+                    configSheetName = detectConfigSheet(workbook);
+                    
+                    document.getElementById('configInfo').textContent = `✓ ${file.name}`;
+                    document.getElementById('configInfo').classList.add('show');
+                    document.getElementById('configSheetInfo').textContent = `Sheet: ${configSheetName}`;
+                    document.getElementById('configSheetInfo').classList.add('show');
+                    
+                    addLog('success', `配置表文件加载成功: ${file.name}`);
+                    addLog('success', `已识别sheet: "${configSheetName}"`);
+                }
+                
+                checkFilesReady();
+            };
+            reader.readAsArrayBuffer(file);
+        }
+        
+        // 检查文件是否都准备好了
+        function checkFilesReady() {
+            const processBtn = document.getElementById('processBtn');
+            const showSheetsBtn = document.getElementById('showSheetsBtn');
+            
+            if (wirelistData && configData) {
+                processBtn.disabled = false;
+                showSheetsBtn.disabled = false;
+                addLog('success', '所有文件已加载完成，可以开始处理');
+                addLog('info', '提示：点击"查看Sheet列表"按钮可以查看文件中的所有sheet及识别结果');
+            }
+        }
+        
+        // 添加日志
+        function addLog(type, message) {
+            const logContainer = document.getElementById('logContainer');
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${type}`;
+            const timestamp = new Date().toLocaleTimeString();
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        // 更新进度
+        function updateProgress(percent, status) {
+            const progressFill = document.getElementById('progressFill');
+            const progressStatus = document.getElementById('progressStatus');
+            progressFill.style.width = `${percent}%`;
+            progressFill.textContent = `${percent}%`;
+            progressStatus.textContent = status;
+        }
+        
+        // 解析组合Option
+        function parseOptions(optionStr) {
+            if (!optionStr || optionStr === '-' || optionStr === '') return [];
+            
+            const options = [];
+            
+            // 处理括号
+            while (optionStr.includes('(') && optionStr.includes(')')) {
+                const startIndex = optionStr.indexOf('(');
+                const endIndex = optionStr.indexOf(')');
+                if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
+                    const content = optionStr.substring(startIndex + 1, endIndex);
+                    const replacedContent = content.replace(/，/g, '&').replace(/,/g, '&');
+                    optionStr = optionStr.substring(0, startIndex) + replacedContent + optionStr.substring(endIndex + 1);
+                } else {
+                    break;
+                }
+            }
+            
+            // 处理中文括号
+            while (optionStr.includes('（') && optionStr.includes('）')) {
+                const startIndex = optionStr.indexOf('（');
+                const endIndex = optionStr.indexOf('）');
+                if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
+                    const content = optionStr.substring(startIndex + 1, endIndex);
+                    const replacedContent = content.replace(/，/g, '&').replace(/,/g, '&');
+                    optionStr = optionStr.substring(0, startIndex) + replacedContent + optionStr.substring(endIndex + 1);
+                } else {
+                    break;
+                }
+            }
+            
+            // 处理/：将/替换为&
+            optionStr = optionStr.replace(/\//g, '&');
+            
+            // 处理&：按&拆分
+            const parts = optionStr.split('&');
+            
+            parts.forEach(part => {
+                part = part.trim();
+                if (part) {
+                    if (part.startsWith('-')) {
+                        const optionWithoutMinus = part.substring(1);
+                        if (optionWithoutMinus) options.push(optionWithoutMinus);
+                    } else {
+                        let cleanOption = part.replace(/[()（）]/g, '');
+                        if (cleanOption) options.push(cleanOption);
+                    }
+                }
+            });
+            
+            return [...new Set(options)];
+        }
+        
+        // 生成Option组合的唯一键
+        function getOptionKey(optionSet, versionIndex) {
+            const options = Array.from(optionSet).sort();
+            const optionKeys = [];
+            
+            // 为每个Option生成在该版型中的打点状态
+            options.forEach(opt => {
+                const family = familyMap.get(opt);
+                const isMarked = family && family.marks.has(versions[versionIndex].index) ? 1 : 0;
+                optionKeys.push(`${opt}:${isMarked}`);
+            });
+            
+            return optionKeys.join('|');
+        }
+        
+        // 处理文件
+        async function processFiles() {
+            const progressSection = document.getElementById('progressSection');
+            const resultsSection = document.getElementById('resultsSection');
+            const processBtn = document.getElementById('processBtn');
+            
+            progressSection.classList.add('show');
+            resultsSection.classList.remove('show');
+            processBtn.disabled = true;
+            document.getElementById('logContainer').innerHTML = '';
+            
+            try {
+                updateProgress(10, '正在解析Wire List...');
+                addLog('success', '开始处理文件');
+                
+                // 读取Wire List（使用智能识别的sheet名称）
+                addLog('info', `正在读取Wire List sheet: "${wirelistSheetName}"`);
+                const wirelistSheet = wirelistData.Sheets[wirelistSheetName];
+                const wirelistJson = XLSX.utils.sheet_to_json(wirelistSheet, { header: 1 });
+                const wirelistRows = wirelistJson.slice(1);
+                addLog('success', `Wire List共 ${wirelistRows.length} 条数据`);
+                
+                updateProgress(30, '正在解析配置表...');
+                
+                // 读取配置表（使用智能识别的sheet名称）
+                addLog('info', `正在读取配置表sheet: "${configSheetName}"`);
+                const configSheet = configData.Sheets[configSheetName];
+                const configJson = XLSX.utils.sheet_to_json(configSheet, { header: 1 });
+                
+                // 解析版型
+                const versionNames = configJson[1].slice(3);
+                versions = versionNames.map((name, index) => ({
+                    index: index + 3,
+                    name: String(index + 1),
+                    name2: name || ''
+                })).filter(v => v.name);
+                
+                addLog('success', `配置表共 ${versions.length} 个版型`);
+                
+                // 解析特征值描述
+                const optionDescriptions = new Map();
+                for (let i = 2; i < configJson.length; i++) {
+                    const row = configJson[i];
+                    if (row[0] && row[0] !== '') {
+                        optionDescriptions.set(row[0], row[1] || '');
+                    }
+                }
+                
+                addLog('success', `读取到 ${optionDescriptions.size} 个Option特征值描述`);
+                
+                // 解析特征值数据
+                familyMap = new Map();
+                for (let i = 2; i < configJson.length; i++) {
+                    const row = configJson[i];
+                    if (row[0] && row[0] !== '') {
+                        const marks = new Set();
+                        versions.forEach(version => {
+                            if (row[version.index] && (row[version.index] === '●' || row[version.index] === 'X')) {
+                                marks.add(version.index);
+                            }
+                        });
+                        familyMap.set(row[0], {
+                            code: row[0],
+                            name: row[1] || '',
+                            remark: row[2] || '',
+                            marks: marks
+                        });
+                    }
+                }
+                
+                addLog('success', `配置表共 ${familyMap.size} 个特征值代码`);
+                
+                updateProgress(50, '正在分析Wire List数据...');
+                
+                // 按Family分组Wire List
+                const familyDataMap = new Map();
+                const allWirelistOptions = new Set();
+                
+                wirelistRows.forEach(row => {
+                    const family = row[6];
+                    const option = row[4];
+                    
+                    if (family && family !== '') {
+                        if (!familyDataMap.has(family)) {
+                            familyDataMap.set(family, { family, options: new Set() });
+                        }
+                        
+                        const familyInfo = familyDataMap.get(family);
+                        const options = parseOptions(option);
+                        options.forEach(opt => {
+                            if (opt && opt !== '') {
+                                familyInfo.options.add(opt);
+                                allWirelistOptions.add(opt);
+                            }
+                        });
+                    }
+                });
+                
+                addLog('success', `Wire List共 ${familyDataMap.size} 个不同的Family`);
+                addLog('success', `Wire List共涉及 ${allWirelistOptions.size} 个不同的Option`);
+                
+                updateProgress(60, '正在合并相同Family零件号...');
+                
+                // 填充版型筛选下拉框
+                const versionSelect = document.getElementById('filterVersion');
+                versionSelect.innerHTML = '<option value="">全部</option>';
+                versions.forEach(version => {
+                    versionSelect.innerHTML += `<option value="${version.name}">${version.name}</option>`;
+                });
+                
+                // 合并相同Family零件号
+                const mergedParts = [];
+                let partIndex = 1;
+                
+                familyDataMap.forEach((familyInfo, familyName) => {
+                    const familyOptions = familyInfo.options;
+                    
+                    // 为每个版型生成Option组合键
+                    const versionKeys = versions.map((version, versionIndex) => ({
+                        versionIndex: versionIndex,
+                        key: getOptionKey(familyOptions, versionIndex),
+                        versionColumnIndex: version.index
+                    }));
+                    
+                    // 根据Option组合键合并相同的零件号
+                    const mergedMap = new Map(); // key -> {versionIndices: [], versionColumnIndices: []}
+                    
+                    versionKeys.forEach((vk) => {
+                        if (!mergedMap.has(vk.key)) {
+                            mergedMap.set(vk.key, {
+                                versionIndices: [vk.versionIndex],
+                                versionColumnIndices: [vk.versionColumnIndex]
+                            });
+                        } else {
+                            const merged = mergedMap.get(vk.key);
+                            merged.versionIndices.push(vk.versionIndex);
+                            merged.versionColumnIndices.push(vk.versionColumnIndex);
+                        }
+                    });
+                    
+                    // 为每个合并组生成一个零件号
+                    mergedMap.forEach((merged, key) => {
+                        const partNo = `${familyName}${String(partIndex).padStart(3, '0')}`;
+                        
+                        mergedParts.push({
+                            no: partIndex,
+                            partNo: partNo,
+                            family: familyName,
+                            options: familyOptions,
+                            versionIndices: merged.versionIndices,
+                            versionColumnIndices: merged.versionColumnIndices,
+                            optionKey: key
+                        });
+                        
+                        partIndex++;
+                    });
+                });
+                
+                addLog('success', `合并后生成 ${mergedParts.length} 个零件号`);
+                
+                updateProgress(70, '正在保存处理结果...');
+                
+                // 更新统计数据
+                const totalMarks = mergedParts.reduce((sum, part) => sum + part.versionIndices.length, 0);
+                document.getElementById('statFamilies').textContent = familyDataMap.size;
+                document.getElementById('statVersions').textContent = versions.length;
+                document.getElementById('statOptions').textContent = allWirelistOptions.size;
+                document.getElementById('statMarks').textContent = totalMarks;
+                document.getElementById('statRows').textContent = mergedParts.length;
+                
+                // 保存处理结果
+                processedResults = {
+                    parts: mergedParts,
+                    versions: versions,
+                    allOptions: allWirelistOptions,
+                    familyDataMap: familyDataMap,
+                    familyMap: familyMap,
+                    optionDescriptions: optionDescriptions
+                };
+                
+                updateProgress(80, '正在生成结果表格...');
+                
+                // 生成结果表格
+                await renderTable();
+                
+                updateProgress(100, '处理完成！');
+                addLog('success', '处理完成！');
+                
+                resultsSection.classList.add('show');
+                document.getElementById('exportBtn').disabled = false;
+                document.getElementById('copyBtn').disabled = false;
+                document.getElementById('exportFamilyOptionBtn').disabled = false;
+                document.getElementById('exportOptionFamilyBtn').disabled = false;
+                
+            } catch (error) {
+                addLog('error', `处理出错: ${error.message}`);
+                console.error(error);
+            } finally {
+                processBtn.disabled = false;
+            }
+        }
+        
+        // 渲染表格
+        async function renderTable() {
+            const tableHead = document.getElementById('resultsTableHead');
+            const tableBody = document.getElementById('resultsTableBody');
+            // 按字母顺序排序（不区分大小写）
+            const sortedOptions = Array.from(processedResults.allOptions).sort((a, b) => {
+                return a.toUpperCase().localeCompare(b.toUpperCase());
+            });
+            const versions = processedResults.versions;
+            const mergedParts = processedResults.parts;
+            const familyMap = processedResults.familyMap;
+            const optionDescriptions = processedResults.optionDescriptions;
+            const familyDataMap = processedResults.familyDataMap;
+            
+            // 生成表头HTML
+            let headerHTML = '<tr><th style="width: 60px;">No</th><th style="width: 120px;">零件号</th><th style="width: 120px;">Family</th>';
+            versions.forEach(version => {
+                headerHTML += `<th class="version-col" style="width: 60px;">${version.name}</th>`;
+            });
+            sortedOptions.forEach(opt => {
+                headerHTML += `<th class="option-col" style="width: 80px;">${opt}</th>`;
+            });
+            headerHTML += '</tr>';
+            
+            // 生成特征值描述行HTML
+            let featureRowHTML = '<tr><th style="width: 60px;"></th><th style="width: 120px;"></th><th style="width: 120px;"></th>';
+            versions.forEach(version => {
+                featureRowHTML += `<th class="version-col" style="width: 60px;">${version.name2 || ''}</th>`;
+            });
+            sortedOptions.forEach(opt => {
+                featureRowHTML += `<th class="option-col" style="width: 80px;">${optionDescriptions.get(opt) || ''}</th>`;
+            });
+            featureRowHTML += '</tr>';
+            
+            // 生成特征值关联Family行HTML
+            let familyRelationHTML = '<tr><th style="width: 60px;"></th><th style="width: 120px;"></th><th style="width: 120px;"></th>';
+            versions.forEach(version => {
+                familyRelationHTML += `<th class="version-col" style="width: 60px;"></th>`;
+            });
+            sortedOptions.forEach(opt => {
+                const families = [];
+                familyDataMap.forEach((familyInfo, familyName) => {
+                    if (familyInfo.options.has(opt)) {
+                        families.push(familyName);
+                    }
+                });
+                families.sort();
+                familyRelationHTML += `<th class="family-relation-col" style="width: 80px;">${families.join('、')}</th>`;
+            });
+            familyRelationHTML += '</tr>';
+            
+            // 设置表头
+            tableHead.innerHTML = headerHTML + featureRowHTML + familyRelationHTML;
+            
+            // 分批生成数据行
+            const batchSize = 200;
+            let currentIndex = 0;
+            
+            return new Promise((resolve) => {
+                function processBatch() {
+                    const endIndex = Math.min(currentIndex + batchSize, mergedParts.length);
+                    let rowsHTML = '';
+                    
+                    for (let i = currentIndex; i < endIndex; i++) {
+                        const part = mergedParts[i];
+                        
+                        rowsHTML += `<tr>
+                            <td class="no-col">${part.no}</td>
+                            <td class="partno-col">${part.partNo}</td>
+                            <td class="family-col">${part.family}</td>`;
+                        
+                        // 各版型的打点情况（合并后的多个版型都打点）
+                        versions.forEach((version, index) => {
+                            rowsHTML += part.versionIndices.includes(index) ? '<td class="marked">X</td>' : '<td></td>';
+                        });
+                        
+                        // 各Option的打点情况
+                        sortedOptions.forEach(opt => {
+                            if (part.options.has(opt)) {
+                                const optionFamily = familyMap.get(opt);
+                                // 检查Option是否在该零件号的任一版型中打点
+                                let isMarked = false;
+                                part.versionColumnIndices.forEach(colIndex => {
+                                    if (optionFamily && optionFamily.marks.has(colIndex)) {
+                                        isMarked = true;
+                                    }
+                                });
+                                rowsHTML += isMarked ? '<td class="marked">●</td>' : '<td></td>';
+                            } else {
+                                rowsHTML += '<td></td>';
+                            }
+                        });
+                        
+                        rowsHTML += '</tr>';
+                    }
+                    
+                    tableBody.insertAdjacentHTML('beforeend', rowsHTML);
+                    currentIndex = endIndex;
+                    
+                    // 更新进度
+                    const progress = 80 + Math.floor((currentIndex / mergedParts.length) * 20);
+                    updateProgress(progress, `正在生成结果表格... (${currentIndex}/${mergedParts.length})`);
+                    
+                    // 继续处理
+                    if (currentIndex < mergedParts.length) {
+                        requestAnimationFrame(processBatch);
+                    } else {
+                        resolve();
+                    }
+                }
+                
+                processBatch();
+            });
+        }
+        
+        // 防抖筛选
+        function filterResultsDebounced() {
+            clearTimeout(filterTimeout);
+            filterTimeout = setTimeout(filterResults, 300);
+        }
+        
+        // 筛选结果
+        function filterResults() {
+            if (!processedResults) return;
+            
+            const filterFamily = document.getElementById('filterFamily').value.toUpperCase();
+            const filterVersion = document.getElementById('filterVersion').value;
+            
+            const tableBody = document.getElementById('resultsTableBody');
+            // 按字母顺序排序（不区分大小写）
+            const sortedOptions = Array.from(processedResults.allOptions).sort((a, b) => {
+                return a.toUpperCase().localeCompare(b.toUpperCase());
+            });
+            
+            // 筛选零件号
+            let filteredParts = processedResults.parts;
+            if (filterFamily) {
+                filteredParts = filteredParts.filter(part => part.family.toUpperCase().includes(filterFamily));
+            }
+            if (filterVersion) {
+                const versionIndex = processedResults.versions.findIndex(v => v.name === filterVersion);
+                if (versionIndex !== -1) {
+                    filteredParts = filteredParts.filter(part => part.versionIndices.includes(versionIndex));
+                }
+            }
+            
+            // 生成筛选后的表格
+            let rowsHTML = '';
+            filteredParts.forEach(part => {
+                rowsHTML += `<tr>
+                    <td class="no-col">${part.no}</td>
+                    <td class="partno-col">${part.partNo}</td>
+                    <td class="family-col">${part.family}</td>`;
+                
+                processedResults.versions.forEach((version, index) => {
+                    rowsHTML += part.versionIndices.includes(index) ? '<td class="marked">X</td>' : '<td></td>';
+                });
+                
+                sortedOptions.forEach(opt => {
+                    if (part.options.has(opt)) {
+                        const optionFamily = processedResults.familyMap.get(opt);
+                        let isMarked = false;
+                        part.versionColumnIndices.forEach(colIndex => {
+                            if (optionFamily && optionFamily.marks.has(colIndex)) {
+                                isMarked = true;
+                            }
+                        });
+                        rowsHTML += isMarked ? '<td class="marked">●</td>' : '<td></td>';
+                    } else {
+                        rowsHTML += '<td></td>';
+                    }
+                });
+                
+                rowsHTML += '</tr>';
+            });
+            
+            tableBody.innerHTML = rowsHTML;
+        }
+        
+        // 复制到HTML（保留颜色）
+        function copyToClipboard() {
+            if (!processedResults) {
+                addLog('error', '没有可复制的结果');
+                return;
+            }
+            
+            try {
+                addLog('success', '正在复制到剪贴板...');
+                
+                const table = document.getElementById('resultsTable');
+                
+                // 获取表格的完整HTML
+                const tableHTML = table.outerHTML;
+                
+                // 创建一个临时div来处理表格
+                const tempDiv = document.createElement('div');
+                tempDiv.style.position = 'absolute';
+                tempDiv.style.left = '-9999px';
+                tempDiv.innerHTML = `
+                    <style>
+                        table {
+                            border-collapse: collapse;
+                            width: 100%;
+                            font-size: 11px;
+                            table-layout: fixed;
+                        }
+                        th, td {
+                            border: 1px solid #e0e0e0;
+                            padding: 6px 8px;
+                            text-align: center;
+                            word-wrap: break-word;
+                            word-break: break-all;
+                            white-space: normal;
+                        }
+                        .version-col {
+                            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%) !important;
+                            color: black !important;
+                            font-weight: bold !important;
+                        }
+                        .option-col {
+                            background: linear-gradient(135deg, #2196F3 0%, #0d47a1 100%) !important;
+                            color: black !important;
+                            font-weight: bold !important;
+                        }
+                        .family-relation-col {
+                            background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%) !important;
+                            color: black !important;
+                            font-weight: bold !important;
+                        }
+                        .marked {
+                            background: #4CAF50 !important;
+                            color: black !important;
+                            font-weight: bold !important;
+                        }
+                        .no-col {
+                            background: #e0e0e0 !important;
+                            font-weight: bold !important;
+                        }
+                        .family-col {
+                            background: #fff3e0 !important;
+                            font-weight: bold !important;
+                        }
+                        .partno-col {
+                            background: #e3f2fd !important;
+                            font-weight: bold !important;
+                        }
+                        tbody tr:nth-child(even) {
+                            background: #f8f9ff !important;
+                        }
+                        tbody tr:hover {
+                            background: #e8ebff !important;
+                        }
+                    </style>
+                    ${tableHTML}
+                `;
+                
+                document.body.appendChild(tempDiv);
+                
+                // 选择整个临时div
+                const range = document.createRange();
+                range.selectNode(tempDiv);
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(range);
+                
+                // 执行复制
+                const successful = document.execCommand('copy');
+                selection.removeAllRanges();
+                
+                // 移除临时元素
+                document.body.removeChild(tempDiv);
+                
+                if (successful) {
+                    addLog('success', '复制成功！颜色已保留，可以粘贴到Word或Excel中');
+                } else {
+                    addLog('error', '复制失败，请手动复制表格');
+                }
+            } catch (error) {
+                addLog('error', `复制出错: ${error.message}`);
+                console.error(error);
+            }
+        }
+        
+        // 导出结果
+        function exportResults() {
+            if (!processedResults) {
+                addLog('error', '没有可导出的结果');
+                return;
+            }
+            
+            try {
+                addLog('success', '正在导出结果...');
+                
+                // 按字母顺序排序（不区分大小写）
+                const sortedOptions = Array.from(processedResults.allOptions).sort((a, b) => {
+                    return a.toUpperCase().localeCompare(b.toUpperCase());
+                });
+                
+                // 创建数据数组
+                const data = [];
+                
+                // 表头
+                const header = ['No', '零件号', 'Family'];
+                processedResults.versions.forEach(version => header.push(version.name));
+                sortedOptions.forEach(opt => header.push(opt));
+                data.push(header);
+                
+                // 特征值描述行
+                const featureRow = ['', '', ''];
+                processedResults.versions.forEach(version => featureRow.push(version.name2 || ''));
+                sortedOptions.forEach(opt => {
+                    let description = '';
+                    processedResults.familyMap.forEach((family, code) => {
+                        if (code === opt) description = family.name || '';
+                    });
+                    featureRow.push(description);
+                });
+                data.push(featureRow);
+                
+                // 特征值关联Family行
+                const familyRelationRow = ['', '', ''];
+                processedResults.versions.forEach(version => familyRelationRow.push(''));
+                sortedOptions.forEach(opt => {
+                    const families = [];
+                    processedResults.familyDataMap.forEach((familyInfo, familyName) => {
+                        if (familyInfo.options.has(opt)) {
+                            families.push(familyName);
+                        }
+                    });
+                    families.sort();
+                    familyRelationRow.push(families.join('、'));
+                });
+                data.push(familyRelationRow);
+                
+                // 数据行
+                processedResults.parts.forEach(part => {
+                    const row = [part.no, part.partNo, part.family];
+                    
+                    // 各版型的打点情况
+                    processedResults.versions.forEach((version, index) => {
+                        row.push(part.versionIndices.includes(index) ? 'X' : '');
+                    });
+                    
+                    // 各Option的打点情况
+                    sortedOptions.forEach(opt => {
+                        if (part.options.has(opt)) {
+                            const optionFamily = processedResults.familyMap.get(opt);
+                            let isMarked = false;
+                            part.versionColumnIndices.forEach(colIndex => {
+                                if (optionFamily && optionFamily.marks.has(colIndex)) {
+                                    isMarked = true;
+                                }
+                            });
+                            row.push(isMarked ? '●' : '');
+                        } else {
+                            row.push('');
+                        }
+                    });
+                    
+                    data.push(row);
+                });
+                
+                // 创建工作簿
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.aoa_to_sheet(data);
+                
+                // 设置列宽
+                ws['!cols'] = [
+                    { wch: 8 },
+                    { wch: 20 },
+                    { wch: 20 }
+                ];
+                
+                // 添加工作表
+                XLSX.utils.book_append_sheet(wb, ws, 'Master List');
+                
+                // 生成文件名
+                const now = new Date();
+                const timestamp = now.getFullYear() +
+                    String(now.getMonth() + 1).padStart(2, '0') +
+                    String(now.getDate()).padStart(2, '0') +
+                    String(now.getHours()).padStart(2, '0') +
+                    String(now.getMinutes()).padStart(2, '0') +
+                    String(now.getSeconds()).padStart(2, '0');
+                const filename = `MasterList__${timestamp}.xlsx`;
+                
+                // 导出文件
+                XLSX.writeFile(wb, filename);
+                
+                addLog('success', `导出成功: ${filename}`);
+            } catch (error) {
+                addLog('error', `导出出错: ${error.message}`);
+                console.error(error);
+            }
+        }
+        
+        // 导出Family-Option关系
+        function exportFamilyOptionRelation() {
+            if (!processedResults) {
+                addLog('error', '没有可导出的结果');
+                return;
+            }
+            
+            try {
+                addLog('success', '正在导出Family-Option关系...');
+                
+                const wb = XLSX.utils.book_new();
+                const data = [['No', 'Family', 'Option组合', '涉及的Option']];
+                
+                let no = 1;
+                processedResults.familyDataMap.forEach((familyInfo, familyName) => {
+                    // 按字母顺序排序（不区分大小写）
+                    const options = Array.from(familyInfo.options).sort((a, b) => {
+                        return a.toUpperCase().localeCompare(b.toUpperCase());
+                    });
+                    data.push([no, familyName, options.join('、'), options.join('|')]);
+                    no++;
+                });
+                
+                const ws = XLSX.utils.aoa_to_sheet(data);
+                ws['!cols'] = [{ wch: 8 }, { wch: 20 }, { wch: 80 }, { wch: 100 }];
+                XLSX.utils.book_append_sheet(wb, ws, 'Family-Option关系');
+                
+                const now = new Date();
+                const timestamp = now.getFullYear() +
+                    String(now.getMonth() + 1).padStart(2, '0') +
+                    String(now.getDate()).padStart(2, '0') +
+                    String(now.getHours()).padStart(2, '0') +
+                    String(now.getMinutes()).padStart(2, '0') +
+                    String(now.getSeconds()).padStart(2, '0');
+                XLSX.writeFile(wb, `FamilyOptionRelation__${timestamp}.xlsx`);
+                
+                addLog('success', '导出成功');
+            } catch (error) {
+                addLog('error', `导出出错: ${error.message}`);
+                console.error(error);
+            }
+        }
+        
+        // 导出Option-Family关系
+        function exportOptionFamilyRelation() {
+            if (!processedResults) {
+                addLog('error', '没有可导出的结果');
+                return;
+            }
+            
+            try {
+                addLog('success', '正在导出Option-Family关系...');
+                
+                const wb = XLSX.utils.book_new();
+                const data = [['No', 'Option', '涉及的Family']];
+                
+                // 按字母顺序排序（不区分大小写）
+                const sortedOptions = Array.from(processedResults.allOptions).sort((a, b) => {
+                    return a.toUpperCase().localeCompare(b.toUpperCase());
+                });
+                
+                let no = 1;
+                sortedOptions.forEach(option => {
+                    const families = [];
+                    processedResults.familyDataMap.forEach((familyInfo, familyName) => {
+                        if (familyInfo.options.has(option)) families.push(familyName);
+                    });
+                    families.sort();
+                    data.push([no, option, families.join('、')]);
+                    no++;
+                });
+                
+                const ws = XLSX.utils.aoa_to_sheet(data);
+                ws['!cols'] = [{ wch: 8 }, { wch: 20 }, { wch: 200 }];
+                XLSX.utils.book_append_sheet(wb, ws, 'Option-Family关系');
+                
+                const now = new Date();
+                const timestamp = now.getFullYear() +
+                    String(now.getMonth() + 1).padStart(2, '0') +
+                    String(now.getDate()).padStart(2, '0') +
+                    String(now.getHours()).padStart(2, '0') +
+                    String(now.getMinutes()).padStart(2, '0') +
+                    String(now.getSeconds()).padStart(2, '0');
+                XLSX.writeFile(wb, `OptionFamilyRelation__${timestamp}.xlsx`);
+                
+                addLog('success', '导出成功');
+            } catch (error) {
+                addLog('error', `导出出错: ${error.message}`);
+                console.error(error);
+            }
+        }
+        
+        // 下载Wire List模板
+        function downloadWirelistTemplate() {
+            try {
+                addLog('info', '正在生成Wire List模板...');
+                
+                const data = [
+                    ['序号', '连接器名称', '端子号', '线号', 'Option', '线径', 'Family', '线色', '长度'],
+                    ['1', 'Connector1', '1', 'W001', 'A01', '0.5', 'F001', 'RED', '100'],
+                    ['2', 'Connector1', '2', 'W002', 'A01&B02', '0.5', 'F001', 'BLUE', '150'],
+                    ['3', 'Connector2', '1', 'W003', 'B01', '0.75', 'F002', 'GREEN', '200'],
+                    ['4', 'Connector2', '2', 'W004', 'A01/B01', '0.75', 'F002', 'YELLOW', '250'],
+                    ['5', 'Connector3', '1', 'W005', 'C01', '1.0', 'F003', 'BLACK', '300'],
+                    ['6', 'Connector3', '2', 'W006', 'A01&B02&C01', '1.0', 'F003', 'WHITE', '350'],
+                    ['7', 'Connector4', '1', 'W007', 'D01', '1.5', 'F004', 'GRAY', '400'],
+                    ['8', 'Connector4', '2', 'W008', 'D01/E01', '1.5', 'F004', 'PURPLE', '450'],
+                    ['9', 'Connector5', '1', 'W009', 'E01', '2.0', 'F005', 'ORANGE', '500'],
+                    ['10', 'Connector5', '2', 'W010', 'A01/D01/E01', '2.0', 'F005', 'PINK', '550']
+                ];
+                
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.aoa_to_sheet(data);
+                
+                // 设置列宽
+                ws['!cols'] = [
+                    { wch: 8 },   // 序号
+                    { wch: 20 },  // 连接器名称
+                    { wch: 10 },  // 端子号
+                    { wch: 10 },  // 线号
+                    { wch: 25 },  // Option
+                    { wch: 10 },  // 线径
+                    { wch: 12 },  // Family
+                    { wch: 10 },  // 线色
+                    { wch: 10 }   // 长度
+                ];
+                
+                XLSX.utils.book_append_sheet(wb, ws, 'Wire List');
+                XLSX.writeFile(wb, 'WireList_模板.xlsx');
+                
+                addLog('success', 'Wire List模板下载成功');
+                alert('Wire List模板下载成功！\n\nSheet名称：Wire List\n\n列说明：\n- 第5列：Option（支持组合，如A01&B02）\n- 第7列：Family（用于分组）\n- 其他列：可根据实际需要填写');
+            } catch (error) {
+                addLog('error', `下载Wire List模板出错: ${error.message}`);
+                console.error(error);
+            }
+        }
+        
+        // 下载配置表模板
+        function downloadConfigTemplate() {
+            try {
+                addLog('info', '正在生成配置表模板...');
+                
+                const data = [
+                    ['特征值代码', '特征值描述', '备注', '版型1', '版型2', '版型3', '版型4', '版型5'],
+                    ['A01', '选项A-01', '基础配置', '●', '', '●', '●', ''],
+                    ['A02', '选项A-02', '扩展配置A', '●', '●', '●', '', ''],
+                    ['A03', '选项A-03', '扩展配置B', '', '●', '●', '●', '●'],
+                    ['B01', '选项B-01', '功能模块1', '●', '', '', '●', '●'],
+                    ['B02', '选项B-02', '功能模块2', '', '●', '●', '', '●'],
+                    ['C01', '选项C-01', '高级功能', '●', '●', '', '', ''],
+                    ['D01', '选项D-01', '特殊配置', '', '', '●', '●', ''],
+                    ['E01', '选项E-01', '可选功能', '', '', '', '', '●'],
+                    ['F01', '选项F-01', '备用选项', '●', '', '', '', ''],
+                    ['F02', '选项F-02', '备用选项', '', '●', '', '', ''],
+                    ['F03', '选项F-03', '备用选项', '', '', '●', '', ''],
+                    ['F04', '选项F-04', '备用选项', '', '', '', '●', ''],
+                    ['F05', '选项F-05', '备用选项', '', '', '', '', '●']
+                ];
+                
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.aoa_to_sheet(data);
+                
+                // 设置列宽
+                ws['!cols'] = [
+                    { wch: 15 },  // 特征值代码
+                    { wch: 20 },  // 特征值描述
+                    { wch: 20 },  // 备注
+                    { wch: 10 },  // 版型1
+                    { wch: 10 },  // 版型2
+                    { wch: 10 },  // 版型3
+                    { wch: 10 },  // 版型4
+                    { wch: 10 }   // 版型5
+                ];
+                
+                XLSX.utils.book_append_sheet(wb, ws, 'Master List');
+                XLSX.writeFile(wb, '配置表_模板.xlsx');
+                
+                addLog('success', '配置表模板下载成功');
+                alert('配置表模板下载成功！\n\nSheet名称：Master List\n\n列说明：\n- 第1列：特征值代码（Option代码）\n- 第2列：特征值描述（Option名称）\n- 第3列：备注\n- 第4列及以后：各版型的打点（●或X表示该版型包含此Option）\n\n注意事项：\n1. 特征值代码必须与Wire List中的Option一致\n2. 打点使用●或X均可\n3. 版型数量可以根据实际需要增减');
+            } catch (error) {
+                addLog('error', `下载配置表模板出错: ${error.message}`);
+                console.error(error);
+            }
+        }
+    </script>
+</body>
+</html>

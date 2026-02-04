@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(python:*)",
+      "Bash(where:*)",
+      "Bash(py:*)",
+      "Bash(del:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(robocopy:*)",
+      "Bash(xcopy \"D:\\\\华为家庭存储\\\\T28\\\\T28项目文件管理NEW\\\\08.SYS设计开发输出文件\\\\8.5 ECR\\\\*.xlsx\" \"C:\\\\Users\\\\HP\\\\Desktop\\\\ECR文件\"\" /y /s)",
+      "Bash(xcopy:*)",
+      "Bash(cmd:*)",
+      "Bash(powershell:*)",
+      "Bash(cscript:*)",
+      "Bash(pip install:*)",
+      "Bash(\"C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Microsoft\\\\WindowsApps\\\\python.exe\" -m pip install pandas openpyxl -q)"
+    ]
+  }
+}
