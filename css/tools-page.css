@@ -2007,3 +2007,45 @@
 [data-theme="light"] .add-user-form .form-header h4 {
     color: #1a1a2e;
 }
+
+/* 表单内联头部样式（带返回按钮） */
+.form-header-inline {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border-color, #2d2d44);
+}
+
+.form-header-inline .back-btn-inline {
+    background: transparent;
+    border: none;
+    color: var(--primary-color, #00d4ff);
+    cursor: pointer;
+    padding: 8px 12px;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.form-header-inline .back-btn-inline:hover {
+    background: rgba(0, 212, 255, 0.1);
+}
+
+.form-header-inline span {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary, #ffffff);
+}
+
+/* 明亮模式内联头部 */
+[data-theme="light"] .form-header-inline {
+    border-color: #e0e0e0;
+}
+
+[data-theme="light"] .form-header-inline span {
+    color: #1a1a2e;
+}
