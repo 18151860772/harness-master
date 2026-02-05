@@ -1655,12 +1655,6 @@ window.handleAccountSectionClick = function() {
     }
 };
 
-// 打开个人设置面板（从头像图标）
-window.openPersonalSettings = function() {
-    SettingsManager.open();
-    SettingsManager.showPersonalSettings();
-};
-
 // 从账户面板打开个人设置
 window.openPersonalSettingsFromAccount = function() {
     AccountManager.closeAccountPanel();
@@ -1673,20 +1667,23 @@ window.showSystemSettings = function() {
     SettingsManager.showSystemSettings();
 };
 
-// 打开系统设置面板（齿轮图标使用）
-window.openSettingsAndLogin = function() {
-    SettingsManager.open();
-    AccountManager.showLoginForm();
-};
-
 // 打开设置面板并显示通知
 window.openSettingsAndShowNotifications = function() {
-    // 打开设置面板但直接显示消息通知
+    const currentUser = AccountManager.getUser();
+
+    if (!currentUser) {
+        // 未登录：提示并打开登录
+        showToast('请先登录查看消息通知', 'warning');
+        SettingsManager.open();
+        AccountManager.showLoginForm();
+        return;
+    }
+
+    // 已登录：显示消息通知
     const settingsPanel = document.getElementById('settingsPanel');
     const accountPanel = document.getElementById('accountPanel');
     const personalSettings = document.getElementById('personalSettingsPanel');
     const settingsItems = settingsPanel?.querySelectorAll('.settings-item, .settings-divider');
-    const notificationsPanel = document.getElementById('notificationsPanel');
     const overlayMask = document.getElementById('overlayMask');
 
     if (settingsPanel) settingsPanel.classList.add('active');
@@ -1696,7 +1693,7 @@ window.openSettingsAndShowNotifications = function() {
     settingsItems?.forEach(item => item.style.display = 'none');
     if (personalSettings) personalSettings.style.display = 'none';
 
-    // 显示账户面板（消息通知在里面）
+    // 显示账户面板
     if (accountPanel) {
         accountPanel.style.display = 'flex';
         AccountManager.showNotifications();
