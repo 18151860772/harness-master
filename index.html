@@ -247,7 +247,38 @@
                                         <i class="fas fa-arrow-left"></i>
                                     </button>
                                     <span>用户管理</span>
+                                    <button class="btn-icon-sm add-user-btn" onclick="showAddUserForm()" title="新增用户">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
                                 </div>
+
+                                <!-- 新增用户表单 -->
+                                <div id="addUserForm" class="add-user-form" style="display: none;">
+                                    <div class="form-group">
+                                        <label>用户名</label>
+                                        <input type="text" id="addUserUsername" placeholder="请输入用户名" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>邮箱</label>
+                                        <input type="email" id="addUserEmail" placeholder="请输入邮箱" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>密码</label>
+                                        <input type="password" id="addUserPassword" placeholder="请输入密码" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>用户角色</label>
+                                        <select id="addUserRole">
+                                            <option value="user">普通用户</option>
+                                            <option value="admin">管理员</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-actions">
+                                        <button class="btn-secondary" onclick="hideAddUserForm()">取消</button>
+                                        <button class="btn-primary" onclick="handleAddUser()">创建用户</button>
+                                    </div>
+                                </div>
+
                                 <div class="user-list-container" id="userListContainer">
                                     <!-- 用户列表将动态生成 -->
                                 </div>

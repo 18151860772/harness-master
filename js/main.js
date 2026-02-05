@@ -730,6 +730,79 @@ const AccountManager = {
             this.renderUserList();
             showToast(`已删除用户: ${targetUser.username}`, 'success');
         }
+    },
+
+    // ==================== 新增用户功能 ====================
+
+    // 显示新增用户表单
+    showAddUserForm() {
+        const addUserForm = document.getElementById('addUserForm');
+        const userListContainer = document.getElementById('userListContainer');
+
+        if (addUserForm) {
+            addUserForm.style.display = 'block';
+            if (userListContainer) userListContainer.style.display = 'none';
+        }
+    },
+
+    // 隐藏新增用户表单
+    hideAddUserForm() {
+        const addUserForm = document.getElementById('addUserForm');
+        const userListContainer = document.getElementById('userListContainer');
+
+        if (addUserForm) {
+            addUserForm.style.display = 'none';
+            // 清空表单
+            document.getElementById('addUserUsername').value = '';
+            document.getElementById('addUserEmail').value = '';
+            document.getElementById('addUserPassword').value = '';
+            document.getElementById('addUserRole').value = 'user';
+        }
+        if (userListContainer) userListContainer.style.display = 'block';
+    },
+
+    // 处理新增用户
+    handleAddUser() {
+        const username = document.getElementById('addUserUsername')?.value.trim();
+        const email = document.getElementById('addUserEmail')?.value.trim();
+        const password = document.getElementById('addUserPassword')?.value;
+        const role = document.getElementById('addUserRole')?.value;
+
+        // 验证输入
+        if (!username || !email || !password) {
+            showToast('请填写完整信息', 'warning');
+            return;
+        }
+
+        if (password.length < 6) {
+            showToast('密码长度至少6位', 'warning');
+            return;
+        }
+
+        // 检查邮箱是否已存在
+        const users = this.getUsers();
+        if (users.find(u => u.email === email)) {
+            showToast('该邮箱已被注册', 'error');
+            return;
+        }
+
+        // 创建新用户
+        const newUser = {
+            username,
+            email,
+            password,
+            role,
+            status: 'active',
+            createdAt: new Date().toISOString()
+        };
+
+        users.push(newUser);
+        this.saveUsers(users);
+
+        // 清空表单并返回用户列表
+        this.hideAddUserForm();
+        this.renderUserList();
+        showToast(`用户 "${username}" 创建成功`, 'success');
     }
 };
 
@@ -776,6 +849,18 @@ window.showUserManagement = function() {
 
 window.backToUserPanel = function() {
     AccountManager.backToUserPanel();
+};
+
+window.showAddUserForm = function() {
+    AccountManager.showAddUserForm();
+};
+
+window.hideAddUserForm = function() {
+    AccountManager.hideAddUserForm();
+};
+
+window.handleAddUser = function() {
+    AccountManager.handleAddUser();
 };
 
 // 锁定屏幕登录
