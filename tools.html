@@ -245,13 +245,30 @@
 
                             <!-- 用户管理面板 -->
                             <div id="userManagementPanel" class="user-management-panel" style="display: none;">
-                                <div class="account-panel-header">
+                                <div class="account-panel-header" style="position: relative;">
                                     <button class="back-btn" onclick="backToUserPanel()">
                                         <i class="fas fa-arrow-left"></i>
                                     </button>
                                     <span>用户管理</span>
-                                    <button class="btn-icon-sm add-user-btn" onclick="showAddUserForm()" title="新增用户">
+                                    <!-- 新增用户按钮 - 使用更明显的样式 -->
+                                    <button id="testAddUserBtn" class="add-user-btn" onclick="showAddUserForm()" style="
+                                        position: absolute;
+                                        right: 16px;
+                                        background: linear-gradient(135deg, #00d4ff, #8b5cf6);
+                                        border: none;
+                                        color: white;
+                                        padding: 10px 20px;
+                                        border-radius: 8px;
+                                        cursor: pointer;
+                                        font-size: 14px;
+                                        font-weight: 600;
+                                        display: flex;
+                                        align-items: center;
+                                        gap: 8px;
+                                        box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);
+                                    ">
                                         <i class="fas fa-plus"></i>
+                                        新增用户
                                     </button>
                                 </div>
 
