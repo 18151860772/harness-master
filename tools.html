@@ -245,93 +245,83 @@
 
                             <!-- 用户管理面板 -->
                             <div id="userManagementPanel" class="user-management-panel" style="display: none;">
-                                <div class="account-panel-header" style="position: relative;">
+                                <div class="user-mgmt-header">
                                     <button class="back-btn" onclick="backToUserPanel()">
                                         <i class="fas fa-arrow-left"></i>
                                     </button>
                                     <span>用户管理</span>
-                                    <!-- 新增用户按钮 - 使用更明显的样式 -->
-                                    <button id="testAddUserBtn" class="add-user-btn" onclick="showAddUserForm()" style="
-                                        position: absolute;
-                                        right: 16px;
-                                        background: linear-gradient(135deg, #00d4ff, #8b5cf6);
-                                        border: none;
-                                        color: white;
-                                        padding: 10px 20px;
-                                        border-radius: 8px;
-                                        cursor: pointer;
-                                        font-size: 14px;
-                                        font-weight: 600;
-                                        display: flex;
-                                        align-items: center;
-                                        gap: 8px;
-                                        box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);
-                                    ">
-                                        <i class="fas fa-plus"></i>
-                                        新增用户
-                                    </button>
+                                </div>
+
+                                <!-- 用户列表 -->
+                                <div class="user-list-section">
+                                    <div class="user-list-header-row">
+                                        <span style="color: var(--text-secondary, #8b8b9e); font-size: 13px;">用户列表</span>
+                                        <button class="btn-add-user" onclick="showAddUserForm()">
+                                            <i class="fas fa-plus"></i>
+                                            新增用户
+                                        </button>
+                                    </div>
+                                    <div id="userListContainer" class="user-list-items">
+                                        <!-- 用户列表将动态生成 -->
+                                    </div>
                                 </div>
 
                                 <!-- 新增用户表单 -->
-                                <div id="addUserForm" class="add-user-form" style="display: none;">
-                                    <div class="form-header-inline">
+                                <div id="addUserForm" class="user-form-section" style="display: none;">
+                                    <div class="form-title">
                                         <button class="back-btn-inline" onclick="hideAddUserForm()">
                                             <i class="fas fa-arrow-left"></i>
                                         </button>
                                         <span>新增用户</span>
                                     </div>
-                                    <div class="form-group">
+                                    <div class="form-field">
                                         <label>用户名</label>
-                                        <input type="text" id="addUserUsername" placeholder="请输入用户名" required>
+                                        <input type="text" id="addUserUsername" placeholder="请输入用户名">
                                     </div>
-                                    <div class="form-group">
+                                    <div class="form-field">
                                         <label>邮箱</label>
-                                        <input type="email" id="addUserEmail" placeholder="请输入邮箱" required>
+                                        <input type="email" id="addUserEmail" placeholder="请输入邮箱">
                                     </div>
-                                    <div class="form-group">
+                                    <div class="form-field">
                                         <label>密码</label>
-                                        <input type="password" id="addUserPassword" placeholder="请输入密码" required>
+                                        <input type="password" id="addUserPassword" placeholder="请输入密码">
                                     </div>
-                                    <div class="form-group">
+                                    <div class="form-field">
                                         <label>用户角色</label>
                                         <select id="addUserRole">
                                             <option value="user">普通用户</option>
                                             <option value="admin">管理员</option>
                                         </select>
                                     </div>
-                                    <div class="form-actions">
-                                        <button class="btn-secondary" onclick="hideAddUserForm()">返回</button>
-                                        <button class="btn-primary" onclick="handleAddUser()">创建用户</button>
+                                    <div class="form-buttons">
+                                        <button class="btn-cancel" onclick="hideAddUserForm()">取消</button>
+                                        <button class="btn-submit" onclick="handleAddUser()">创建用户</button>
                                     </div>
                                 </div>
 
                                 <!-- 修改密码表单 -->
-                                <div id="changeUserPasswordForm" class="add-user-form" style="display: none;">
-                                    <div class="form-header-inline">
+                                <div id="changeUserPasswordForm" class="user-form-section" style="display: none;">
+                                    <div class="form-title">
                                         <button class="back-btn-inline" onclick="hideChangeUserPasswordForm()">
                                             <i class="fas fa-arrow-left"></i>
                                         </button>
                                         <span>修改密码</span>
                                     </div>
-                                    <div class="form-header">
-                                        <p id="changePasswordUserEmail" class="user-email-display"></p>
+                                    <div class="form-user-info">
+                                        <span id="changePasswordUserEmail" class="user-email-display"></span>
                                     </div>
-                                    <div class="form-group">
+                                    <div class="form-field">
                                         <label>新密码</label>
-                                        <input type="password" id="newUserPassword" placeholder="请输入新密码" required>
+                                        <input type="password" id="newUserPassword" placeholder="请输入新密码">
                                     </div>
-                                    <div class="form-group">
+                                    <div class="form-field">
                                         <label>确认密码</label>
-                                        <input type="password" id="confirmNewUserPassword" placeholder="请再次输入新密码" required>
+                                        <input type="password" id="confirmNewUserPassword" placeholder="请再次输入新密码">
                                     </div>
-                                    <div class="form-actions">
-                                        <button class="btn-secondary" onclick="hideChangeUserPasswordForm()">返回</button>
-                                        <button class="btn-primary" onclick="handleChangeUserPassword()">保存密码</button>
+                                    <div class="form-buttons">
+                                        <button class="btn-cancel" onclick="hideChangeUserPasswordForm()">取消</button>
+                                        <button class="btn-submit" onclick="handleChangeUserPassword()">保存密码</button>
                                     </div>
-                                </div>
-
-                                <div class="user-list-container" id="userListContainer">
-                                    <!-- 用户列表将动态生成 -->
                                 </div>
                             </div>
                         </div>

@@ -2049,3 +2049,377 @@
 [data-theme="light"] .form-header-inline span {
     color: #1a1a2e;
 }
+
+/* ================================================
+   用户管理界面新样式（与测试页面一致）
+   ================================================ */
+
+/* 头部样式 */
+.user-mgmt-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border-primary, #2d2d44);
+    background: var(--bg-secondary, #1a1a2e);
+}
+
+.user-mgmt-header .back-btn {
+    background: transparent;
+    border: none;
+    color: var(--primary-color, #00d4ff);
+    cursor: pointer;
+    padding: 8px 12px;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+}
+
+.user-mgmt-header .back-btn:hover {
+    background: rgba(0, 212, 255, 0.1);
+}
+
+.user-mgmt-header span {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary, #ffffff);
+}
+
+/* 用户列表区域 */
+.user-list-section {
+    flex: 1;
+    padding: 20px 24px;
+    overflow-y: auto;
+}
+
+.user-list-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+/* 新增用户按钮 */
+.btn-add-user {
+    background: linear-gradient(135deg, #00d4ff, #8b5cf6);
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+}
+
+.btn-add-user:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);
+}
+
+/* 用户列表项 */
+.user-list-items {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.user-list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: var(--bg-glass, rgba(255, 255, 255, 0.05));
+    border: 1px solid var(--border-primary, #2d2d44);
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.user-list-item:hover {
+    border-color: var(--primary-cyan, #00d4ff);
+    background: var(--bg-hover, rgba(0, 212, 255, 0.05));
+}
+
+.user-list-item.disabled {
+    opacity: 0.5;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.user-avatar {
+    width: 44px;
+    height: 44px;
+    background: var(--gradient-primary, linear-gradient(135deg, #00d4ff, #8b5cf6));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.user-avatar i {
+    color: white;
+    font-size: 18px;
+}
+
+.user-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.user-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary, #ffffff);
+}
+
+.user-email {
+    font-size: 13px;
+    color: var(--text-secondary, #8b8b9e);
+}
+
+.user-role {
+    font-size: 12px;
+    color: var(--primary-color, #00d4ff);
+    margin-left: 8px;
+}
+
+/* 操作按钮 */
+.user-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.action-btn {
+    padding: 8px 14px;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-password {
+    background: var(--bg-tertiary, #2d2d44);
+    color: var(--text-primary, #ffffff);
+}
+
+.btn-password:hover {
+    background: #f59e0b;
+    color: white;
+}
+
+.btn-delete {
+    background: var(--bg-tertiary, #2d2d44);
+    color: var(--text-primary, #ffffff);
+}
+
+.btn-delete:hover {
+    background: #ef4444;
+    color: white;
+}
+
+/* 表单区域 */
+.user-form-section {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--bg-primary, #0f0f1a);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    z-index: 10;
+}
+
+.form-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-primary, #2d2d44);
+}
+
+.form-title .back-btn-inline {
+    background: transparent;
+    border: none;
+    color: var(--primary-color, #00d4ff);
+    cursor: pointer;
+    padding: 8px 12px;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+}
+
+.form-title .back-btn-inline:hover {
+    background: rgba(0, 212, 255, 0.1);
+}
+
+.form-title span {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary, #ffffff);
+}
+
+.form-user-info {
+    padding: 12px 16px;
+    background: rgba(0, 212, 255, 0.1);
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.form-user-info .user-email-display {
+    color: var(--primary-color, #00d4ff);
+    font-size: 14px;
+}
+
+.form-field {
+    margin-bottom: 16px;
+}
+
+.form-field label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: var(--text-secondary, #8b8b9e);
+}
+
+.form-field input,
+.form-field select {
+    width: 100%;
+    padding: 12px 16px;
+    background: var(--bg-secondary, #1a1a2e);
+    border: 1px solid var(--border-primary, #2d2d44);
+    border-radius: 8px;
+    color: var(--text-primary, #ffffff);
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.form-field input:focus,
+.form-field select:focus {
+    outline: none;
+    border-color: var(--primary-color, #00d4ff);
+}
+
+.form-field select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238b8b9e' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 35px;
+}
+
+.form-buttons {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.form-buttons button {
+    flex: 1;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-cancel {
+    background: var(--bg-tertiary, #2d2d44);
+    color: var(--text-primary, #ffffff);
+}
+
+.btn-cancel:hover {
+    background: var(--bg-hover, #3d3d5c);
+}
+
+.btn-submit {
+    background: linear-gradient(135deg, #00d4ff, #8b5cf6);
+    color: #ffffff;
+}
+
+.btn-submit:hover {
+    opacity: 0.9;
+}
+
+/* 当前用户标签 */
+.current-badge {
+    padding: 4px 10px;
+    background: rgba(0, 212, 255, 0.1);
+    border: 1px solid var(--primary-color, #00d4ff);
+    border-radius: 4px;
+    color: var(--primary-color, #00d4ff);
+    font-size: 12px;
+}
+
+/* 管理员标签 */
+.admin-badge {
+    padding: 2px 8px;
+    background: linear-gradient(135deg, #00d4ff, #8b5cf6);
+    border-radius: 4px;
+    color: white;
+    font-size: 11px;
+    margin-left: 8px;
+}
+
+/* 明亮模式 */
+[data-theme="light"] .user-mgmt-header {
+    background: #f5f5f7;
+    border-color: #e0e0e0;
+}
+
+[data-theme="light"] .user-mgmt-header span {
+    color: #1a1a2e;
+}
+
+[data-theme="light"] .user-list-item {
+    background: rgba(0, 0, 0, 0.02);
+    border-color: #e0e0e0;
+}
+
+[data-theme="light"] .user-list-item:hover {
+    background: rgba(0, 212, 255, 0.05);
+}
+
+[data-theme="light"] .user-form-section {
+    background: #ffffff;
+}
+
+[data-theme="light"] .form-title {
+    border-color: #e0e0e0;
+}
+
+[data-theme="light"] .form-title span {
+    color: #1a1a2e;
+}
+
+[data-theme="light"] .form-field input,
+[data-theme="light"] .form-field select {
+    background: #f5f5f7;
+    border-color: #e0e0e0;
+}
+
+[data-theme="light"] .btn-cancel {
+    background: #e0e0e0;
+    color: #1a1a2e;
+}
+
+[data-theme="light"] .btn-cancel:hover {
+    background: #d0d0d0;
+}

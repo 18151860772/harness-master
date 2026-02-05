@@ -663,47 +663,50 @@ const AccountManager = {
         const users = this.getUsers();
         const currentUser = this.getUser();
 
-        let html = `
-            <div class="user-list-header">
-                <span>用户列表 (${users.length})</span>
-            </div>
-        `;
+        let html = '';
 
-        users.forEach((user, index) => {
+        users.forEach((user) => {
             const isCurrentUser = user.email === currentUser?.email;
             const isAdmin = user.role === 'admin';
-            const statusClass = user.status === 'disabled' ? 'user-disabled' : '';
-            const statusText = user.status === 'disabled' ? '(已禁用)' : '';
+            const isDisabled = user.status === 'disabled';
+            const disabledClass = isDisabled ? 'disabled' : '';
 
             html += `
-                <div class="user-item ${statusClass}">
-                    <div class="user-item-info">
-                        <div class="user-item-avatar">
+                <div class="user-list-item ${disabledClass}">
+                    <div class="user-info">
+                        <div class="user-avatar">
                             <i class="fas fa-user"></i>
                         </div>
-                        <div class="user-item-details">
-                            <span class="user-item-name">${user.username} ${statusText} ${isAdmin ? '<span class="admin-badge">管理员</span>' : ''}</span>
-                            <span class="user-item-email">${user.email}</span>
+                        <div class="user-details">
+                            <span class="user-name">
+                                ${user.username}
+                                ${isAdmin ? '<span class="user-role">[管理员]</span>' : ''}
+                                ${isDisabled ? '<span class="user-role" style="color: #ef4444;">[已禁用]</span>' : ''}
+                            </span>
+                            <span class="user-email">${user.email}</span>
                         </div>
                     </div>
-                    <div class="user-item-actions">
-                        <button class="btn-icon-sm" onclick="AccountManager.showChangeUserPasswordForm('${user.email}')" title="修改密码">
-                            <i class="fas fa-key"></i>
-                        </button>
-                        ${!isCurrentUser ? `
-                            <button class="btn-icon-sm" onclick="AccountManager.toggleUserStatus('${user.email}')" title="${user.status === 'disabled' ? '启用用户' : '禁用用户'}">
-                                <i class="fas ${user.status === 'disabled' ? 'fa-check' : 'fa-ban'}"></i>
+                    <div class="user-actions">
+                        ${isCurrentUser ? `
+                            <span class="current-badge">当前用户</span>
+                        ` : `
+                            <button class="action-btn btn-password" onclick="AccountManager.showChangeUserPasswordForm('${user.email}')">
+                                <i class="fas fa-key"></i> 改密
                             </button>
                             ${!isAdmin ? `
-                                <button class="btn-icon-sm danger" onclick="AccountManager.deleteUser('${user.email}')" title="删除用户">
-                                    <i class="fas fa-trash"></i>
+                                <button class="action-btn btn-delete" onclick="AccountManager.deleteUser('${user.email}')">
+                                    <i class="fas fa-trash"></i> 删除
                                 </button>
                             ` : ''}
-                        ` : '<span class="current-badge">当前</span>'}
+                        `}
                     </div>
                 </div>
             `;
         });
+
+        if (users.length === 0) {
+            html = '<div style="text-align: center; padding: 40px; color: var(--text-secondary, #8b8b9e);">暂无用户</div>';
+        }
 
         userListContainer.innerHTML = html;
     },

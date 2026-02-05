@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户管理功能测试</title>
+    <link rel="stylesheet" href="css/tools-page.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary, #0f0f1a);
+            color: var(--text-primary, #fff);
+            padding: 40px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 { text-align: center; margin-bottom: 30px; }
+        .test-btn {
+            display: block;
+            width: 100%;
+            max-width: 300px;
+            margin: 20px auto;
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #00d4ff, #8b5cf6);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .test-btn:hover { opacity: 0.9; }
+        .info {
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid #00d4ff;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .info p { margin: 10px 0; }
+        .user-list {
+            background: var(--bg-secondary, #1a1a2e);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .user-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid var(--border-color, #2d2d44);
+        }
+        .user-item:last-child { border-bottom: none; }
+        .action-btn {
+            padding: 8px 15px;
+            margin-left: 10px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .btn-add { background: linear-gradient(135deg, #00d4ff, #8b5cf6); color: white; }
+        .btn-delete { background: #ef4444; color: white; }
+        .btn-password { background: #f59e0b; color: white; }
+    </style>
+</head>
+<body>
+    <h1>用户管理功能测试</h1>
+
+    <div class="info">
+        <h3>测试步骤：</h3>
+        <p>1. 点击下方按钮初始化管理员账户</p>
+        <p>2. 点击"显示用户列表"查看当前用户</p>
+        <p>3. 点击"新增用户"测试新增功能</p>
+    </div>
+
+    <button class="test-btn" onclick="initAdmin()">
+        <i class="fas fa-user-shield"></i> 初始化管理员账户
+    </button>
+
+    <button class="test-btn" onclick="showUserList()">
+        <i class="fas fa-users"></i> 显示用户列表
+    </button>
+
+    <div id="userList" class="user-list" style="display:none;">
+        <h3>用户列表：</h3>
+        <div id="usersContainer"></div>
+    </div>
+
+    <button class="test-btn" onclick="showAddUserForm()" id="addUserBtn" style="display:none;">
+        <i class="fas fa-plus"></i> 新增用户
+    </button>
+
+    <!-- 新增用户表单 -->
+    <div id="addUserForm" style="display:none; background: var(--bg-secondary, #1a1a2e); border-radius: 10px; padding: 20px; margin: 20px 0;">
+        <h3>新增用户</h3>
+        <div style="margin: 15px 0;">
+            <label>用户名：</label>
+            <input type="text" id="testUsername" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #2d2d44; background: #0f0f1a; color: white;">
+        </div>
+        <div style="margin: 15px 0;">
+            <label>邮箱：</label>
+            <input type="email" id="testEmail" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #2d2d44; background: #0f0f1a; color: white;">
+        </div>
+        <div style="margin: 15px 0;">
+            <label>密码：</label>
+            <input type="password" id="testPassword" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #2d2d44; background: #0f0f1a; color: white;">
+        </div>
+        <button class="action-btn btn-add" onclick="handleAddUser()">创建用户</button>
+        <button class="action-btn" onclick="hideAddUserForm()">取消</button>
+    </div>
+
+    <script>
+        const USERS_KEY = 'harness-users';
+
+        // 获取所有用户
+        function getUsers() {
+            return JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
+        }
+
+        // 保存用户
+        function saveUsers(users) {
+            localStorage.setItem(USERS_KEY, JSON.stringify(users));
+        }
+
+        // 初始化管理员
+        function initAdmin() {
+            const users = getUsers();
+            let admin = users.find(u => u.email === 'admin@harness.com');
+
+            if (!admin) {
+                users.push({
+                    username: '管理员',
+                    email: 'admin@harness.com',
+                    password: 'admin123',
+                    role: 'admin',
+                    status: 'active',
+                    createdAt: new Date().toISOString()
+                });
+                saveUsers(users);
+                alert('管理员账户已创建！\n邮箱: admin@harness.com\n密码: admin123');
+            } else {
+                admin.role = 'admin';
+                admin.status = 'active';
+                saveUsers(users);
+                alert('管理员账户已确认！\n邮箱: admin@harness.com\n密码: admin123');
+            }
+
+            showUserList();
+        }
+
+        // 显示用户列表
+        function showUserList() {
+            const users = getUsers();
+            const container = document.getElementById('usersContainer');
+            const listDiv = document.getElementById('userList');
+            const addBtn = document.getElementById('addUserBtn');
+
+            listDiv.style.display = 'block';
+            addBtn.style.display = 'block';
+
+            if (users.length === 0) {
+                container.innerHTML = '<p>暂无用户</p>';
+                return;
+            }
+
+            container.innerHTML = users.map(user => `
+                <div class="user-item">
+                    <div>
+                        <strong>${user.username}</strong>
+                        ${user.role === 'admin' ? '<span style="color: #00d4ff;">[管理员]</span>' : ''}
+                        <br>
+                        <small>${user.email}</small>
+                    </div>
+                    <div>
+                        <button class="action-btn btn-password" onclick="changePassword('${user.email}')">改密</button>
+                        ${user.role !== 'admin' ? `<button class="action-btn btn-delete" onclick="deleteUser('${user.email}')">删除</button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+
+            alert(`共有 ${users.length} 个用户`);
+        }
+
+        // 显示新增表单
+        function showAddUserForm() {
+            document.getElementById('addUserForm').style.display = 'block';
+        }
+
+        // 隐藏新增表单
+        function hideAddUserForm() {
+            document.getElementById('addUserForm').style.display = 'none';
+            // 清空表单
+            document.getElementById('testUsername').value = '';
+            document.getElementById('testEmail').value = '';
+            document.getElementById('testPassword').value = '';
+        }
+
+        // 新增用户
+        function handleAddUser() {
+            const username = document.getElementById('testUsername').value.trim();
+            const email = document.getElementById('testEmail').value.trim();
+            const password = document.getElementById('testPassword').value;
+
+            if (!username || !email || !password) {
+                alert('请填写完整信息');
+                return;
+            }
+
+            if (password.length < 6) {
+                alert('密码长度至少6位');
+                return;
+            }
+
+            const users = getUsers();
+            if (users.find(u => u.email === email)) {
+                alert('该邮箱已被注册');
+                return;
+            }
+
+            users.push({
+                username,
+                email,
+                password,
+                role: 'user',
+                status: 'active',
+                createdAt: new Date().toISOString()
+            });
+
+            saveUsers(users);
+            alert(`用户 "${username}" 创建成功！`);
+            hideAddUserForm();
+            showUserList();
+        }
+
+        // 修改密码
+        function changePassword(email) {
+            const users = getUsers();
+            const user = users.find(u => u.email === email);
+
+            if (!user) {
+                alert('用户不存在');
+                return;
+            }
+
+            const newPassword = prompt(`为用户 "${user.username}" 输入新密码：`);
+            if (newPassword && newPassword.length >= 6) {
+                user.password = newPassword;
+                saveUsers(users);
+                alert('密码修改成功！');
+            } else if (newPassword) {
+                alert('密码长度至少6位');
+            }
+        }
+
+        // 删除用户
+        function deleteUser(email) {
+            const users = getUsers();
+            const user = users.find(u => u.email === email);
+
+            if (!user) {
+                alert('用户不存在');
+                return;
+            }
+
+            if (user.role === 'admin') {
+                alert('无法删除管理员账户');
+                return;
+            }
+
+            if (confirm(`确定要删除用户 "${user.username}" 吗？此操作不可恢复。`)) {
+                const newUsers = users.filter(u => u.email !== email);
+                saveUsers(newUsers);
+                alert(`用户 "${user.username}" 已删除`);
+                showUserList();
+            }
+        }
+
+        // 检查登录状态
+        function checkLogin() {
+            const currentUser = JSON.parse(localStorage.getItem('harness-master-user') || 'null');
+            if (currentUser) {
+                document.body.innerHTML += `<div style="position: fixed; top: 20px; right: 20px; background: linear-gradient(135deg, #00d4ff, #8b5cf6); padding: 15px 25px; border-radius: 10px;">已登录: ${currentUser.username}</div>`;
+            }
+        }
+
+        checkLogin();
+    </script>
+</body>
+</html>
