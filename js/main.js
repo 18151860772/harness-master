@@ -432,24 +432,60 @@ const AccountManager = {
             if (userName) userName.textContent = user.username || '用户';
             if (userEmail) userEmail.textContent = user.email || '';
 
+            // 更新账户面板内容
+            this.updateAccountPanelContent();
+
             // 更新管理员菜单显示
             this.updateAdminMenu();
-        } else {
-            // 未登录状态
-            if (accountName) accountName.textContent = '未登录';
-            if (accountEmail) accountEmail.textContent = '点击登录账户';
-            if (loginStatus) {
-                loginStatus.textContent = '未登录';
-                loginStatus.classList.add('not-logged-in');
-            }
+        },
 
-            if (loginForm) loginForm.style.display = 'flex';
-            if (registerForm) registerForm.style.display = 'none';
-            if (loggedInPanel) loggedInPanel.style.display = 'none';
+    // 更新账户面板内容（根据登录状态显示不同内容）
+    updateAccountPanelContent() {
+        const currentUser = this.getUser();
+        const accountLoginContent = document.getElementById('accountLoginContent');
+        const accountRegisterContent = document.getElementById('accountRegisterContent');
+        const accountLoggedInContent = document.getElementById('accountLoggedInContent');
+        const changePasswordForm = document.getElementById('changePasswordForm');
+        const userManagementPanel = document.getElementById('userManagementPanel');
+        const notificationsPanel = document.getElementById('notificationsPanel');
+        const accountPanelTitle = document.getElementById('accountPanelTitle');
+
+        if (currentUser) {
+            // 已登录
+            if (accountLoginContent) accountLoginContent.style.display = 'none';
+            if (accountRegisterContent) accountRegisterContent.style.display = 'none';
+            if (accountLoggedInContent) accountLoggedInContent.style.display = 'block';
+            if (accountPanelTitle) accountPanelTitle.textContent = '账户管理';
+
+            // 更新用户信息
+            const userName = document.getElementById('userName');
+            const userEmail = document.getElementById('userEmail');
+            if (userName) userName.textContent = currentUser.username || '用户';
+            if (userEmail) userEmail.textContent = currentUser.email || '';
+        } else {
+            // 未登录
+            if (accountLoginContent) accountLoginContent.style.display = 'block';
+            if (accountRegisterContent) accountRegisterContent.style.display = 'none';
+            if (accountLoggedInContent) accountLoggedInContent.style.display = 'none';
+            if (accountPanelTitle) accountPanelTitle.textContent = '登录/注册';
         }
 
-        // 重置所有子面板
+        // 重置子面板
         if (changePasswordForm) changePasswordForm.style.display = 'none';
+        if (userManagementPanel) userManagementPanel.style.display = 'none';
+        if (notificationsPanel) notificationsPanel.style.display = 'none';
+    },
+
+    // 更新管理员菜单显示
+    updateAdminMenu() {
+        const currentUser = this.getUser();
+        const adminMenuItem = document.getElementById('adminMenuItem');
+
+        if (currentUser && currentUser.role === 'admin') {
+            if (adminMenuItem) adminMenuItem.style.display = 'flex';
+        } else {
+            if (adminMenuItem) adminMenuItem.style.display = 'none';
+        }
     },
 
     // 切换账户面板
@@ -1500,12 +1536,14 @@ window.toggleAccountPanel = function() {
     AccountManager.toggleAccountPanel();
 };
 
+// 显示账户面板的登录表单
 window.showLoginForm = function() {
-    AccountManager.showLoginForm();
+    showAccountLoginForm();
 };
 
+// 显示账户面板的注册表单
 window.showRegisterForm = function() {
-    AccountManager.showRegisterForm();
+    showAccountRegisterForm();
 };
 
 window.handleLogin = function() {
@@ -1653,30 +1691,102 @@ window.handleLockLogin = function() {
 // 全局函数
 // ================================================
 
-// 点击账户区域 - 根据登录状态决定行为
-window.handleAccountSectionClick = function() {
-    const currentUser = AccountManager.getUser();
-    if (currentUser) {
-        // 已登录：打开个人设置
-        SettingsManager.open();
-        SettingsManager.showPersonalSettings();
-    } else {
-        // 未登录：打开登录表单
-        SettingsManager.open();
-        AccountManager.showLoginForm();
-    }
-};
+// 打开账户管理面板
+window.openAccountPanel = function() {
+    const settingsPanel = document.getElementById('settingsPanel');
+    const settingsBtn = document.getElementById('settingsBtn');
+    const overlayMask = document.getElementById('overlayMask');
+    const settingsItems = settingsPanel?.querySelectorAll('.settings-item, .settings-divider');
+    const personalSettings = document.getElementById('personalSettingsPanel');
+    const accountPanel = document.getElementById('accountPanel');
 
-// 从账户面板打开个人设置
-window.openPersonalSettingsFromAccount = function() {
-    AccountManager.closeAccountPanel();
-    SettingsManager.open();
-    SettingsManager.showPersonalSettings();
+    // 打开设置面板
+    if (settingsPanel) settingsPanel.classList.add('active');
+    if (overlayMask) overlayMask.classList.add('active');
+    if (settingsBtn) settingsBtn.classList.add('active');
+
+    // 隐藏系统设置和个人设置
+    settingsItems?.forEach(item => item.style.display = 'none');
+    if (personalSettings) personalSettings.style.display = 'none';
+
+    // 显示账户面板
+    if (accountPanel) {
+        accountPanel.style.display = 'flex';
+        // 根据登录状态显示不同内容
+        AccountManager.updateAccountPanelContent();
+    }
 };
 
 // 返回系统设置
 window.showSystemSettings = function() {
-    SettingsManager.showSystemSettings();
+    const settingsPanel = document.getElementById('settingsPanel');
+    const settingsItems = settingsPanel?.querySelectorAll('.settings-item, .settings-divider');
+    const personalSettings = document.getElementById('personalSettingsPanel');
+    const accountPanel = document.getElementById('accountPanel');
+
+    // 隐藏个人设置和账户面板
+    if (personalSettings) personalSettings.style.display = 'none';
+    if (accountPanel) accountPanel.style.display = 'none';
+
+    // 显示系统设置
+    settingsItems?.forEach(item => {
+        item.style.display = item.classList.contains('settings-divider') ? 'block' : 'flex';
+    });
+};
+
+// 打开个人设置面板
+window.openPersonalSettings = function() {
+    const settingsPanel = document.getElementById('settingsPanel');
+    const settingsBtn = document.getElementById('settingsBtn');
+    const overlayMask = document.getElementById('overlayMask');
+    const settingsItems = settingsPanel?.querySelectorAll('.settings-item, .settings-divider');
+    const personalSettings = document.getElementById('personalSettingsPanel');
+    const accountPanel = document.getElementById('accountPanel');
+
+    // 打开设置面板
+    if (settingsPanel) settingsPanel.classList.add('active');
+    if (overlayMask) overlayMask.classList.add('active');
+    if (settingsBtn) settingsBtn.classList.add('active');
+
+    // 隐藏系统设置和账户面板
+    settingsItems?.forEach(item => item.style.display = 'none');
+    if (accountPanel) accountPanel.style.display = 'none';
+
+    // 显示个人设置
+    if (personalSettings) {
+        personalSettings.style.display = 'flex';
+        // 加载个人设置数据
+        if (AccountManager.loadPersonalSettings) {
+            AccountManager.loadPersonalSettings();
+        }
+    }
+};
+
+// 返回账户管理面板
+window.backToAccountPanel = function() {
+    const accountPanel = document.getElementById('accountPanel');
+    if (accountPanel) {
+        accountPanel.style.display = 'flex';
+        AccountManager.updateAccountPanelContent();
+    }
+};
+
+// 显示账户面板的注册表单
+window.showAccountRegisterForm = function() {
+    const accountLoginContent = document.getElementById('accountLoginContent');
+    const accountRegisterContent = document.getElementById('accountRegisterContent');
+
+    if (accountLoginContent) accountLoginContent.style.display = 'none';
+    if (accountRegisterContent) accountRegisterContent.style.display = 'flex';
+};
+
+// 显示账户面板的登录表单
+window.showAccountLoginForm = function() {
+    const accountLoginContent = document.getElementById('accountLoginContent');
+    const accountRegisterContent = document.getElementById('accountRegisterContent');
+
+    if (accountLoginContent) accountLoginContent.style.display = 'block';
+    if (accountRegisterContent) accountRegisterContent.style.display = 'none';
 };
 
 // 打开设置面板并显示通知
