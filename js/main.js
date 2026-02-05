@@ -174,6 +174,46 @@ const SettingsManager = {
         if (this.overlayMask) {
             this.overlayMask.classList.add('active');
         }
+        // 默认显示系统设置内容
+        this.showSystemSettings();
+    },
+
+    // 显示系统设置（主题、语言等）
+    showSystemSettings() {
+        if (!this.panel) return;
+        const personalSettings = document.getElementById('personalSettingsPanel');
+        const settingsItems = this.panel.querySelectorAll('.settings-item, .settings-divider');
+
+        // 隐藏个人设置
+        if (personalSettings) {
+            personalSettings.style.display = 'none';
+        }
+
+        // 显示系统设置项
+        settingsItems.forEach(item => {
+            item.style.display = item.classList.contains('settings-divider') ? 'block' : 'flex';
+        });
+    },
+
+    // 显示个人设置面板
+    showPersonalSettings() {
+        if (!this.panel) return;
+        const personalSettings = document.getElementById('personalSettingsPanel');
+        const settingsItems = this.panel.querySelectorAll('.settings-item, .settings-divider');
+
+        // 隐藏系统设置项
+        settingsItems.forEach(item => {
+            item.style.display = 'none';
+        });
+
+        // 显示个人设置
+        if (personalSettings) {
+            personalSettings.style.display = 'flex';
+            // 加载个人设置数据
+            if (AccountManager.loadPersonalSettings) {
+                AccountManager.loadPersonalSettings();
+            }
+        }
     },
 
     close() {
@@ -1276,16 +1316,10 @@ const AccountManager = {
 
     // ==================== 个人设置功能 ====================
 
-    // 显示个人设置面板
+    // 显示个人设置面板（通过SettingsManager）
     showPersonalSettings() {
-        const panel = document.getElementById('personalSettingsPanel');
-        const accountPanel = document.getElementById('accountPanel');
-        if (!panel || !accountPanel) return;
-
-        accountPanel.style.display = 'none';
-        panel.style.display = 'flex';
-
-        this.loadPersonalSettings();
+        // 现在由SettingsManager.showPersonalSettings()处理
+        SettingsManager.showPersonalSettings();
     },
 
     // 加载个人设置
@@ -1547,7 +1581,7 @@ window.viewNotificationDetail = function(notificationId) {
 // ==================== 个人设置功能 ====================
 
 window.showPersonalSettings = function() {
-    AccountManager.showPersonalSettings();
+    SettingsManager.showPersonalSettings();
 };
 
 window.handleAvatarChange = function(event) {
@@ -1606,6 +1640,40 @@ window.handleLockLogin = function() {
 // ================================================
 // 全局函数
 // ================================================
+
+// 点击账户区域 - 根据登录状态决定行为
+window.handleAccountSectionClick = function() {
+    const currentUser = AccountManager.getUser();
+    if (currentUser) {
+        // 已登录：打开个人设置
+        SettingsManager.open();
+        SettingsManager.showPersonalSettings();
+    } else {
+        // 未登录：打开登录表单
+        SettingsManager.open();
+        AccountManager.showLoginForm();
+    }
+};
+
+// 打开个人设置面板（从头像图标）
+window.openPersonalSettings = function() {
+    SettingsManager.open();
+    SettingsManager.showPersonalSettings();
+};
+
+// 从账户面板打开个人设置
+window.openPersonalSettingsFromAccount = function() {
+    AccountManager.closeAccountPanel();
+    SettingsManager.open();
+    SettingsManager.showPersonalSettings();
+};
+
+// 返回系统设置
+window.showSystemSettings = function() {
+    SettingsManager.showSystemSettings();
+};
+
+// 打开系统设置面板（齿轮图标使用）
 window.openSettingsAndLogin = function() {
     SettingsManager.open();
     AccountManager.showLoginForm();
