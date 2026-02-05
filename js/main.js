@@ -1681,13 +1681,14 @@ window.openSettingsAndShowNotifications = function() {
 
     // 已登录：显示消息通知
     const settingsPanel = document.getElementById('settingsPanel');
+    const settingsBtn = document.getElementById('settingsBtn');
     const accountPanel = document.getElementById('accountPanel');
     const personalSettings = document.getElementById('personalSettingsPanel');
     const settingsItems = settingsPanel?.querySelectorAll('.settings-item, .settings-divider');
     const overlayMask = document.getElementById('overlayMask');
 
-    if (settingsPanel) settingsPanel.classList.add('active');
-    if (overlayMask) overlayMask.classList.add('active');
+    // 使用SettingsManager来打开面板，保持状态一致
+    SettingsManager.open();
 
     // 隐藏系统设置和个人设置
     settingsItems?.forEach(item => item.style.display = 'none');
