@@ -226,23 +226,36 @@ const AccountManager = {
         this.accountSection = document.getElementById('accountSection');
         this.updateUI();
         this.initAdminUser();
+        // 确保管理员菜单在初始化时也更新
+        setTimeout(() => this.updateAdminMenu(), 100);
     },
 
     // 初始化管理员账户
     initAdminUser() {
         const users = this.getUsers();
-        // 检查是否存在管理员
-        const adminExists = users.some(u => u.email === 'admin@harness.com');
-        if (!adminExists) {
+        // 检查是否存在管理员，如果不存在或角色错误则创建/修复
+        let adminUser = users.find(u => u.email === 'admin@harness.com');
+
+        if (!adminUser) {
+            // 管理员不存在，创建新管理员
             users.push({
                 username: '管理员',
                 email: 'admin@harness.com',
                 password: 'admin123',
                 role: 'admin',
+                status: 'active',
                 createdAt: new Date().toISOString()
             });
-            localStorage.setItem(this.USERS_KEY, JSON.stringify(users));
+            console.log('管理员账户已创建');
+        } else if (adminUser.role !== 'admin') {
+            // 管理员角色错误，修复
+            adminUser.role = 'admin';
+            adminUser.status = 'active';
+            console.log('管理员账户已修复');
         }
+
+        // 保存用户列表
+        localStorage.setItem(this.USERS_KEY, JSON.stringify(users));
     },
 
     // 获取所有用户
@@ -260,13 +273,16 @@ const AccountManager = {
         const user = this.getUser();
         if (!user) return false;
 
-        // 检查本地存储中的用户角色
-        if (user.role === 'admin') return true;
-
-        // 从用户列表中重新获取最新信息
+        // 从用户列表中重新获取最新信息（确保获取最新角色）
         const users = this.getUsers();
         const fullUser = users.find(u => u.email === user.email);
-        return fullUser && fullUser.role === 'admin';
+
+        if (fullUser) {
+            return fullUser.role === 'admin';
+        }
+
+        // 如果用户列表中没有，尝试使用保存的角色
+        return user.role === 'admin';
     },
 
     // 更新管理员菜单显示
@@ -277,8 +293,11 @@ const AccountManager = {
         const loginBtn = document.getElementById('loginBtn');
         const isLoggedIn = this.isLoggedIn();
 
+        console.log('updateAdminMenu called, isLoggedIn:', isLoggedIn);
+
         if (adminMenu) {
             const isAdminUser = this.isAdmin();
+            console.log('isAdminUser:', isAdminUser);
             adminMenu.style.display = isAdminUser ? 'flex' : 'none';
         }
 
@@ -946,6 +965,12 @@ window.hideChangeUserPasswordForm = function() {
 
 window.handleChangeUserPassword = function() {
     AccountManager.handleChangeUserPassword();
+};
+
+// 重置管理员账户（调试用）
+window.resetAdminUser = function() {
+    localStorage.removeItem('harness-users');
+    location.reload();
 };
 
 // 锁定屏幕登录
