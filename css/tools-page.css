@@ -1977,3 +1977,33 @@
 [data-theme="light"] .add-user-form .form-actions .btn-secondary:hover {
     background: #d0d0d0;
 }
+
+/* 表单头部样式 */
+.add-user-form .form-header {
+    text-align: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border-color, #2d2d44);
+}
+
+.add-user-form .form-header h4 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary, #ffffff);
+}
+
+.add-user-form .form-header .user-email-display {
+    margin: 0;
+    font-size: 13px;
+    color: var(--primary-color, #00d4ff);
+}
+
+/* 明亮模式表单头部 */
+[data-theme="light"] .add-user-form .form-header {
+    border-color: #e0e0e0;
+}
+
+[data-theme="light"] .add-user-form .form-header h4 {
+    color: #1a1a2e;
+}

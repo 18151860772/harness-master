@@ -279,6 +279,26 @@
                                     </div>
                                 </div>
 
+                                <!-- 修改密码表单 -->
+                                <div id="changeUserPasswordForm" class="add-user-form" style="display: none;">
+                                    <div class="form-header">
+                                        <h4>修改密码</h4>
+                                        <p id="changePasswordUserEmail" class="user-email-display"></p>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>新密码</label>
+                                        <input type="password" id="newUserPassword" placeholder="请输入新密码" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>确认密码</label>
+                                        <input type="password" id="confirmNewUserPassword" placeholder="请再次输入新密码" required>
+                                    </div>
+                                    <div class="form-actions">
+                                        <button class="btn-secondary" onclick="hideChangeUserPasswordForm()">取消</button>
+                                        <button class="btn-primary" onclick="handleChangeUserPassword()">保存密码</button>
+                                    </div>
+                                </div>
+
                                 <div class="user-list-container" id="userListContainer">
                                     <!-- 用户列表将动态生成 -->
                                 </div>

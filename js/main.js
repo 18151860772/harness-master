@@ -668,6 +668,9 @@ const AccountManager = {
                         </div>
                     </div>
                     <div class="user-item-actions">
+                        <button class="btn-icon-sm" onclick="AccountManager.showChangeUserPasswordForm('${user.email}')" title="修改密码">
+                            <i class="fas fa-key"></i>
+                        </button>
                         ${!isCurrentUser ? `
                             <button class="btn-icon-sm" onclick="AccountManager.toggleUserStatus('${user.email}')" title="${user.status === 'disabled' ? '启用用户' : '禁用用户'}">
                                 <i class="fas ${user.status === 'disabled' ? 'fa-check' : 'fa-ban'}"></i>
@@ -677,7 +680,7 @@ const AccountManager = {
                                     <i class="fas fa-trash"></i>
                                 </button>
                             ` : ''}
-                        ` : '<span class="current-badge">当前用户</span>'}
+                        ` : '<span class="current-badge">当前</span>'}
                     </div>
                 </div>
             `;
@@ -803,6 +806,76 @@ const AccountManager = {
         this.hideAddUserForm();
         this.renderUserList();
         showToast(`用户 "${username}" 创建成功`, 'success');
+    },
+
+    // ==================== 修改用户密码功能 ====================
+    currentEditEmail: null,
+
+    // 显示修改密码表单
+    showChangeUserPasswordForm(email) {
+        const form = document.getElementById('changeUserPasswordForm');
+        const userListContainer = document.getElementById('userListContainer');
+        const emailDisplay = document.getElementById('changePasswordUserEmail');
+
+        if (form) {
+            this.currentEditEmail = email;
+            // 显示用户邮箱
+            if (emailDisplay) {
+                emailDisplay.textContent = email;
+            }
+            // 清空密码输入
+            document.getElementById('newUserPassword').value = '';
+            document.getElementById('confirmNewUserPassword').value = '';
+            form.style.display = 'block';
+            if (userListContainer) userListContainer.style.display = 'none';
+        }
+    },
+
+    // 隐藏修改密码表单
+    hideChangeUserPasswordForm() {
+        const form = document.getElementById('changeUserPasswordForm');
+        const userListContainer = document.getElementById('userListContainer');
+
+        if (form) {
+            form.style.display = 'none';
+            this.currentEditEmail = null;
+        }
+        if (userListContainer) userListContainer.style.display = 'block';
+    },
+
+    // 处理修改密码
+    handleChangeUserPassword() {
+        const newPassword = document.getElementById('newUserPassword')?.value;
+        const confirmPassword = document.getElementById('confirmNewUserPassword')?.value;
+        const email = this.currentEditEmail;
+
+        if (!newPassword || !confirmPassword) {
+            showToast('请填写完整信息', 'warning');
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            showToast('两次输入的密码不一致', 'warning');
+            return;
+        }
+
+        if (newPassword.length < 6) {
+            showToast('密码长度至少6位', 'warning');
+            return;
+        }
+
+        const users = this.getUsers();
+        const userIndex = users.findIndex(u => u.email === email);
+
+        if (userIndex !== -1) {
+            users[userIndex].password = newPassword;
+            this.saveUsers(users);
+            this.hideChangeUserPasswordForm();
+            this.renderUserList();
+            showToast(`已修改用户密码: ${users[userIndex].username}`, 'success');
+        } else {
+            showToast('用户不存在', 'error');
+        }
     }
 };
 
@@ -861,6 +934,18 @@ window.hideAddUserForm = function() {
 
 window.handleAddUser = function() {
     AccountManager.handleAddUser();
+};
+
+window.showChangeUserPasswordForm = function(email) {
+    AccountManager.showChangeUserPasswordForm(email);
+};
+
+window.hideChangeUserPasswordForm = function() {
+    AccountManager.hideChangeUserPasswordForm();
+};
+
+window.handleChangeUserPassword = function() {
+    AccountManager.handleChangeUserPassword();
 };
 
 // 锁定屏幕登录
