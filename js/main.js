@@ -493,6 +493,9 @@ const AccountManager = {
             // 更新UI显示管理员菜单和退出按钮
             this.updateAdminMenu();
 
+            // 更新通知徽章
+            this.updateNotificationBadge();
+
             // 解锁网站
             SiteLock.unlock();
 
@@ -1018,17 +1021,23 @@ const AccountManager = {
     // 更新通知徽章
     updateNotificationBadge() {
         const badge = document.getElementById('notificationBadge');
+        const navBadge = document.getElementById('navNotificationBadge');
         const notifications = this.getNotifications();
         const unreadCount = notifications.filter(n => !n.read).length;
 
-        if (badge) {
-            if (unreadCount > 0) {
-                badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
-                badge.style.display = 'flex';
-            } else {
-                badge.style.display = 'none';
+        const updateBadge = (el) => {
+            if (el) {
+                if (unreadCount > 0) {
+                    el.textContent = unreadCount > 99 ? '99+' : unreadCount;
+                    el.style.display = 'flex';
+                } else {
+                    el.style.display = 'none';
+                }
             }
-        }
+        };
+
+        updateBadge(badge);
+        updateBadge(navBadge);
     },
 
     // 标记单个通知为已读
@@ -1524,6 +1533,9 @@ window.handleLockLogin = function() {
         const loginUser = { username: user.username, email: user.email, role: user.role };
         localStorage.setItem(AccountManager.STORAGE_KEY, JSON.stringify(loginUser));
 
+        // 更新通知徽章
+        AccountManager.updateNotificationBadge();
+
         SiteLock.unlock();
         showToast('登录成功', 'success');
 
@@ -1540,6 +1552,12 @@ window.handleLockLogin = function() {
 window.openSettingsAndLogin = function() {
     SettingsManager.open();
     AccountManager.showLoginForm();
+};
+
+// 打开设置面板并显示通知
+window.openSettingsAndShowNotifications = function() {
+    SettingsManager.open();
+    AccountManager.showNotifications();
 };
 
 window.switchTheme = function(theme) {
