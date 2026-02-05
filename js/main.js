@@ -1202,6 +1202,172 @@ const AccountManager = {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    },
+
+    // ==================== 个人设置功能 ====================
+
+    // 显示个人设置面板
+    showPersonalSettings() {
+        const panel = document.getElementById('personalSettingsPanel');
+        const accountPanel = document.getElementById('accountPanel');
+        if (!panel || !accountPanel) return;
+
+        accountPanel.style.display = 'none';
+        panel.style.display = 'flex';
+
+        this.loadPersonalSettings();
+    },
+
+    // 加载个人设置
+    loadPersonalSettings() {
+        const user = this.getCurrentUser();
+        if (!user) return;
+
+        // 获取完整用户信息
+        const users = JSON.parse(localStorage.getItem('harness-users') || '[]');
+        const fullUser = users.find(u => u.email === user.email);
+
+        if (fullUser) {
+            // 设置用户名
+            document.getElementById('settingsUsername').value = fullUser.username || '';
+
+            // 设置自我介绍
+            document.getElementById('settingsBio').value = fullUser.bio || '';
+
+            // 设置联系方式
+            document.getElementById('settingsContact').value = fullUser.contact || '';
+
+            // 显示当前头像
+            this.updateAvatarDisplay(fullUser.avatar);
+        }
+    },
+
+    // 更新头像显示
+    updateAvatarDisplay(avatarData) {
+        const display = document.getElementById('currentAvatarDisplay');
+        const removeBtn = document.getElementById('btnRemoveAvatar');
+        if (!display) return;
+
+        if (avatarData) {
+            display.style.backgroundImage = `url(${avatarData})`;
+            display.innerHTML = '';
+            if (removeBtn) removeBtn.style.display = 'inline-flex';
+        } else {
+            display.style.backgroundImage = '';
+            display.innerHTML = '<i class="fas fa-user"></i>';
+            if (removeBtn) removeBtn.style.display = 'none';
+        }
+    },
+
+    // 处理头像选择
+    handleAvatarChange(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // 验证文件类型
+        if (!file.type.startsWith('image/')) {
+            showToast('请选择图片文件', 'warning');
+            return;
+        }
+
+        // 验证文件大小 (最大2MB)
+        if (file.size > 2 * 1024 * 1024) {
+            showToast('图片大小不能超过2MB', 'warning');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const avatarData = e.target.result;
+            this.saveAvatar(avatarData);
+            this.updateAvatarDisplay(avatarData);
+            showToast('头像已更新', 'success');
+        };
+        reader.readAsDataURL(file);
+
+        // 清空input
+        event.target.value = '';
+    },
+
+    // 保存头像
+    saveAvatar(avatarData) {
+        const user = this.getCurrentUser();
+        if (!user) return;
+
+        const users = JSON.parse(localStorage.getItem('harness-users') || '[]');
+        const userIndex = users.findIndex(u => u.email === user.email);
+
+        if (userIndex !== -1) {
+            users[userIndex].avatar = avatarData;
+            localStorage.setItem('harness-users', JSON.stringify(users));
+        }
+    },
+
+    // 移除头像
+    removeAvatar() {
+        const user = this.getCurrentUser();
+        if (!user) return;
+
+        const users = JSON.parse(localStorage.getItem('harness-users') || '[]');
+        const userIndex = users.findIndex(u => u.email === user.email);
+
+        if (userIndex !== -1) {
+            users[userIndex].avatar = null;
+            localStorage.setItem('harness-users', JSON.stringify(users));
+            this.updateAvatarDisplay(null);
+            showToast('头像已移除', 'success');
+        }
+    },
+
+    // 保存个人设置
+    savePersonalSettings() {
+        const user = this.getCurrentUser();
+        if (!user) return;
+
+        const username = document.getElementById('settingsUsername')?.value.trim();
+        const bio = document.getElementById('settingsBio')?.value.trim() || '';
+        const contact = document.getElementById('settingsContact')?.value.trim() || '';
+
+        // 验证用户名
+        if (!username) {
+            showToast('用户名不能为空', 'warning');
+            return;
+        }
+
+        if (username.length > 20) {
+            showToast('用户名不能超过20个字符', 'warning');
+            return;
+        }
+
+        const users = JSON.parse(localStorage.getItem('harness-users') || '[]');
+        const userIndex = users.findIndex(u => u.email === user.email);
+
+        if (userIndex !== -1) {
+            // 检查用户名是否已被其他用户使用
+            const usernameExists = users.some((u, idx) => idx !== userIndex && u.username === username);
+            if (usernameExists) {
+                showToast('用户名已被使用', 'warning');
+                return;
+            }
+
+            // 保存设置
+            users[userIndex].username = username;
+            users[userIndex].bio = bio;
+            users[userIndex].contact = contact;
+            localStorage.setItem('harness-users', JSON.stringify(users));
+
+            // 更新当前用户信息
+            const loginUser = { username, email: user.email, role: user.role };
+            localStorage.setItem(this.STORAGE_KEY, JSON.stringify(loginUser));
+
+            // 更新界面显示
+            this.updateAccountInfo();
+            this.updateLoggedInPanel();
+
+            showToast('设置已保存', 'success');
+        } else {
+            showToast('保存失败，用户不存在', 'error');
+        }
     }
 };
 
@@ -1310,6 +1476,24 @@ window.deleteNotification = function(notificationId) {
 
 window.viewNotificationDetail = function(notificationId) {
     AccountManager.viewNotificationDetail(notificationId);
+};
+
+// ==================== 个人设置功能 ====================
+
+window.showPersonalSettings = function() {
+    AccountManager.showPersonalSettings();
+};
+
+window.handleAvatarChange = function(event) {
+    AccountManager.handleAvatarChange(event);
+};
+
+window.removeAvatar = function() {
+    AccountManager.removeAvatar();
+};
+
+window.savePersonalSettings = function() {
+    AccountManager.savePersonalSettings();
 };
 
 // 重置管理员账户（调试用）
