@@ -137,7 +137,7 @@
                         <!-- 账户面板 -->
                         <div class="account-panel" id="accountPanel">
                             <div class="account-panel-header">
-                                <button class="back-btn" onclick="toggleAccountPanel()">
+                                <button class="back-btn" onclick="navigateBack()" style="display: none;">
                                     <i class="fas fa-arrow-left"></i>
                                 </button>
                                 <span>账户管理</span>
@@ -252,7 +252,7 @@
                             <!-- 用户管理面板 -->
                             <div id="userManagementPanel" class="user-management-panel" style="display: none;">
                                 <div class="user-mgmt-header">
-                                    <button class="back-btn" onclick="backToUserPanel()">
+                                    <button class="back-btn" onclick="navigateBack()">
                                         <i class="fas fa-arrow-left"></i>
                                     </button>
                                     <span>用户管理</span>
@@ -334,7 +334,7 @@
                             <!-- 消息通知面板 -->
                             <div id="notificationsPanel" class="notifications-panel" style="display: none;">
                                 <div class="notifications-header">
-                                    <button class="back-btn" onclick="backToAccountPanel()">
+                                    <button class="back-btn" onclick="navigateBack()">
                                         <i class="fas fa-arrow-left"></i>
                                     </button>
                                     <span>消息通知</span>
@@ -362,7 +362,7 @@
                         <!-- 个人设置面板 -->
                         <div id="personalSettingsPanel" class="personal-settings-panel" style="display: none;">
                             <div class="settings-panel-header">
-                                <button class="back-btn" onclick="backToAccountPanel()">
+                                <button class="back-btn" onclick="navigateBack()">
                                     <i class="fas fa-arrow-left"></i>
                                 </button>
                                 <span>个人设置</span>

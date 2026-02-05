@@ -411,7 +411,13 @@ const AccountManager = {
         } else {
             this.accountPanel.classList.add('active');
             this.accountSection.style.display = 'none';
+
+            // 重置面板导航栈
+            this.panelStack = [];
+
+            // 显示登录表单并更新头部
             this.showLoginForm();
+            this.updateAccountPanelHeader('loginForm');
         }
     },
 
@@ -433,6 +439,9 @@ const AccountManager = {
         if (registerForm) registerForm.style.display = 'none';
         if (loggedInPanel) loggedInPanel.style.display = 'none';
         if (changePasswordForm) changePasswordForm.style.display = 'none';
+
+        // 更新头部
+        this.updateAccountPanelHeader('loginForm');
     },
 
     // 显示注册表单
@@ -442,6 +451,9 @@ const AccountManager = {
 
         if (loginForm) loginForm.style.display = 'none';
         if (registerForm) registerForm.style.display = 'flex';
+
+        // 更新头部
+        this.updateAccountPanelHeader('registerForm');
     },
 
     // 显示已登录面板
@@ -451,12 +463,19 @@ const AccountManager = {
         const loggedInPanel = document.getElementById('loggedInPanel');
         const changePasswordForm = document.getElementById('changePasswordForm');
         const userManagementPanel = document.getElementById('userManagementPanel');
+        const notificationsPanel = document.getElementById('notificationsPanel');
+        const personalSettingsPanel = document.getElementById('personalSettingsPanel');
 
         if (loginForm) loginForm.style.display = 'none';
         if (registerForm) registerForm.style.display = 'none';
         if (changePasswordForm) changePasswordForm.style.display = 'none';
         if (userManagementPanel) userManagementPanel.style.display = 'none';
+        if (notificationsPanel) notificationsPanel.style.display = 'none';
+        if (personalSettingsPanel) personalSettingsPanel.style.display = 'none';
         if (loggedInPanel) loggedInPanel.style.display = 'flex';
+
+        // 更新头部
+        this.updateAccountPanelHeader('loggedInPanel');
     },
 
     // 处理登录
@@ -565,11 +584,7 @@ const AccountManager = {
 
     // 显示修改密码表单
     showChangePassword() {
-        const changePasswordForm = document.getElementById('changePasswordForm');
-        const loggedInPanel = document.getElementById('loggedInPanel');
-
-        if (changePasswordForm) changePasswordForm.style.display = 'flex';
-        if (loggedInPanel) loggedInPanel.style.display = 'none';
+        this.navigateToSubPanel('changePasswordForm');
     },
 
     // 显示修改邮箱表单
@@ -635,27 +650,8 @@ const AccountManager = {
 
     // 显示用户管理面板
     showUserManagement() {
-        const userManagementPanel = document.getElementById('userManagementPanel');
-        const loggedInPanel = document.getElementById('loggedInPanel');
-        const changePasswordForm = document.getElementById('changePasswordForm');
-
-        if (userManagementPanel) {
-            userManagementPanel.style.display = 'flex';
-            loggedInPanel.style.display = 'none';
-            changePasswordForm.style.display = 'none';
-            this.renderUserList();
-        }
-    },
-
-    // 返回用户面板
-    backToUserPanel() {
-        const userManagementPanel = document.getElementById('userManagementPanel');
-        const loggedInPanel = document.getElementById('loggedInPanel');
-
-        if (userManagementPanel) {
-            userManagementPanel.style.display = 'none';
-            loggedInPanel.style.display = 'flex';
-        }
+        this.navigateToSubPanel('userManagementPanel');
+        this.renderUserList();
     },
 
     // 渲染用户列表
@@ -903,29 +899,94 @@ const AccountManager = {
         }
     },
 
+    // ==================== 面板导航系统 ====================
+    panelStack: [], // 面板导航栈
+
+    // 导航到指定子面板
+    navigateToSubPanel(panelId, fromPanel = 'loggedInPanel') {
+        const accountPanel = document.getElementById('accountPanel');
+        const targetPanel = document.getElementById(panelId);
+        const fromEl = document.getElementById(fromPanel);
+
+        if (!accountPanel || !targetPanel || !fromEl) return;
+
+        // 隐藏当前面板
+        fromEl.style.display = 'none';
+
+        // 保存当前面板到栈
+        this.panelStack.push(fromPanel);
+
+        // 显示目标面板
+        targetPanel.style.display = 'flex';
+
+        // 更新头部标题和返回按钮
+        this.updateAccountPanelHeader(panelId);
+
+        // 如果是通知面板，渲染通知
+        if (panelId === 'notificationsPanel') {
+            this.renderNotifications();
+        }
+
+        // 如果是个人设置面板，加载设置
+        if (panelId === 'personalSettingsPanel') {
+            this.loadPersonalSettings();
+        }
+    },
+
+    // 返回上一个面板
+    navigateBack() {
+        const accountPanel = document.getElementById('accountPanel');
+        const currentPanel = this.panelStack[this.panelStack.length - 1];
+
+        if (!accountPanel || !currentPanel) return;
+
+        // 隐藏当前面板
+        const currentEl = accountPanel.querySelector('.notifications-panel, .personal-settings-panel, .user-management-panel, .account-form:not(#loginForm):not(#registerForm)');
+        if (currentEl) currentEl.style.display = 'none';
+
+        // 恢复上一个面板
+        const prevPanel = this.panelStack.pop();
+        const prevEl = document.getElementById(prevPanel);
+        if (prevEl) prevEl.style.display = 'flex';
+
+        // 更新头部标题
+        this.updateAccountPanelHeader(prevPanel);
+    },
+
+    // 更新账户面板头部（标题和返回按钮）
+    updateAccountPanelHeader(panelId) {
+        const header = accountPanel?.querySelector('.account-panel-header');
+        if (!header) return;
+
+        const backBtn = header.querySelector('.back-btn');
+        const titleSpan = header.querySelector('span');
+
+        // 标题映射
+        const titles = {
+            'loggedInPanel': '账户管理',
+            'changePasswordForm': '修改密码',
+            'userManagementPanel': '用户管理',
+            'notificationsPanel': '消息通知',
+            'personalSettingsPanel': '个人设置'
+        };
+
+        // 是否显示返回按钮
+        const showBack = panelId !== 'loggedInPanel' && panelId !== 'loginForm' && panelId !== 'registerForm';
+
+        if (backBtn) {
+            backBtn.style.display = showBack ? 'flex' : 'none';
+            backBtn.onclick = showBack ? () => this.navigateBack() : null;
+        }
+        if (titleSpan && titles[panelId]) {
+            titleSpan.textContent = titles[panelId];
+        }
+    },
+
     // ==================== 消息通知功能 ====================
 
     // 显示消息通知面板
     showNotifications() {
-        const notificationsPanel = document.getElementById('notificationsPanel');
-        const accountPanel = document.getElementById('accountPanel');
-
-        if (notificationsPanel && accountPanel) {
-            accountPanel.style.display = 'none';
-            notificationsPanel.style.display = 'flex';
-            this.renderNotifications();
-        }
-    },
-
-    // 返回账户面板
-    backToAccountPanel() {
-        const notificationsPanel = document.getElementById('notificationsPanel');
-        const accountPanel = document.getElementById('accountPanel');
-
-        if (notificationsPanel && accountPanel) {
-            notificationsPanel.style.display = 'none';
-            accountPanel.style.display = 'flex';
-        }
+        this.navigateToSubPanel('notificationsPanel');
     },
 
     // 获取当前用户的通知
@@ -1429,10 +1490,6 @@ window.showUserManagement = function() {
     AccountManager.showUserManagement();
 };
 
-window.backToUserPanel = function() {
-    AccountManager.backToUserPanel();
-};
-
 window.showAddUserForm = function() {
     AccountManager.showAddUserForm();
 };
@@ -1463,8 +1520,8 @@ window.showNotifications = function() {
     AccountManager.showNotifications();
 };
 
-window.backToAccountPanel = function() {
-    AccountManager.backToAccountPanel();
+window.navigateBack = function() {
+    AccountManager.navigateBack();
 };
 
 window.filterNotifications = function(tab) {
