@@ -182,11 +182,17 @@ const SettingsManager = {
     showSystemSettings() {
         if (!this.panel) return;
         const personalSettings = document.getElementById('personalSettingsPanel');
+        const accountPanel = document.getElementById('accountPanel');
         const settingsItems = this.panel.querySelectorAll('.settings-item, .settings-divider');
 
-        // 隐藏个人设置
+        // 隐藏个人设置面板
         if (personalSettings) {
             personalSettings.style.display = 'none';
+        }
+
+        // 隐藏账户面板
+        if (accountPanel) {
+            accountPanel.style.display = 'none';
         }
 
         // 显示系统设置项
@@ -199,12 +205,18 @@ const SettingsManager = {
     showPersonalSettings() {
         if (!this.panel) return;
         const personalSettings = document.getElementById('personalSettingsPanel');
+        const accountPanel = document.getElementById('accountPanel');
         const settingsItems = this.panel.querySelectorAll('.settings-item, .settings-divider');
 
         // 隐藏系统设置项
         settingsItems.forEach(item => {
             item.style.display = 'none';
         });
+
+        // 隐藏账户面板
+        if (accountPanel) {
+            accountPanel.style.display = 'none';
+        }
 
         // 显示个人设置
         if (personalSettings) {
