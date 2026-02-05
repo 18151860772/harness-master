@@ -501,13 +501,50 @@ window.replyToComment = function(commentId) {
     const comment = CommentsState.comments.find(c => c.id === commentId);
     if (!comment) return;
 
-    // 聚焦到评论输入框并添加引用
-    const input = document.getElementById('commentInput');
-    if (input) {
-        input.focus();
-        input.placeholder = `回复 @${comment.author}：`;
-        input.dataset.replyTo = commentId;
-        input.scrollIntoView({ behavior: 'smooth' });
+    // 检查是否已存在回复表单
+    let replyForm = document.querySelector(`.reply-form[data-comment="${commentId}"]`);
+
+    // 如果已存在，移除它（关闭）
+    if (replyForm) {
+        replyForm.remove();
+        return;
+    }
+
+    // 移除其他打开的回复表单
+    document.querySelectorAll('.reply-form').forEach(form => form.remove());
+
+    // 获取评论元素
+    const commentItem = document.querySelector(`.comment-item[data-id="${commentId}"]`);
+    if (!commentItem) return;
+
+    // 创建回复表单
+    replyForm = document.createElement('div');
+    replyForm.className = 'reply-form';
+    replyForm.dataset.comment = commentId;
+    replyForm.innerHTML = `
+        <div class="reply-form-content">
+            <textarea id="replyInput_${commentId}" placeholder="回复 @${comment.author}..." rows="2"></textarea>
+            <div class="reply-form-actions">
+                <button class="btn-cancel" onclick="closeReplyForm('${commentId}')">取消</button>
+                <button class="btn-submit" onclick="submitReply('${commentId}')">发送</button>
+            </div>
+        </div>
+    `;
+
+    // 在评论项末尾插入
+    commentItem.appendChild(replyForm);
+
+    // 聚焦到输入框
+    setTimeout(() => {
+        const textarea = replyForm.querySelector('textarea');
+        if (textarea) textarea.focus();
+    }, 100);
+};
+
+window.closeReplyForm = function(commentId) {
+    const replyForm = document.querySelector(`.reply-form[data-comment="${commentId}"]`);
+    if (replyForm) {
+        replyForm.remove();
     }
 };
 
