@@ -1681,8 +1681,26 @@ window.openSettingsAndLogin = function() {
 
 // 打开设置面板并显示通知
 window.openSettingsAndShowNotifications = function() {
-    SettingsManager.open();
-    AccountManager.showNotifications();
+    // 打开设置面板但直接显示消息通知
+    const settingsPanel = document.getElementById('settingsPanel');
+    const accountPanel = document.getElementById('accountPanel');
+    const personalSettings = document.getElementById('personalSettingsPanel');
+    const settingsItems = settingsPanel?.querySelectorAll('.settings-item, .settings-divider');
+    const notificationsPanel = document.getElementById('notificationsPanel');
+    const overlayMask = document.getElementById('overlayMask');
+
+    if (settingsPanel) settingsPanel.classList.add('active');
+    if (overlayMask) overlayMask.classList.add('active');
+
+    // 隐藏系统设置和个人设置
+    settingsItems?.forEach(item => item.style.display = 'none');
+    if (personalSettings) personalSettings.style.display = 'none';
+
+    // 显示账户面板（消息通知在里面）
+    if (accountPanel) {
+        accountPanel.style.display = 'flex';
+        AccountManager.showNotifications();
+    }
 };
 
 window.switchTheme = function(theme) {
