@@ -898,6 +898,318 @@ const AccountManager = {
         } else {
             showToast('用户不存在', 'error');
         }
+    },
+
+    // ==================== 消息通知功能 ====================
+
+    // 显示消息通知面板
+    showNotifications() {
+        const notificationsPanel = document.getElementById('notificationsPanel');
+        const accountPanel = document.getElementById('accountPanel');
+
+        if (notificationsPanel && accountPanel) {
+            accountPanel.style.display = 'none';
+            notificationsPanel.style.display = 'flex';
+            this.renderNotifications();
+        }
+    },
+
+    // 返回账户面板
+    backToAccountPanel() {
+        const notificationsPanel = document.getElementById('notificationsPanel');
+        const accountPanel = document.getElementById('accountPanel');
+
+        if (notificationsPanel && accountPanel) {
+            notificationsPanel.style.display = 'none';
+            accountPanel.style.display = 'flex';
+        }
+    },
+
+    // 获取当前用户的通知
+    getNotifications() {
+        const currentUser = this.getUser();
+        if (!currentUser) return [];
+
+        const allNotifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+        return allNotifications.filter(n => n.userEmail === currentUser.email);
+    },
+
+    // 筛选通知
+    filterNotifications(tab) {
+        // 更新按钮状态
+        document.querySelectorAll('.notifications-tabs .tab-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tab === tab);
+        });
+
+        this.currentNotificationFilter = tab;
+        this.renderNotifications();
+    },
+
+    // 渲染通知列表
+    renderNotifications() {
+        const listContainer = document.getElementById('notificationsList');
+        const emptyContainer = document.getElementById('emptyNotifications');
+        if (!listContainer) return;
+
+        let notifications = this.getNotifications();
+        const filter = this.currentNotificationFilter || 'all';
+
+        // 根据筛选条件过滤
+        if (filter === 'unread') {
+            notifications = notifications.filter(n => !n.read);
+        } else if (filter === 'comment') {
+            notifications = notifications.filter(n => n.type === 'comment');
+        } else if (filter === 'requirement') {
+            notifications = notifications.filter(n => n.type === 'requirement');
+        }
+
+        // 按时间排序（新的在前）
+        notifications.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+        // 更新未读数量徽章
+        this.updateNotificationBadge();
+
+        if (notifications.length === 0) {
+            listContainer.innerHTML = '';
+            if (emptyContainer) emptyContainer.style.display = 'flex';
+            return;
+        }
+
+        if (emptyContainer) emptyContainer.style.display = 'none';
+
+        listContainer.innerHTML = notifications.map(n => this.createNotificationHTML(n)).join('');
+
+        // 添加动画
+        listContainer.querySelectorAll('.notification-item').forEach((item, index) => {
+            item.style.animationDelay = `${index * 0.05}s`;
+        });
+    },
+
+    // 创建通知HTML
+    createNotificationHTML(notification) {
+        const timeAgo = this.formatTimeAgo(notification.timestamp);
+        const readClass = notification.read ? '' : 'unread';
+        const iconClass = notification.type === 'comment' ? 'fa-comment' : 'fa-lightbulb';
+        const typeLabel = notification.type === 'comment' ? '评论回复' : '需求反馈';
+
+        return `
+            <div class="notification-item ${readClass}" data-id="${notification.id}" onclick="viewNotificationDetail('${notification.id}')">
+                <div class="notification-icon">
+                    <i class="fas ${iconClass}"></i>
+                </div>
+                <div class="notification-content">
+                    <div class="notification-header">
+                        <span class="notification-type">${typeLabel}</span>
+                        <span class="notification-time">${timeAgo}</span>
+                    </div>
+                    <p class="notification-title">${this.escapeHtml(notification.title)}</p>
+                    <p class="notification-preview">${this.escapeHtml(notification.content.substring(0, 50))}${notification.content.length > 50 ? '...' : ''}</p>
+                    <div class="notification-actions">
+                        <button class="action-btn" onclick="event.stopPropagation(); viewNotificationDetail('${notification.id}')">查看详情</button>
+                        ${!notification.read ? `<button class="action-btn read-btn" onclick="event.stopPropagation(); markNotificationAsRead('${notification.id}')">标为已读</button>` : ''}
+                        <button class="action-btn delete-btn" onclick="event.stopPropagation(); deleteNotification('${notification.id}')">删除</button>
+                    </div>
+                </div>
+                ${!notification.read ? '<div class="unread-dot"></div>' : ''}
+            </div>
+        `;
+    },
+
+    // 更新通知徽章
+    updateNotificationBadge() {
+        const badge = document.getElementById('notificationBadge');
+        const notifications = this.getNotifications();
+        const unreadCount = notifications.filter(n => !n.read).length;
+
+        if (badge) {
+            if (unreadCount > 0) {
+                badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+                badge.style.display = 'flex';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+    },
+
+    // 标记单个通知为已读
+    markNotificationAsRead(notificationId) {
+        const allNotifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+        const notification = allNotifications.find(n => n.id === notificationId);
+
+        if (notification) {
+            notification.read = true;
+            localStorage.setItem('notifications', JSON.stringify(allNotifications));
+            this.renderNotifications();
+        }
+    },
+
+    // 标记所有通知为已读
+    markAllAsRead() {
+        const currentUser = this.getUser();
+        if (!currentUser) return;
+
+        const allNotifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+        allNotifications.forEach(n => {
+            if (n.userEmail === currentUser.email) {
+                n.read = true;
+            }
+        });
+
+        localStorage.setItem('notifications', JSON.stringify(allNotifications));
+        this.renderNotifications();
+        showToast('已全部标为已读', 'success');
+    },
+
+    // 删除通知
+    deleteNotification(notificationId) {
+        const allNotifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+        const newNotifications = allNotifications.filter(n => n.id !== notificationId);
+        localStorage.setItem('notifications', JSON.stringify(newNotifications));
+        this.renderNotifications();
+        showToast('通知已删除', 'success');
+    },
+
+    // 查看通知详情
+    viewNotificationDetail(notificationId) {
+        const notifications = this.getNotifications();
+        const notification = notifications.find(n => n.id === notificationId);
+
+        if (!notification) return;
+
+        // 标记为已读
+        if (!notification.read) {
+            this.markNotificationAsRead(notificationId);
+        }
+
+        // 显示详情弹窗
+        this.showNotificationDetailModal(notification);
+    },
+
+    // 显示通知详情弹窗
+    showNotificationDetailModal(notification) {
+        // 移除已存在的弹窗
+        const existingModal = document.getElementById('notificationDetailModal');
+        if (existingModal) existingModal.remove();
+
+        const modal = document.createElement('div');
+        modal.id = 'notificationDetailModal';
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-content notification-detail-modal">
+                <div class="modal-header">
+                    <h3>${this.escapeHtml(notification.title)}</h3>
+                    <button class="close-btn" onclick="closeNotificationModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="detail-meta">
+                        <span class="detail-type">${notification.type === 'comment' ? '评论回复' : '需求反馈'}</span>
+                        <span class="detail-time">${new Date(notification.timestamp).toLocaleString('zh-CN')}</span>
+                    </div>
+                    <div class="detail-content">
+                        ${this.escapeHtml(notification.content)}
+                    </div>
+                    ${notification.relatedId ? `<div class="detail-related">相关ID: ${notification.relatedId}</div>` : ''}
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-secondary" onclick="closeNotificationModal()">关闭</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // 点击背景关闭
+        modal.onclick = function(e) {
+            if (e.target === modal) closeNotificationModal();
+        };
+    },
+
+    // 发送评论通知
+    sendCommentNotification(commentAuthor, commentContent, commentId) {
+        const currentUser = this.getUser();
+        if (!currentUser) return;
+
+        // 通知被回复的用户（如果有的话，这里简化为通知管理员）
+        const notification = {
+            id: 'notif_' + Date.now(),
+            userEmail: currentUser.email,
+            type: 'comment',
+            title: '您收到新的评论回复',
+            content: `${commentAuthor} 回复了您：${commentContent}`,
+            relatedId: commentId,
+            timestamp: new Date().toISOString(),
+            read: false
+        };
+
+        this.saveNotification(notification);
+    },
+
+    // 发送需求通知
+    sendRequirementNotification(requirementTitle, status) {
+        const currentUser = this.getUser();
+        if (!currentUser) return;
+
+        const statusText = {
+            'submitted': '已提交',
+            'reviewed': '已审核',
+            'approved': '已通过',
+            'rejected': '已拒绝'
+        };
+
+        const notification = {
+            id: 'notif_' + Date.now(),
+            userEmail: currentUser.email,
+            type: 'requirement',
+            title: '需求状态更新',
+            content: `您的需求"${requirementTitle}"状态更新为：${statusText[status] || status}`,
+            relatedId: null,
+            timestamp: new Date().toISOString(),
+            read: false
+        };
+
+        this.saveNotification(notification);
+    },
+
+    // 保存通知
+    saveNotification(notification) {
+        const allNotifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+        allNotifications.unshift(notification);
+        localStorage.setItem('notifications', JSON.stringify(allNotifications));
+        this.updateNotificationBadge();
+    },
+
+    // 格式化时间
+    formatTimeAgo(isoString) {
+        const date = new Date(isoString);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffSecs = Math.floor(diffMs / 1000);
+        const diffMins = Math.floor(diffSecs / 60);
+        const diffHours = Math.floor(diffMins / 60);
+        const diffDays = Math.floor(diffHours / 24);
+
+        if (diffSecs < 60) return '刚刚';
+        if (diffMins < 60) return `${diffMins} 分钟前`;
+        if (diffHours < 24) return `${diffHours} 小时前`;
+        if (diffDays < 7) return `${diffDays} 天前`;
+        return date.toLocaleDateString('zh-CN');
+    },
+
+    // HTML转义
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+};
+
+// 关闭通知弹窗
+window.closeNotificationModal = function() {
+    const modal = document.getElementById('notificationDetailModal');
+    if (modal) {
+        modal.remove();
     }
 };
 
@@ -968,6 +1280,36 @@ window.hideChangeUserPasswordForm = function() {
 
 window.handleChangeUserPassword = function() {
     AccountManager.handleChangeUserPassword();
+};
+
+// ==================== 消息通知功能 ====================
+
+window.showNotifications = function() {
+    AccountManager.showNotifications();
+};
+
+window.backToAccountPanel = function() {
+    AccountManager.backToAccountPanel();
+};
+
+window.filterNotifications = function(tab) {
+    AccountManager.filterNotifications(tab);
+};
+
+window.markAllAsRead = function() {
+    AccountManager.markAllAsRead();
+};
+
+window.markNotificationAsRead = function(notificationId) {
+    AccountManager.markNotificationAsRead(notificationId);
+};
+
+window.deleteNotification = function(notificationId) {
+    AccountManager.deleteNotification(notificationId);
+};
+
+window.viewNotificationDetail = function(notificationId) {
+    AccountManager.viewNotificationDetail(notificationId);
 };
 
 // 重置管理员账户（调试用）

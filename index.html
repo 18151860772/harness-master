@@ -213,6 +213,11 @@
                                         <i class="fas fa-users-cog"></i>
                                         <span>用户管理</span>
                                     </button>
+                                    <button class="menu-item" onclick="showNotifications()">
+                                        <i class="fas fa-bell"></i>
+                                        <span>消息通知</span>
+                                        <span id="notificationBadge" class="menu-badge" style="display: none;">0</span>
+                                    </button>
                                     <button class="menu-item danger" onclick="handleLogout()">
                                         <i class="fas fa-sign-out-alt"></i>
                                         <span>退出登录</span>
@@ -319,6 +324,33 @@
                                         <button class="btn-cancel" onclick="hideChangeUserPasswordForm()">取消</button>
                                         <button class="btn-submit" onclick="handleChangeUserPassword()">保存密码</button>
                                     </div>
+                                </div>
+                            </div>
+
+                            <!-- 消息通知面板 -->
+                            <div id="notificationsPanel" class="notifications-panel" style="display: none;">
+                                <div class="notifications-header">
+                                    <button class="back-btn" onclick="backToAccountPanel()">
+                                        <i class="fas fa-arrow-left"></i>
+                                    </button>
+                                    <span>消息通知</span>
+                                    <button class="mark-all-read" onclick="markAllAsRead()">全部已读</button>
+                                </div>
+                                <div class="notifications-tabs">
+                                    <button class="tab-btn active" data-tab="all" onclick="filterNotifications('all')">全部</button>
+                                    <button class="tab-btn" data-tab="unread" onclick="filterNotifications('unread')">未读</button>
+                                    <button class="tab-btn" data-tab="comment" onclick="filterNotifications('comment')">评论</button>
+                                    <button class="tab-btn" data-tab="requirement" onclick="filterNotifications('requirement')">需求</button>
+                                </div>
+                                <div class="notifications-list" id="notificationsList">
+                                    <!-- 通知列表动态生成 -->
+                                </div>
+                                <div class="empty-notifications" id="emptyNotifications" style="display: none;">
+                                    <div class="empty-icon">
+                                        <i class="fas fa-bell-slash"></i>
+                                    </div>
+                                    <h4>暂无消息</h4>
+                                    <p>收到评论或需求时会在这里显示</p>
                                 </div>
                             </div>
                         </div>
